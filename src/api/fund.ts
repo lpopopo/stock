@@ -139,15 +139,15 @@ export async function getFundDetail(code: string): Promise<FundDetail | null> {
 
                 if (script1.parentNode) document.body.removeChild(script1);
 
-                // 2. Fetch clean JSON data from EastMoney Mobile API
-                const holdingsApiUrl = `https://fundmobapi.eastmoney.com/FundMNewApi/FundMNInverstPosition?FCODE=${code}&deviceid=Wap&plat=Wap&product=EFund&version=2.0`;
+                // 2. Fetch clean JSON data from EastMoney Mobile API (Proxy via Vite to bypass WAF)
+                const holdingsApiUrl = `/api/fundmobapi/FundMNewApi/FundMNInverstPosition?FCODE=${code}&deviceid=Wap&plat=Wap&product=EFund&version=2.0`;
                 let stockHoldings: HoldingStock[] = [];
                 let bondHoldings: BondHolding[] = [];
                 let updateDate = '';
 
                 try {
                     const holdingsPromise = axios.get(holdingsApiUrl, { timeout: 8000 });
-                    const allocationApiUrl = `https://fundmobapi.eastmoney.com/FundMNewApi/FundMNAssetAllocation?FCODE=${code}&deviceid=Wap&plat=Wap&product=EFund&version=2.0`;
+                    const allocationApiUrl = `/api/fundmobapi/FundMNewApi/FundMNAssetAllocation?FCODE=${code}&deviceid=Wap&plat=Wap&product=EFund&version=2.0`;
                     const allocationPromise = axios.get(allocationApiUrl, { timeout: 8000 }).catch(() => null);
 
                     const [res, allocationRes] = await Promise.all([holdingsPromise, allocationPromise]);

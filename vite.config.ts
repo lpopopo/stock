@@ -63,6 +63,15 @@ export default defineConfig({
         changeOrigin: true,
         // 把 /api/ai 重写为 ''，也就是将 /api/ai/v1/chat 转发到了 http://127.0.0.1:8045/v1/chat
         rewrite: (path) => path.replace(/^\/api\/ai/, '')
+      },
+      '/api/fundmobapi': {
+        target: 'https://fundmobapi.eastmoney.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/fundmobapi/, ''),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+          'Referer': 'https://fundmobapi.eastmoney.com/'
+        }
       }
     }
   }
