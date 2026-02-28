@@ -1,0 +1,245 @@
+.fund-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #0d1117;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fund-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fund-list-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e6edf3;
+  letter-spacing: 0.5px;
+}
+
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #1a6fdb, #0d4fb5);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.add-btn:hover {
+  background: linear-gradient(135deg, #2279e8, #1560c8);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(26, 111, 219, 0.4);
+}
+
+.add-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.fund-list-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.fund-list-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.fund-list-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fund-list-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.fund-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #484f58;
+  text-align: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.fund-empty-icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.fund-empty-hint {
+  font-size: 12px;
+  color: #30363d;
+}
+
+.fund-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 12px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: rgba(22, 27, 34, 0.8);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.fund-card:hover {
+  background: rgba(33, 41, 54, 0.9);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.fund-card.selected {
+  background: rgba(26, 111, 219, 0.12);
+  border-color: rgba(26, 111, 219, 0.4);
+}
+
+.fund-card.selected .fund-name {
+  color: #58a6ff;
+}
+
+.fund-card-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.fund-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #c9d1d9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.fund-code {
+  font-size: 11px;
+  color: #484f58;
+  font-family: monospace;
+  margin-bottom: 2px;
+}
+
+.fund-nav {
+  font-size: 11px;
+  color: #484f58;
+}
+
+.fund-card-right {
+  text-align: right;
+  flex-shrink: 0;
+  margin-left: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.fund-change {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.fund-change.up {
+  color: #f85149;
+}
+
+.fund-change.down {
+  color: #3fb950;
+}
+
+.fund-change.flat {
+  color: #8b949e;
+}
+
+.fund-est-nav {
+  font-size: 11px;
+  color: #8b949e;
+  font-family: monospace;
+}
+
+.fund-time {
+  font-size: 10px;
+  color: #30363d;
+}
+
+.fund-no-data {
+  font-size: 13px;
+  color: #30363d;
+}
+
+.loading-dot {
+  font-size: 18px;
+  color: #484f58;
+  animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.fund-card:hover .remove-btn {
+  opacity: 1;
+}
+
+.remove-btn:hover {
+  background: rgba(248, 81, 73, 0.3);
+}
+
+.fund-list-footer {
+  padding: 10px 16px;
+  font-size: 11px;
+  color: #30363d;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  text-align: center;
+}
