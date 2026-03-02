@@ -16,6 +16,18 @@ function saveToStorage(funds: MyFund[]) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(funds));
 }
 
+async function saveToBackend(funds: MyFund[]) {
+    try {
+        await fetch('/api/funds', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(funds)
+        });
+    } catch (err) {
+        console.error('Failed to save funds to backend', err);
+    }
+}
+
 interface FundStore {
     // 基金列表
     funds: MyFund[];
@@ -30,6 +42,7 @@ interface FundStore {
     loadingDetail: Record<string, boolean>;
 
     // Actions
+    initFunds: () => Promise<void>;
     addFund: (fund: Omit<MyFund, 'addedAt'>) => void;
     removeFund: (code: string) => void;
     selectFund: (code: string) => void;
@@ -47,12 +60,33 @@ export const useFundStore = create<FundStore>((set) => ({
     loadingEstimate: {},
     loadingDetail: {},
 
+    initFunds: async () => {
+        try {
+            const res = await fetch('/api/funds');
+            if (res.ok) {
+                const data: MyFund[] = await res.json();
+                if (data && data.length > 0) {
+                    set({ funds: data });
+                } else {
+                    const localData = loadFromStorage();
+                    if (localData && localData.length > 0) {
+                        await saveToBackend(localData);
+                        set({ funds: localData });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch funds.json', error);
+        }
+    },
+
     addFund: (fund) =>
         set((state) => {
             if (state.funds.find((f) => f.code === fund.code)) return state;
             const newFund: MyFund = { ...fund, addedAt: Date.now() };
             const newFunds = [...state.funds, newFund];
             saveToStorage(newFunds);
+            saveToBackend(newFunds);
             return { funds: newFunds };
         }),
 
@@ -60,6 +94,7 @@ export const useFundStore = create<FundStore>((set) => ({
         set((state) => {
             const newFunds = state.funds.filter((f) => f.code !== code);
             saveToStorage(newFunds);
+            saveToBackend(newFunds);
             return {
                 funds: newFunds,
                 selectedCode: state.selectedCode === code ? null : state.selectedCode,

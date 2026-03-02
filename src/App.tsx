@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useFundStore } from './store/fund.store';
 import FundList from './components/FundList/FundList';
 import FundDetail from './components/FundDetail/FundDetail';
 import AddFundModal from './components/AddFundModal/AddFundModal';
@@ -8,6 +9,11 @@ import './App.css';
 function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeView, setActiveView] = useState<'detail' | 'trend'>('detail');
+  const initFunds = useFundStore((state) => state.initFunds);
+
+  useEffect(() => {
+    initFunds();
+  }, [initFunds]);
 
   return (
     <div className="app">

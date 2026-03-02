@@ -397,8 +397,47 @@ export async function getFundAISummaryStream(
             headers['Authorization'] = `Bearer ${apiKey}`;
         }
 
-        // 获取实时大盘数据，作为单只基金涨跌的参照系
-        const marketContext = await fetchMarketContext();
+        // 并发获取实时大盘数据与宏观要闻
+        const [marketContext, macroNews] = await Promise.all([
+            fetchMarketContext(),
+            fetchMacroNews()
+        ]);
+
+        // 提取重仓股并获取新闻
+        const codes: string[] = [];
+        const regex = /\((\d{6})\.(SZ|SH|HK)\)/g;
+        let match;
+        while ((match = regex.exec(prompt)) !== null) {
+            const code = match[1];
+            const market = match[2];
+            codes.push(market.toLowerCase() + code);
+            if (codes.length >= 10) break;
+        }
+
+        let newsText = '';
+        if (codes.length > 0) {
+            try {
+                const fetchPromises = codes.map(async (code) => {
+                    const res = await fetch(`/api/stock-news?code=${code}`);
+                    if (!res.ok) return null;
+                    const data = await res.json();
+                    if (data.news && data.news.length > 0) {
+                        return `- [${code.toUpperCase()}] ${data.news.join(' | ')}`;
+                    }
+                    return null;
+                });
+                const results = await Promise.allSettled(fetchPromises);
+                const newsItems = results
+                    .filter(r => r.status === 'fulfilled' && r.value)
+                    .map(r => (r as PromiseFulfilledResult<string>).value);
+
+                if (newsItems.length > 0) {
+                    newsText = `\n【十大重仓股最新重点新闻 (请必须结合此数据分析异动原因)】:\n${newsItems.join('\n')}\n`;
+                }
+            } catch (e) {
+                console.warn('Failed to fetch stock news', e);
+            }
+        }
 
         // 注入准确的时间锚点
         const now = new Date();
@@ -411,7 +450,11 @@ export async function getFundAISummaryStream(
             ? `【真实实时大盘数据 (作为对比参照)】:\n${marketContext}\n`
             : '';
 
-        const enhancedPrompt = `当前系统时间是：${currentDateTime}。\n${marketDataBlock}\n【该基金的实时盘面结构及动态数据】：\n${prompt}`;
+        const macroNewsBlock = macroNews
+            ? `\n【宏观要闻与政策日历 (本周重大事件与周末关键动态，请必须结合此数据分析宏观环境与黑天鹅风险)】:\n${macroNews}\n`
+            : '';
+
+        const enhancedPrompt = `当前系统时间是：${currentDateTime}。\n${marketDataBlock}${macroNewsBlock}\n【该基金的实时盘面结构及动态数据】：\n${prompt}${newsText}`;
 
         const response = await fetch('/api/ai/v1/chat/completions', {
             method: 'POST',
@@ -421,18 +464,23 @@ export async function getFundAISummaryStream(
                 messages: [
                     {
                         role: 'system',
-                        content: `你是一位全市场视角的资深基金经理与金融数据分析专家。请根据提供的“大盘实时行情”以及“具体某只基金的数据、前十大重仓股、今日实时涨跌幅”，运用系统化的投研分析框架，对该基金进行深度、结构化的实时诊断和总结。
+                        content: `你是一位全市场视角的资深基金经理与金融数据分析专家。请根据提供的“大盘实时行情”、“宏观要闻与政策日历”以及“具体某只基金的数据、前十大重仓股、今日实时涨跌幅及最新重仓股新闻”，运用系统化的投研分析框架，对该基金进行深度、结构化的实时诊断和总结。
 
 你的分析必须包含以下核心层次：
 
 1. 【大盘环境与板块归属】：首先简要评估今日大盘整体情绪（根据大盘指数），然后准确判断该基金的基础持仓属于什么核心板块，并判断该板块是受大盘拖累被动杀跌，还是具备独立逆势逻辑。
-2. 【持仓与突发热点结合解析】：结合当前的宏观经济、最新突发资讯（如周末刚刚发生的重大且未被充分消化的地缘黑天鹅、重要会议政策等），深度推演该基金当前持仓表现的核心驱动力，明确区分基本面因素和情绪面冲击。
-3. 【后续预期走势判断】：基于以上逻辑链条与市场规律，对该基金后续可能的走势方向做出前瞻性预判。
-4. 【操作策略与仓位建议】：以利益最大化为目标，结合风险收益比，明确给出当前是否需要加仓、减仓、左侧定投或持仓观望的具体结论和纪律指引。
+2. 【个股异动与新闻拆解】：梳理当天领涨/领跌的重仓股，并结合传入的最新的个股新闻，判断该异动是受自身基本面消息（如财报超预期、高管变动、突发利空）刺激，还是跟随板块情绪波动。
+3. 【持仓与突发热点结合解析】：结合当前的宏观经济、最新突发资讯深度推演该基金当前持仓表现的核心驱动力，明确区分基本面因素和情绪面冲击。
+4. 【宏观事件与政策日历前瞻】：必须结合下方注入的“宏观要闻与政策日历”数据，分析近期（特别是本周内）即将发生的重大政策会议（如两会、十五五规划、LPR决议、国务院常务会议等）、经济数据发布或全球黑天鹅事件对该基金持仓板块的潜在冲击或催化效应。区分“已兑现利好/利空”与“待兑现预期”。
+5. 【后续预期走势判断】：基于以上逻辑链条、市场规律及宏观政策节奏，对该基金后续可能的走势方向做出前瞻性预判。
+6. 【操作策略与仓位建议】：以利益最大化为目标，结合风险收益比与即将到来的政策催化/风险窗口，明确给出当前是否需要加仓、减仓、左侧定投或持仓观望的具体结论和纪律指引。
 
 严格要求：
 - 请务必建立单只基金涨跌与同期大盘涨跌的“对比参照系”，以判断其超额收益或韧性。
+- 新闻穿透分析：要求根据重仓股的新闻找出个股涨跌的具体逻辑支撑，拒绝宽泛毫无依据的猜测。
 - 对突发事件（黑天鹅）保持高度敏感，分析其短期情绪利空和中长期基本面逻辑的区别。
+- 政策敏感度：必须扫描宏观热点中是否包含与基金持仓板块直接相关的政策会议或产业规划（如十五五、两会、央行决议），并据此推演板块资金流向与情绪博弈。
+- 周末/假期黑天鹅检测：必须利用宏观要闻判断休市期间是否发生了重大国际事件或突发消息（如贸易摩擦、地缘冲突、海外央行政策突变），评估其对今日开盘走势的二阶影响。
 - 请用自然连贯、通俗易懂且极具同理心的专业视角进行答复。直接输出高价值结论与策略。`
                     },
                     { role: 'user', content: enhancedPrompt }
@@ -546,6 +594,89 @@ export async function fetchMarketContext(): Promise<string> {
 }
 
 /**
+ * 获取宏观财经要闻（财联社 + 华尔街见闻），用于 AI 分析的宏观环境上下文
+ * 通过 Vite dev server 中间件代理 NewsNow API
+ */
+export async function fetchMacroNews(): Promise<string> {
+    try {
+        const res = await fetch('/api/macro-news');
+        if (!res.ok) return '';
+        const data = await res.json();
+        if (data.news && Array.isArray(data.news) && data.news.length > 0) {
+            return data.news.map((item: string) => `- ${item}`).join('\n');
+        }
+        return '';
+    } catch (e) {
+        console.warn('fetchMacroNews failed, proceeding without macro news:', e);
+        return '';
+    }
+}
+
+/**
+ * 获取用户持仓基金的实时快照（名称、净值、涨跌幅、前5大重仓股）
+ * 用于注入到宏观推演的 AI prompt 中，使 AI 能给出针对性的持仓建议
+ */
+export async function fetchMyFundsContext(): Promise<string> {
+    try {
+        // 1. 从后端（funds.json）获取持仓列表
+        const res = await fetch('/api/funds');
+        if (!res.ok) return '';
+        const funds: { code: string; name: string }[] = await res.json();
+        if (!funds || funds.length === 0) return '';
+
+        // 2. 并发获取每只基金的净值 + 持仓详情
+        const detailPromises = funds.map(async (fund) => {
+            try {
+                const [estimate, detail] = await Promise.all([
+                    getFundEstimate(fund.code),
+                    getFundDetail(fund.code)
+                ]);
+
+                const name = estimate?.name || detail?.name || fund.name;
+                const nav = estimate?.gsz || '--';
+                const changePct = estimate?.gszzl || '--';
+                const navTime = estimate?.gztime || '';
+
+                // 取前5大重仓股
+                let topHoldings = '';
+                if (detail?.holdings && detail.holdings.length > 0) {
+                    topHoldings = detail.holdings
+                        .slice(0, 5)
+                        .map(h => `${h.stockName}(${h.ratio}%)`)
+                        .join('、');
+                }
+
+                const sign = Number(changePct) >= 0 ? '+' : '';
+                let line = `${name} (${fund.code}) | 最新净值: ${nav} | 涨跌幅: ${sign}${changePct}%`;
+                if (navTime) line += ` | 净值日期: ${navTime}`;
+                if (topHoldings) line += ` | 前5大重仓: ${topHoldings}`;
+                if (detail?.type) line += ` | 类型: ${detail.type}`;
+                if (detail?.manager) line += ` | 基金经理: ${detail.manager}`;
+                return line;
+            } catch (e) {
+                console.warn(`Failed to fetch context for fund ${fund.code}:`, e);
+                return `${fund.name} (${fund.code}) | 数据获取失败`;
+            }
+        });
+
+        const results = await Promise.allSettled(detailPromises);
+        const lines = results
+            .map((r, i) => {
+                const value = r.status === 'fulfilled' ? r.value : `${funds[i].name} (${funds[i].code}) | 数据获取失败`;
+                return `${i + 1}. ${value}`;
+            });
+
+        if (lines.length > 0) {
+            return `📦 **用户当前持仓基金组合（共${lines.length}只）**：\n${lines.join('\n')}`;
+        }
+        return '';
+    } catch (e) {
+        console.warn('fetchMyFundsContext failed:', e);
+        return '';
+    }
+}
+
+/**
  * 请求 AI 进行宏观大盘、未来趋势及建仓时机分析 (流式输出)
  * @param signal 可选的 AbortSignal，用于中途取消请求
  */
@@ -579,7 +710,8 @@ export async function getMarketTrendAnalysisStream(
 - **杜绝数字迎合**：严禁给个股或板块提供类似 +15% 或 +30% 的具体预估收益率，这在合规中是绝对禁止的。
 - **驳斥伪逻辑**：如果用户输入的关注热点存在伪科学假定、虚假违背常识的传闻或不合逻辑的推断（如炒作不存在的技术），你必须首先客观驳斥该伪逻辑，拒绝顺从，再提供你认为合理的真实方向。
 - 使用极具金融专业度与逻辑穿透力的语言。使用清晰的 Markdown 格式排版提供极佳的阅读质感。直接产出高能量密度的投研结果，无须过度免责废话。
-- **重要：下方用户消息中会附带今日 A 股核心指数的实时行情数据，这是真实的市场数据，请务必以此作为你此次推演的客观起点，而非凭空臆测市场当前状态。**`;
+- **重要：下方用户消息中会附带今日 A 股核心指数的实时行情数据，这是真实的市场数据，请务必以此作为你此次推演的客观起点，而非凭空臆测市场当前状态。**
+- **重要：下方用户消息中还会附带用户当前真实持仓的基金组合数据（包括基金名称、代码、最新净值、涨跌幅、前5大重仓股、基金类型和基金经理）。你必须在完成宏观推演之后，增加一个专门的章节【用户持仓基金诊断与操作建议】，逐一分析每只持仓基金：①判断该基金所属板块在当前宏观环境中的位置；②结合其重仓股结构和近期涨跌趋势做出走势前瞻；③明确给出 加仓/减仓/持有观望/止盈 的具体操作建议及理由。最后给出整体持仓组合的风险敞口评估和优化建议。**`;
 
         // 注入更精确的时间锚点（包含具体时刻，盘前/盘中/盘后）
         const now = new Date();
@@ -593,16 +725,23 @@ export async function getMarketTrendAnalysisStream(
                 (hour < 13) ? 'A 股午间休市' :
                     (hour < 15) ? 'A 股下午盘交易时段' : '盘后（收盘后）';
 
-        // 并发获取实时市场数据
-        const marketContext = await fetchMarketContext();
+        // 并发获取实时市场数据 & 用户持仓基金快照
+        const [marketContext, fundsContext] = await Promise.all([
+            fetchMarketContext(),
+            fetchMyFundsContext()
+        ]);
 
         const marketDataBlock = marketContext
             ? `\n\n---\n以下是系统自动获取的【真实实时市场数据】，请以此为推演起点：\n${marketContext}\n---\n`
             : '\n（注意：系统未能获取到实时市场行情数据，请你基于知识库进行定性推演）\n';
 
+        const fundsBlock = fundsContext
+            ? `\n---\n以下是系统自动获取的【用户真实持仓基金数据】，请务必逐一分析并给出操作建议：\n${fundsContext}\n---\n`
+            : '';
+
         const userContent = prompt.trim()
-            ? `当前系统时间是：${currentDateTime}，目前处于 ${tradingPhase}。${marketDataBlock}用户的特别关注点/自定义热点聚焦于:【${prompt}】。请结合上方真实市场数据、上述关注点以及你自身发掘的时下最前沿硬核资讯，展开全局宏观推演。`
-            : `当前系统时间是：${currentDateTime}，目前处于 ${tradingPhase}。${marketDataBlock}用户未指定具体热点。请你直接履行职责，先基于上方真实市场数据判断今日市场整体氛围，再自主检索和判断当前时间节点下，国内外的重大热点资讯与产业进程，自动寻找并锁定几个最核心的默认板块，然后给出精准的建仓策略分析。`;
+            ? `当前系统时间是：${currentDateTime}，目前处于 ${tradingPhase}。${marketDataBlock}${fundsBlock}用户的特别关注点/自定义热点聚焦于:【${prompt}】。请结合上方真实市场数据、用户持仓基金数据、上述关注点以及你自身发掘的时下最前沿硬核资讯，展开全局宏观推演，并对用户持仓基金逐一给出操作建议。`
+            : `当前系统时间是：${currentDateTime}，目前处于 ${tradingPhase}。${marketDataBlock}${fundsBlock}用户未指定具体热点。请你直接履行职责，先基于上方真实市场数据判断今日市场整体氛围，再自主检索和判断当前时间节点下，国内外的重大热点资讯与产业进程，自动寻找并锁定几个最核心的默认板块，然后给出精准的建仓策略分析。同时，请务必对用户的持仓基金逐一分析并给出操作建议。`;
 
         const response = await fetch('/api/ai/v1/chat/completions', {
             method: 'POST',
