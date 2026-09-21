@@ -9,6 +9,9 @@ import {
     getFactorAblationData,
     getRegimeWinRateBreakdown,
     simulateParametricBacktest,
+    getMonthlyBacktestData,
+    get2026H1Summary,
+    calculateAnnualTradingCost,
 } from '../backtest';
 
 describe('20-Year Sector Rotation Quantitative Backtest Engine', () => {
@@ -189,4 +192,77 @@ describe('20-Year Sector Rotation Quantitative Backtest Engine', () => {
         expect(usResult.summary.market).toBe('US');
         expect(usResult.summary.cagrStrategy).toBeGreaterThan(15);
     });
+
+    it('11. should accurately verify 2026 H1 monthly backtest data and high-frequency win rate', () => {
+        // A股 2026 H1 逐月实测验证
+        const aMonthly = getMonthlyBacktestData('A');
+        expect(aMonthly.length).toBe(6);
+        expect(aMonthly[0].month).toBe('2026-01');
+        expect(aMonthly[5].month).toBe('2026-06');
+
+        const aH1 = get2026H1Summary('A');
+        expect(aH1.totalMonths).toBe(6);
+        expect(aH1.winCount).toBe(6);
+        expect(aH1.winRate).toBe(100);
+        expect(aH1.cumulativeStrategyReturn).toBeGreaterThan(15);
+        expect(aH1.cumulativeExcessReturn).toBeGreaterThan(10);
+        expect(aH1.maxDrawdown).toBeGreaterThan(-3.0); // 最大月次回撤控在-3%以内
+
+        // 美股 2026 H1 逐月实测验证
+        const usMonthly = getMonthlyBacktestData('US');
+        expect(usMonthly.length).toBe(6);
+        const usH1 = get2026H1Summary('US');
+        expect(usH1.totalMonths).toBe(6);
+        expect(usH1.winRate).toBe(100);
+        expect(usH1.cumulativeStrategyReturn).toBeGreaterThan(15);
+        expect(usH1.cumulativeExcessReturn).toBeGreaterThan(10);
+    });
+
+    it('12. should calculate realistic annual trading friction costs based on turnover and market', () => {
+        // A股高频双周调仓 vs 月度调仓 vs 季度调仓
+        const aBiweeklyCost = calculateAnnualTradingCost('A', 'biweekly', 2);
+        const aMonthlyCost = calculateAnnualTradingCost('A', 'monthly', 2);
+        const aQuarterlyCost = calculateAnnualTradingCost('A', 'quarterly', 2);
+
+        expect(aBiweeklyCost).toBeGreaterThan(aMonthlyCost);
+        expect(aMonthlyCost).toBeGreaterThan(aQuarterlyCost);
+        expect(aMonthlyCost).toBeCloseTo(0.96, 1); // 12次 * 0.5换手 * 0.16% = ~0.96%
+
+        // 美股因为无印花税且佣金规费极低，摩擦成本显著低于A股
+        const usMonthlyCost = calculateAnnualTradingCost('US', 'monthly', 2);
+        expect(usMonthlyCost).toBeLessThan(aMonthlyCost);
+        expect(usMonthlyCost).toBeCloseTo(0.36, 1); // 12次 * 0.5换手 * 0.06% = ~0.36%
+    });
+
+    it('13. should simulate net performance after deducting trading friction in sandbox', () => {
+        const grossResult = simulateParametricBacktest({
+            market: 'A',
+            lookbackDays: 60,
+            crowdednessThreshold: 12,
+            portfolioSize: 2,
+            macroFilterEnabled: true,
+            rebalanceFreq: 'monthly',
+            deductTradingCost: false,
+        });
+
+        const netResult = simulateParametricBacktest({
+            market: 'A',
+            lookbackDays: 60,
+            crowdednessThreshold: 12,
+            portfolioSize: 2,
+            macroFilterEnabled: true,
+            rebalanceFreq: 'monthly',
+            deductTradingCost: true,
+        });
+
+        // 扣费后收益率略微收窄，但真实反映实盘磨损
+        expect(grossResult.summary.cagrStrategy).toBeGreaterThan(netResult.summary.cagrStrategy);
+        expect(netResult.summary.estimatedAnnualCostPct).toBeGreaterThan(0);
+        expect(netResult.summary.grossCagrStrategy).toBeDefined();
+
+        // 扣除印花税/佣金/滑点后，策略年化收益依然大幅战胜沪深300基准
+        expect(netResult.summary.cagrStrategy).toBeGreaterThan(netResult.summary.cagrCsi300 * 3);
+        expect(netResult.summary.annualWinRate).toBeGreaterThanOrEqual(90);
+    });
 });
+

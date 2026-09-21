@@ -7,8 +7,12 @@ import {
     getRegimeWinRateBreakdown,
     calculateCumulativeNav,
     simulateParametricBacktest,
+    getMonthlyBacktestData,
+    get2026H1Summary,
+    calculateAnnualTradingCost,
     type BacktestSandboxParams,
     type AnnualBacktestRecord,
+    type MonthlyBacktestRecord,
 } from '../../../api/backtest';
 import {
     getAllPresets,
@@ -42,6 +46,7 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
         portfolioSize: 2,
         macroFilterEnabled: true,
         rebalanceFreq: 'monthly',
+        deductTradingCost: true,
     });
 
     // 预设管理状态
@@ -90,6 +95,8 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
     const ablationData = getFactorAblationData(market);
     const regimeStats = getRegimeWinRateBreakdown(market);
     const navPoints = calculateCumulativeNav(activeRecords);
+    const monthlyRecords = getMonthlyBacktestData(market);
+    const h1Summary = get2026H1Summary(market);
 
     // 动态模拟器实时计算
     const sandboxResult = simulateParametricBacktest({
@@ -117,6 +124,7 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
             portfolioSize: 2,
             macroFilterEnabled: true,
             rebalanceFreq: 'monthly',
+            deductTradingCost: true,
         });
         setActivePresetId(market === 'A' ? 'builtin_balanced_a' : 'builtin_balanced_us');
     };
@@ -581,6 +589,37 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
                                     {sandboxParams.rebalanceFreq === 'quarterly' && '低摩擦换手，但在急转弯行情可能滞后'}
                                 </span>
                             </div>
+
+                            {/* 参数 6：交易摩擦成本与滑点扣除 */}
+                            <div className="param-item-box">
+                                <div className="param-header">
+                                    <span className="param-label">交易摩擦成本扣除 (印花税+佣金+滑点)</span>
+                                    <span className={`param-val-badge font-mono ${sandboxParams.deductTradingCost !== false ? 'text-green' : 'text-neutral'}`}>
+                                        {sandboxParams.deductTradingCost !== false
+                                            ? `已扣除 -${calculateAnnualTradingCost(market, sandboxParams.rebalanceFreq, sandboxParams.portfolioSize)}%/年`
+                                            : '未扣除 (毛收益)'}
+                                    </span>
+                                </div>
+                                <div className="param-options-pills">
+                                    <button
+                                        className={`param-pill ${sandboxParams.deductTradingCost !== false ? 'active' : ''}`}
+                                        onClick={() => setSandboxParams(prev => ({ ...prev, deductTradingCost: true }))}
+                                    >
+                                        💸 开启扣费 (真实净值)
+                                    </button>
+                                    <button
+                                        className={`param-pill ${sandboxParams.deductTradingCost === false ? 'active' : ''}`}
+                                        onClick={() => setSandboxParams(prev => ({ ...prev, deductTradingCost: false }))}
+                                    >
+                                        📈 不扣除 (纯理论毛收益)
+                                    </button>
+                                </div>
+                                <span className="param-desc-tip">
+                                    {market === 'A'
+                                        ? '包含卖出单边印花税0.05% + 双边佣金万2.5 + 双边滑点冲击0.06%，真实反映实盘磨损'
+                                        : '包含大盘ETF超高流动性下的交易规费与双边滑点约0.06%，更精确评估真实超额'}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -596,7 +635,7 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
                                 </span>
                             </div>
                             <span className="compare-benchmark-row">
-                                默认基准策略: {summary.cagrStrategy}% | {summary.benchmarkName}: {summary.cagrCsi300}%
+                                {sandboxResult.summary.estimatedAnnualCostPct ? `(含交易摩擦损耗 -${sandboxResult.summary.estimatedAnnualCostPct}%/年) | ` : ''}基准: {summary.cagrCsi300}%
                             </span>
                         </div>
 
@@ -886,9 +925,99 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
                         );
                     })()}
 
+                    {/* ── 2026年上半年 (H1) 逐月实测回测验证卡片 ── */}
+                    <div className="h1-monthly-backtest-card">
+                        <div className="h1-header-row">
+                            <div className="h1-title-group">
+                                <span className="h1-badge">🔥 最新实盘周期实测</span>
+                                <h4 className="h1-main-title">2026年上半年 (H1) 逐月高频量化实测检验</h4>
+                                <span className="h1-sub-title">基准: {summary.benchmarkName} · 逐月胜率与板块轮动驱动明细</span>
+                            </div>
+                            <div className="h1-stats-strip">
+                                <div className="h1-stat-item">
+                                    <span className="lbl">H1 累计收益</span>
+                                    <span className={`val font-mono font-bold ${getTrendClass(h1Summary.cumulativeStrategyReturn)}`}>
+                                        {h1Summary.cumulativeStrategyReturn > 0 ? '+' : ''}{h1Summary.cumulativeStrategyReturn}%
+                                    </span>
+                                </div>
+                                <div className="h1-stat-item">
+                                    <span className="lbl">{summary.benchmarkName}</span>
+                                    <span className={`val font-mono ${getTrendClass(h1Summary.cumulativeBenchmarkReturn)}`}>
+                                        {h1Summary.cumulativeBenchmarkReturn > 0 ? '+' : ''}{h1Summary.cumulativeBenchmarkReturn}%
+                                    </span>
+                                </div>
+                                <div className="h1-stat-item">
+                                    <span className="lbl">累计超额 Alpha</span>
+                                    <span className={`val font-mono font-bold ${getTrendClass(h1Summary.cumulativeExcessReturn)}`}>
+                                        {h1Summary.cumulativeExcessReturn > 0 ? '+' : ''}{h1Summary.cumulativeExcessReturn}%
+                                    </span>
+                                </div>
+                                <div className="h1-stat-item">
+                                    <span className="lbl">月度跑赢胜率</span>
+                                    <span className="val font-mono text-gold">
+                                        {h1Summary.winCount}/{h1Summary.totalMonths} ({h1Summary.winRate}%)
+                                    </span>
+                                </div>
+                                <div className="h1-stat-item">
+                                    <span className="lbl">最大月次回撤</span>
+                                    <span className="val font-mono text-green">
+                                        {h1Summary.maxDrawdown}%
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="backtest-table-wrapper h1-table-wrapper">
+                            <table className="radar-data-table backtest-table">
+                                <thead>
+                                    <tr>
+                                        <th>月份</th>
+                                        <th>策略月收益</th>
+                                        <th>{summary.benchmarkName}</th>
+                                        <th>超额收益 (Alpha)</th>
+                                        <th>月内回撤</th>
+                                        <th>胜负检验</th>
+                                        <th>当月核心配置与超额板块</th>
+                                        <th>调仓逻辑与宏观驱动</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {monthlyRecords.map((m: MonthlyBacktestRecord) => (
+                                        <tr key={m.month}>
+                                            <td className="font-mono font-bold text-neutral">{m.monthName}</td>
+                                            <td className={`font-mono font-bold ${getTrendClass(m.strategyReturn)}`}>
+                                                {m.strategyReturn > 0 ? '+' : ''}{m.strategyReturn.toFixed(2)}%
+                                            </td>
+                                            <td className={`font-mono ${getTrendClass(m.benchmarkReturn)}`}>
+                                                {m.benchmarkReturn > 0 ? '+' : ''}{m.benchmarkReturn.toFixed(2)}%
+                                            </td>
+                                            <td className={`font-mono font-bold ${getTrendClass(m.excessReturn)}`}>
+                                                {m.excessReturn > 0 ? '+' : ''}{m.excessReturn.toFixed(2)}%
+                                            </td>
+                                            <td className="font-mono text-green">{m.maxDrawdown.toFixed(2)}%</td>
+                                            <td>
+                                                <span className={`regime-badge ${m.isWin ? 'regime-bull' : 'regime-bear'}`}>
+                                                    {m.isWin ? '✓ 跑赢' : '✗ 跑输'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="held-sectors-pills">
+                                                    {m.heldSectors.map((sec, idx) => (
+                                                        <span key={idx} className="sec-tag">{sec}</span>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className="logic-desc-cell">{m.keyLogic}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div className="table-filter-bar">
                         <div className="filter-summary-text">
-                            展示 {summary.marketName} 记录：<strong>{displayedRecords.length}</strong> 年 (共 {filteredRecords.length} 年)
+                            展示 {summary.marketName} 历年年度记录：<strong>{displayedRecords.length}</strong> 年 (共 {filteredRecords.length} 年)
                         </div>
                         <button
                             className="toggle-all-btn"

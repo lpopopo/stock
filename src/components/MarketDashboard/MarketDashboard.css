@@ -4079,3 +4079,71 @@
 .excess-bar-svg { width: 100%; height: auto; display: block; overflow: visible; }
 .excess-val-label { font-size: 9px; font-family: 'JetBrains Mono', monospace; font-weight: 700; }
 
+/* ========== 2026 H1 Monthly Backtest Card ========== */
+.h1-monthly-backtest-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 112, 67, 0.25);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+.h1-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.h1-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.h1-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ff7043;
+  background: rgba(255, 112, 67, 0.12);
+  border: 1px solid rgba(255, 112, 67, 0.3);
+  border-radius: 4px;
+  padding: 2px 8px;
+  width: fit-content;
+}
+.h1-main-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 2px 0 0;
+}
+.h1-sub-title {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.h1-stats-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.h1-stat-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.h1-stat-item .lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.h1-stat-item .val {
+  font-size: 0.95rem;
+}
+.h1-table-wrapper {
+  margin-top: 8px;
+}
+

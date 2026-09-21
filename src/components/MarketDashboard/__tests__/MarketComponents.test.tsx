@@ -451,7 +451,7 @@ describe('Market Dashboard UI Components', () => {
 
             // 切换历年明细表子标签
             fireEvent.click(screen.getByText(/20年历年调仓与轮动逻辑明细表/));
-            expect(screen.getByText('超额收益 (Alpha)')).toBeDefined();
+            expect(screen.getAllByText('超额收益 (Alpha)').length).toBeGreaterThan(0);
 
             // 切换到美股 20年回测
             fireEvent.click(screen.getByText(/美股市场 20年回测/));
@@ -639,10 +639,21 @@ describe('Market Dashboard UI Components', () => {
             const hedgeToggle = screen.getByRole('button', { name: /关闭对冲/ });
             fireEvent.click(hedgeToggle);
 
+            // Toggle trading cost
+            const costToggle = screen.getByRole('button', { name: /开启扣费/ });
+            fireEvent.click(costToggle);
+
             // Verify market switch
             const usMarketBtn = screen.getByRole('button', { name: /美股市场 20年回测/ });
             fireEvent.click(usMarketBtn);
             expect(screen.getByText(/美股市场策略因子参数调节沙盘/)).toBeDefined();
+
+            // Switch to details tab and verify 2026 H1 monthly table
+            const detailsTabBtn = screen.getByRole('button', { name: /20年历年调仓与轮动逻辑明细表/ });
+            fireEvent.click(detailsTabBtn);
+            expect(screen.getByText(/2026年上半年 \(H1\) 逐月高频量化实测检验/)).toBeDefined();
+            expect(screen.getByText('2026年1月')).toBeDefined();
+            expect(screen.getByText('2026年6月')).toBeDefined();
         });
     });
 
