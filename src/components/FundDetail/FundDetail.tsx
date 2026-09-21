@@ -1,31 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useFundStore } from '../../store/fund.store';
-import { getFundDetail, getStockJumpUrl, getStockQuotes, getFundAISummaryStream } from '../../api/fund';
+import {
+    getFundDetail,
+    getStockJumpUrl,
+    getStockQuotes,
+    getFundAISummaryStream,
+    calculateFundEstimation,
+    getFundPhase,
+} from '../../api/fund';
 import type { StockQuote } from '../../api/fund';
 import type { JumpPlatform } from '../../types/fund.types';
 import './FundDetail.css';
-
-/**
- * 判断当前是否处于交易时间（A股及港股的开盘阶段）
- * 周一至周五 09:00-12:00, 13:00-16:00
- */
-function isTradingTime(): boolean {
-    const now = new Date();
-    const day = now.getDay();
-    // 周末不开盘
-    if (day === 0 || day === 6) return false;
-
-    const h = now.getHours();
-    const m = now.getMinutes();
-    const timeNum = h * 100 + m; // 转换为 900, 1600 类似的格式方便判断
-
-    if (timeNum >= 900 && timeNum <= 1200) return true;
-    if (timeNum >= 1300 && timeNum < 1600) return true;
-
-    return false;
-}
 
 const FundDetail: React.FC = () => {
     const {
@@ -70,45 +57,15 @@ const FundDetail: React.FC = () => {
         }
     }, [apiKey]);
 
-    // 实时估算计算逻辑
-    const { estimatedChangePct, realTimeEstimatedNav, totalKnownRatio } = React.useMemo(() => {
-        if (!detail || !detail.holdings || detail.holdings.length === 0 || Object.keys(quotes).length === 0 || !estimate) {
-            return { estimatedChangePct: null, realTimeEstimatedNav: null, totalKnownRatio: 0 };
-        }
-
-        let totalWeightedChange = 0;
-        let totalRatio = 0;
-        let hasValidData = false;
-
-        detail.holdings.forEach((stock) => {
-            const quote = quotes[stock.stockCode];
-            if (quote && quote.changePct !== undefined && quote.changePct !== '--') {
-                const ratio = parseFloat(stock.ratio) / 100; // e.g., 2.44% -> 0.0244
-                const change = parseFloat(quote.changePct); // e.g., 0.47
-                if (!isNaN(ratio) && !isNaN(change)) {
-                    totalWeightedChange += ratio * change;
-                    totalRatio += ratio;
-                    hasValidData = true;
-                }
-            }
-        });
-
-        if (!hasValidData || totalRatio === 0) {
-            return { estimatedChangePct: null, realTimeEstimatedNav: null, totalKnownRatio: 0 };
-        }
-
-        // 放大倍数推算整体涨跌幅：假设未披露部分的涨跌幅与已披露前十大重仓股加权平均涨跌幅一致
-        const extrapolatedChangePct = totalWeightedChange / totalRatio;
-
-        const baseNav = parseFloat(estimate.gsz || '0');
-        const estimatedNav = baseNav * (1 + extrapolatedChangePct / 100);
-
-        return {
-            estimatedChangePct: extrapolatedChangePct,
-            realTimeEstimatedNav: estimatedNav,
-            totalKnownRatio: totalRatio * 100
-        };
+    // 实时与收盘估算精准测算
+    const estimationResult = useMemo(() => {
+        return calculateFundEstimation(detail, quotes, estimate);
     }, [detail, quotes, estimate]);
+
+    const phaseInfo = useMemo(() => {
+        return getFundPhase();
+    }, []);
+
 
     useEffect(() => {
         if (!selectedCode) return;
@@ -143,10 +100,12 @@ const FundDetail: React.FC = () => {
         setAiError('');
         setIsAiLoading(true);
 
+        const currentFundName = detail?.name || estimate?.name || selectedFund?.name || selectedCode || '';
+        const estChangeNum = estimationResult.estimatedChangePct;
         const prompt = `
-基金名称: ${fundName} (${selectedCode})
+基金名称: ${currentFundName} (${selectedCode})
 当前最新净值: ${estimate?.gsz || '未知'}
-今日实时估算涨跌幅: ${estimatedChangePct !== null ? estimatedChangePct.toFixed(2) : '--'}%
+今日实时估算涨跌幅: ${estChangeNum !== null ? estChangeNum.toFixed(2) : '--'}%
 前十大重仓股票及其实时盘中涨跌幅表现如下：
 ${detail.holdings.slice(0, 10).map(h => {
             const q = quotes[h.stockCode];
@@ -172,9 +131,9 @@ ${detail.holdings.slice(0, 10).map(h => {
         );
     };
 
-    const formatChange = (val: string | undefined) => {
-        if (!val) return { text: '--', cls: '' };
-        const num = parseFloat(val);
+    const formatChange = (val: string | number | undefined | null) => {
+        if (val === undefined || val === null || val === '') return { text: '--', cls: '' };
+        const num = typeof val === 'number' ? val : parseFloat(val);
         if (isNaN(num)) return { text: '--', cls: '' };
         return {
             text: `${num > 0 ? '+' : ''}${num.toFixed(2)}%`,
@@ -195,7 +154,7 @@ ${detail.holdings.slice(0, 10).map(h => {
     }
 
     const change = formatChange(estimate?.gszzl);
-    const estChange = estimatedChangePct !== null ? formatChange(estimatedChangePct.toString()) : null;
+    const estChange = formatChange(estimationResult.estimatedChangePct);
     const fundName = detail?.name || estimate?.name || selectedFund?.name || selectedCode;
     const aiActive = !!(aiSummary || isAiLoading || aiError);
 
@@ -271,32 +230,162 @@ ${detail.holdings.slice(0, 10).map(h => {
                     )}
                 </div>
 
-                {/* 实时持仓估算数据行 (仅盘中展示) */}
-                {realTimeEstimatedNav !== null && estChange !== null && isTradingTime() && (
+                {/* 核心净值与估值看板 */}
+                <div className="estimation-card-wrapper">
+                    <div className="estimation-card-header">
+                        <div className="phase-tags">
+                            <span className={`phase-badge ${phaseInfo.badgeCls}`}>
+                                {phaseInfo.label}
+                            </span>
+                            <span className="model-badge" title={estimationResult.modelDescription}>
+                                {estimationResult.modelType === 'etf_feeder'
+                                    ? '🎯 ETF联接联动'
+                                    : estimationResult.modelType === 'bond_conservative'
+                                    ? '🛡️ 固收+保守计量'
+                                    : '📊 权益持仓加权'}
+                            </span>
+                            {estimationResult.effectiveCoverageRatio > 0 && (
+                                <span className="coverage-badge">
+                                    覆盖度 {estimationResult.effectiveCoverageRatio.toFixed(1)}%
+                                </span>
+                            )}
+                        </div>
+                        <div className="phase-note">{phaseInfo.subLabel}</div>
+                    </div>
+
                     <div className="nav-bar estimated-bar">
-                        <div className="nav-item">
-                            <span className="nav-label" title={`根据前十大已披露重仓股（占比 ${totalKnownRatio.toFixed(2)}%）的走势同比例推算整体基金`}>实时估算净值</span>
-                            <span className={`nav-value ${estChange.cls}`}>{realTimeEstimatedNav.toFixed(4)}</span>
+                        <div className="nav-item highlight-item">
+                            <span className="nav-label">
+                                {phaseInfo.phase === 'post_market' ? '今日收盘估算' : '实时估算净值'}
+                            </span>
+                            <span className={`nav-value ${estChange ? estChange.cls : ''}`}>
+                                {estimationResult.realTimeEstimatedNav !== null
+                                    ? estimationResult.realTimeEstimatedNav.toFixed(4)
+                                    : '--'}
+                            </span>
+                        </div>
+                        <div className="nav-divider" />
+                        <div className="nav-item highlight-item">
+                            <span className="nav-label">估算涨跌幅</span>
+                            <span className={`nav-value ${estChange ? estChange.cls : ''}`}>
+                                {estChange ? estChange.text : '--'}
+                            </span>
                         </div>
                         <div className="nav-divider" />
                         <div className="nav-item">
-                            <span className="nav-label" title={`根据前十大已披露重仓股（占比 ${totalKnownRatio.toFixed(2)}%）的走势同比例推算整体基金`}>估算涨跌幅</span>
-                            <span className={`nav-value ${estChange.cls}`}>{estChange.text}</span>
+                            <span className="nav-label">官方最新公布净值</span>
+                            <span className={`nav-value ${change.cls}`}>
+                                {estimate?.dwjz ? parseFloat(estimate.dwjz).toFixed(4) : (estimate?.gsz ? parseFloat(estimate.gsz).toFixed(4) : '--')}
+                            </span>
+                        </div>
+                        <div className="nav-divider" />
+                        <div className="nav-item">
+                            <span className="nav-label">官方公布日涨幅</span>
+                            <span className={`nav-value ${change.cls}`}>
+                                {change.text}
+                            </span>
                         </div>
                     </div>
-                )}
 
-                {/* 最新数据行 */}
-                {estimate && (
-                    <div className="nav-bar">
-                        <div className="nav-item">
-                            <span className="nav-label">最新净值</span>
-                            <span className={`nav-value ${change.cls}`}>{parseFloat(estimate.gsz || '0').toFixed(4)}</span>
+                    {estimationResult.modelDescription && (
+                        <div className="model-tip-row">
+                            <span className="model-tip-icon">ℹ️</span>
+                            <span className="model-tip-text">{estimationResult.modelDescription}</span>
                         </div>
-                        <div className="nav-divider" />
-                        <div className="nav-item">
-                            <span className="nav-label">日涨跌幅</span>
-                            <span className={`nav-value ${change.cls}`}>{change.text}</span>
+                    )}
+                </div>
+
+                {/* 大类资产配置概览 (股票、债券、现金、ETF、其他) */}
+                {detail?.assetAllocation && (
+                    <div className="asset-allocation-card">
+                        <div className="allocation-header">
+                            <div className="allocation-title-row">
+                                <span className="allocation-title">大类资产配置</span>
+                                {detail.assetAllocation.date && (
+                                    <span className="allocation-date">（报告期: {detail.assetAllocation.date}）</span>
+                                )}
+                            </div>
+                            {detail.isEtfFeeder && detail.parentEtfCode && (
+                                <span className="etf-feeder-tag">
+                                    标的母ETF: {detail.parentEtfName || ''} ({detail.parentEtfCode})
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="allocation-bar-container">
+                            {detail.assetAllocation.stockRatio > 0 && (
+                                <div
+                                    className="allocation-segment seg-stock"
+                                    style={{ width: `${detail.assetAllocation.stockRatio}%` }}
+                                    title={`股票: ${detail.assetAllocation.stockRatio}%`}
+                                />
+                            )}
+                            {detail.assetAllocation.etfRatio > 0 && (
+                                <div
+                                    className="allocation-segment seg-etf"
+                                    style={{ width: `${detail.assetAllocation.etfRatio}%` }}
+                                    title={`基金/母ETF: ${detail.assetAllocation.etfRatio}%`}
+                                />
+                            )}
+                            {detail.assetAllocation.bondRatio > 0 && (
+                                <div
+                                    className="allocation-segment seg-bond"
+                                    style={{ width: `${detail.assetAllocation.bondRatio}%` }}
+                                    title={`债券: ${detail.assetAllocation.bondRatio}%`}
+                                />
+                            )}
+                            {detail.assetAllocation.cashRatio > 0 && (
+                                <div
+                                    className="allocation-segment seg-cash"
+                                    style={{ width: `${detail.assetAllocation.cashRatio}%` }}
+                                    title={`现金/货币: ${detail.assetAllocation.cashRatio}%`}
+                                />
+                            )}
+                            {detail.assetAllocation.otherRatio && detail.assetAllocation.otherRatio > 0 ? (
+                                <div
+                                    className="allocation-segment seg-other"
+                                    style={{ width: `${detail.assetAllocation.otherRatio}%` }}
+                                    title={`其他: ${detail.assetAllocation.otherRatio}%`}
+                                />
+                            ) : null}
+                        </div>
+
+                        <div className="allocation-legend">
+                            {detail.assetAllocation.stockRatio > 0 && (
+                                <div className="legend-item">
+                                    <span className="legend-dot seg-stock-dot" />
+                                    <span className="legend-name">股票</span>
+                                    <span className="legend-val">{detail.assetAllocation.stockRatio.toFixed(1)}%</span>
+                                </div>
+                            )}
+                            {detail.assetAllocation.etfRatio > 0 && (
+                                <div className="legend-item">
+                                    <span className="legend-dot seg-etf-dot" />
+                                    <span className="legend-name">母ETF/基金</span>
+                                    <span className="legend-val">{detail.assetAllocation.etfRatio.toFixed(1)}%</span>
+                                </div>
+                            )}
+                            {detail.assetAllocation.bondRatio > 0 && (
+                                <div className="legend-item">
+                                    <span className="legend-dot seg-bond-dot" />
+                                    <span className="legend-name">债券</span>
+                                    <span className="legend-val">{detail.assetAllocation.bondRatio.toFixed(1)}%</span>
+                                </div>
+                            )}
+                            {detail.assetAllocation.cashRatio > 0 && (
+                                <div className="legend-item">
+                                    <span className="legend-dot seg-cash-dot" />
+                                    <span className="legend-name">现金</span>
+                                    <span className="legend-val">{detail.assetAllocation.cashRatio.toFixed(1)}%</span>
+                                </div>
+                            )}
+                            {detail.assetAllocation.otherRatio && detail.assetAllocation.otherRatio > 0 ? (
+                                <div className="legend-item">
+                                    <span className="legend-dot seg-other-dot" />
+                                    <span className="legend-name">其他</span>
+                                    <span className="legend-val">{detail.assetAllocation.otherRatio.toFixed(1)}%</span>
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 )}
@@ -339,45 +428,61 @@ ${detail.holdings.slice(0, 10).map(h => {
                         </div>
                     ) : detail && detail.holdings.length > 0 ? (
                         <div className="holdings-content">
-                            {/* 股票持仓表格 */}
+                            {/* 股票/标的持仓表格 */}
                             <div className="holdings-table">
                                 <div className="table-header">
-                                    <span>股票名称</span>
+                                    <span>股票/标的</span>
                                     <span>代码</span>
                                     <span>当前价</span>
                                     <span>涨跌幅</span>
                                     <span>持仓比例</span>
+                                    <span>今日贡献</span>
+                                    <span></span>
                                 </div>
-                                {detail.holdings.map((stock, idx) => (
+                                {estimationResult.holdingsWithContribution.map((stock, idx) => (
                                     <div
                                         key={`${stock.stockCode}-${idx}`}
-                                        className="table-row clickable"
+                                        className={`table-row clickable ${stock.isParentEtf ? 'parent-etf-row' : ''}`}
                                         onClick={() => handleStockClick(stock.stockCode)}
                                         title={`点击在${platform === 'xueqiu' ? '雪球' : platform === 'tonghuashun' ? '同花顺' : '东方财富'}查看`}
                                     >
                                         <div className="stock-name-cell">
                                             <span className="stock-rank">{idx + 1}</span>
-                                            <span className="stock-name">{stock.stockName}</span>
+                                            <div className="stock-name-wrapper">
+                                                <span className="stock-name">{stock.stockName}</span>
+                                                {stock.isParentEtf && (
+                                                    <span className="mother-etf-tag">母ETF</span>
+                                                )}
+                                            </div>
                                         </div>
                                         <span className="stock-code-cell">{stock.stockCode}</span>
                                         <span className="stock-price-cell">
-                                            {quotes[stock.stockCode]
-                                                ? <span className={parseFloat(quotes[stock.stockCode].changeRaw) > 0 ? 'upText' : parseFloat(quotes[stock.stockCode].changeRaw) < 0 ? 'downText' : ''}>{quotes[stock.stockCode].price}</span>
+                                            {stock.price
+                                                ? <span className={parseFloat(stock.changeRaw || '0') > 0 ? 'upText' : parseFloat(stock.changeRaw || '0') < 0 ? 'downText' : ''}>{stock.price}</span>
                                                 : '--'}
                                         </span>
                                         <span className="stock-change-cell">
-                                            {quotes[stock.stockCode]
-                                                ? <span className={parseFloat(quotes[stock.stockCode].changePct) > 0 ? 'upText' : parseFloat(quotes[stock.stockCode].changePct) < 0 ? 'downText' : ''}>{parseFloat(quotes[stock.stockCode].changePct) > 0 ? '+' : ''}{quotes[stock.stockCode].changePct}%</span>
+                                            {stock.changePct !== undefined
+                                                ? <span className={parseFloat(stock.changePct) > 0 ? 'upText' : parseFloat(stock.changePct) < 0 ? 'downText' : ''}>{parseFloat(stock.changePct) > 0 ? '+' : ''}{stock.changePct}%</span>
                                                 : '--'}
                                         </span>
                                         <div className="stock-ratio-cell">
                                             <div className="ratio-bar-wrapper">
                                                 <div
-                                                    className="ratio-bar"
-                                                    style={{ width: `${Math.min(parseFloat(stock.ratio) * 4, 100)}%` }}
+                                                    className={`ratio-bar ${stock.isParentEtf ? 'parent-etf-bar' : ''}`}
+                                                    style={{ width: `${Math.min(parseFloat(stock.ratio) * 1.5, 100)}%` }}
                                                 />
                                             </div>
                                             <span className="ratio-text">{stock.ratio}%</span>
+                                        </div>
+                                        <div className="stock-contribution-cell">
+                                            {stock.contribution !== undefined ? (
+                                                <span className={`contribution-pill ${stock.contribution > 0 ? 'up' : stock.contribution < 0 ? 'down' : 'flat'}`}>
+                                                    {stock.contribution > 0 ? '+' : ''}{stock.contribution.toFixed(2)}%
+                                                </span>
+                                            ) : (
+                                                <span className="contribution-empty">--</span>
+                                            )}
                                         </div>
                                         <span className="row-arrow">›</span>
                                     </div>
@@ -415,6 +520,29 @@ ${detail.holdings.slice(0, 10).map(h => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* 估值测算规则说明 */}
+                            <div className="calc-explanation-card">
+                                <div className="explanation-title">📐 估值测算逻辑与准确性保障</div>
+                                <div className="explanation-grid">
+                                    <div className="explanation-item">
+                                        <strong>ETF 联接穿透：</strong>
+                                        <span>穿透追踪场内母 ETF 实时走势，按母 ETF 真实仓位测算，剔除约 5%~10% 现金拖累。</span>
+                                    </div>
+                                    <div className="explanation-item">
+                                        <strong>权益持仓加权：</strong>
+                                        <span>前十大重仓股加权 Beta 仅外推至实际股票仓位（如 85%），现金与债券不放大股票波动。</span>
+                                    </div>
+                                    <div className="explanation-item">
+                                        <strong>单标的贡献度：</strong>
+                                        <span>贡献 = 标的涨跌幅 × 权重 ÷ 100，清晰拆解拉动与拖累净值的具体个股。</span>
+                                    </div>
+                                    <div className="explanation-item">
+                                        <strong>全时段状态追踪：</strong>
+                                        <span>盘中实时推算，盘后定格今日收盘估算等待官方净值，收盘后不再突兀消失。</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     ) : detail && detail.holdings.length === 0 ? (
                         <div className="holdings-empty">

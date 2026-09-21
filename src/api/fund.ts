@@ -1,5 +1,19 @@
 import axios from 'axios';
-import type { FundEstimate, FundDetail, HoldingStock, BondHolding } from '../types/fund.types';
+import type {
+    FundEstimate,
+    FundDetail,
+    HoldingStock,
+    BondHolding,
+    AssetAllocation,
+    FundPhaseInfo,
+    FundEstimationResult
+} from '../types/fund.types';
+
+export type {
+    FundMarketPhase,
+    FundPhaseInfo,
+    FundEstimationResult
+} from '../types/fund.types';
 
 /**
  * 搜索基金（天天基金搜索接口 - JSONP）
@@ -184,72 +198,76 @@ export async function getFundDetail(code: string): Promise<FundDetail | null> {
                             stockHoldings = [...stockHoldings, ...fofHoldings];
                         }
 
-                        // 解析 ETF Feeder (联接基金的母基金) 及真实 ETF 占比
-                        if (data.Datas.ETFCODE && data.Datas.ETFSHORTNAME) {
-                            let preciseEtfRatio = 0;
+                        // 3. 解析大类资产配置 (股票、债券、现金、ETF比例)
+                        let assetAllocation: AssetAllocation | undefined = undefined;
+                        let preciseEtfRatio = 0;
 
-                            // 优先从刚才并发请求的资产配置接口中获取最精确的 "JJ" (基金资产占比)
-                            if (allocationRes && allocationRes.data && Array.isArray(allocationRes.data.Datas) && allocationRes.data.Datas.length > 0) {
-                                const latestAllocation = allocationRes.data.Datas[0];
-                                if (latestAllocation.JJ && latestAllocation.JJ !== '--') {
-                                    preciseEtfRatio = parseFloat(latestAllocation.JJ);
-                                }
-                            }
-
-                            // 如果依然取不到(或者返回异常数据)，回退到原始兜底逻辑: (100 - 已穿透出来的持仓权重 - 最新现金权重)
-                            if (preciseEtfRatio <= 0 || preciseEtfRatio > 100) {
-                                let estimatedEtfRatio = 0;
-                                if (win.Data_assetAllocation && Array.isArray(win.Data_assetAllocation.categories) && Array.isArray(win.Data_assetAllocation.series)) {
-                                    const series = win.Data_assetAllocation.series;
-                                    const cashSeries = series.find((s: any) => s.name?.includes('现金'));
-
-                                    if (cashSeries && Array.isArray(cashSeries.data) && cashSeries.data.length > 0) {
-                                        const latestCashRatio = parseFloat(cashSeries.data[cashSeries.data.length - 1] || '5');
-                                        let currentTotal = 0;
-                                        stockHoldings.forEach(s => currentTotal += parseFloat(s.ratio || '0'));
-                                        bondHoldings.forEach(b => currentTotal += parseFloat(b.ratio || '0'));
-                                        estimatedEtfRatio = 100 - latestCashRatio - currentTotal;
-                                    }
-                                }
-
-                                if (estimatedEtfRatio <= 0 || estimatedEtfRatio > 100) {
-                                    let currentTotal = 0;
-                                    stockHoldings.forEach(s => currentTotal += parseFloat(s.ratio || '0'));
-                                    bondHoldings.forEach(b => currentTotal += parseFloat(b.ratio || '0'));
-                                    estimatedEtfRatio = 95.00 - currentTotal;
-                                }
-                                preciseEtfRatio = estimatedEtfRatio;
-                            }
-
-                            if (preciseEtfRatio < 0) preciseEtfRatio = 0;
-
-                            if (preciseEtfRatio > 0) {
-                                stockHoldings.push({
-                                    stockCode: data.Datas.ETFCODE,
-                                    stockName: `${data.Datas.ETFSHORTNAME} (主要联接标的)`,
-                                    ratio: preciseEtfRatio.toFixed(2) // 这里填充的即是类似 57.42% 或 63.11% 这样的精准占比
-                                });
+                        if (allocationRes && allocationRes.data && Array.isArray(allocationRes.data.Datas) && allocationRes.data.Datas.length > 0) {
+                            const latestAlloc = allocationRes.data.Datas[0];
+                            const parseRatio = (val: any) => {
+                                if (!val || val === '--') return 0;
+                                const num = parseFloat(val);
+                                return isNaN(num) ? 0 : num;
+                            };
+                            assetAllocation = {
+                                stockRatio: parseRatio(latestAlloc.GP),
+                                bondRatio: parseRatio(latestAlloc.ZQ),
+                                cashRatio: parseRatio(latestAlloc.HB),
+                                etfRatio: parseRatio(latestAlloc.JJ),
+                                otherRatio: parseRatio(latestAlloc.QT),
+                                date: latestAlloc.FSRQ,
+                            };
+                            if (assetAllocation.etfRatio > 0) {
+                                preciseEtfRatio = assetAllocation.etfRatio;
                             }
                         }
+
+                        // 解析 ETF Feeder (联接基金的母基金) 及真实 ETF 占比
+                        const hasEtfCode = !!(data.Datas.ETFCODE && data.Datas.ETFSHORTNAME);
+                        const isFeederFund = hasEtfCode || (assetAllocation?.etfRatio ? assetAllocation.etfRatio >= 70 : false);
+
+                        if (hasEtfCode) {
+                            if (preciseEtfRatio <= 0 || preciseEtfRatio > 100) {
+                                preciseEtfRatio = 93.50; // 标准 ETF 联接基金持仓底限 (法规规定 >= 90%)
+                            }
+
+                            stockHoldings.push({
+                                stockCode: data.Datas.ETFCODE,
+                                stockName: `${data.Datas.ETFSHORTNAME} (场内母基金)`,
+                                ratio: preciseEtfRatio.toFixed(2),
+                                isParentEtf: true,
+                            });
+                        }
+
+                        // 按照权重(ratio)降序排序 (母基金优先排在第一位)
+                        stockHoldings.sort((a, b) => {
+                            if (a.isParentEtf) return -1;
+                            if (b.isParentEtf) return 1;
+                            return parseFloat(b.ratio || '0') - parseFloat(a.ratio || '0');
+                        });
+                        bondHoldings.sort((a, b) => parseFloat(b.ratio || '0') - parseFloat(a.ratio || '0'));
+
+                        doResolve({
+                            code,
+                            name: fundName,
+                            type: fundType,
+                            manager: fundManager,
+                            updateDate,
+                            holdings: stockHoldings,
+                            bondHoldings,
+                            assetAllocation,
+                            isEtfFeeder: isFeederFund,
+                            parentEtfCode: data.Datas.ETFCODE,
+                            parentEtfName: data.Datas.ETFSHORTNAME,
+                            parentEtfRatio: preciseEtfRatio > 0 ? preciseEtfRatio : undefined,
+                        });
+                    } else {
+                        doResolve(null);
                     }
-
-                    // 按照权重(ratio)降序排序
-                    stockHoldings.sort((a, b) => parseFloat(b.ratio || '0') - parseFloat(a.ratio || '0'));
-                    bondHoldings.sort((a, b) => parseFloat(b.ratio || '0') - parseFloat(a.ratio || '0'));
-
                 } catch (e) {
                     console.error('Failed to fetch JSON holdings detail', e);
+                    doResolve(null);
                 }
-
-                doResolve({
-                    code,
-                    name: fundName,
-                    type: fundType,
-                    manager: fundManager,
-                    updateDate,
-                    holdings: stockHoldings,
-                    bondHoldings,
-                });
 
             } catch (err) {
                 console.error('Failed to parse fund metadata:', err);
@@ -376,6 +394,224 @@ export function getStockJumpUrl(
         default:
             return `https://xueqiu.com/S/${prefix}${stockCode}`;
     }
+}
+
+/**
+ * 获取当前基金交易阶段与估算显示状态
+ * 09:15 - 15:00: 交易日盘中实时估算
+ * 15:00 - 22:00: 交易日收盘估算（待官方公布正式净值）
+ * 22:00 - 次日09:15: 官方净值已发布/次日盘前
+ * 周末/节假日: 休市
+ */
+export function getFundPhase(targetDate?: Date): FundPhaseInfo {
+    const now = targetDate || new Date();
+    const day = now.getDay();
+    const h = now.getHours();
+    const m = now.getMinutes();
+    const timeNum = h * 100 + m;
+
+    if (day === 0 || day === 6) {
+        return {
+            phase: 'closed',
+            label: '周末休市',
+            subLabel: '展示最新官方净值与收盘估算参考',
+            badgeCls: 'phase-closed',
+            canShowEstimate: true,
+        };
+    }
+
+    if (timeNum >= 915 && timeNum < 1500) {
+        return {
+            phase: 'trading',
+            label: '⚡ 盘中实时估算',
+            subLabel: '根据底层重仓标的实时行情推算',
+            badgeCls: 'phase-trading',
+            canShowEstimate: true,
+        };
+    }
+
+    if (timeNum >= 1500 && timeNum < 2200) {
+        return {
+            phase: 'post_market',
+            label: '🌙 今日收盘估算',
+            subLabel: '收盘价已定格 · 待官方公布正式净值',
+            badgeCls: 'phase-post-market',
+            canShowEstimate: true,
+        };
+    }
+
+    return {
+        phase: 'closed',
+        label: '休市中',
+        subLabel: '官方净值已公布或次日盘前等待',
+        badgeCls: 'phase-closed',
+        canShowEstimate: true,
+    };
+}
+
+/**
+ * 计算基金实时/收盘净值与涨跌幅估算
+ * 针对不同基金类型应用精准测算模型：
+ * 1. ETF 联接基金：联动目标母ETF行情，按母ETF实际仓位（通常约93.5%）扣除现金拖累
+ * 2. 纯债 / 偏债 / 固收+基金：底层股票持仓只计绝对贡献，避免低仓位剧烈放大，债券计提年化自然收益
+ * 3. 股票型 / 偏股混合型基金：按前十大重仓股票加权涨跌幅（Beta），外推至基金实际股票配置仓位（如85%），现金与债券不承担股票波动
+ */
+export function calculateFundEstimation(
+    detail: FundDetail | null,
+    quotes: Record<string, StockQuote>,
+    estimate: FundEstimate | null
+): FundEstimationResult {
+    const emptyResult: FundEstimationResult = {
+        estimatedChangePct: null,
+        realTimeEstimatedNav: null,
+        totalKnownRatio: 0,
+        effectiveCoverageRatio: 0,
+        modelType: 'mixed',
+        modelDescription: '无有效持仓数据',
+        holdingsWithContribution: [],
+    };
+
+    if (!detail || !detail.holdings || detail.holdings.length === 0) {
+        return emptyResult;
+    }
+
+    // 1. 遍历持仓并计算单标的贡献度
+    let totalDisclosedRatio = 0;
+    let coveredRatio = 0;
+    let totalWeightedStockChange = 0;
+
+    const holdingsWithContribution = detail.holdings.map((stock) => {
+        const rawRatio = parseFloat(stock.ratio || '0');
+        const ratio = isNaN(rawRatio) ? 0 : rawRatio;
+        totalDisclosedRatio += ratio;
+
+        const quote = quotes[stock.stockCode];
+        let price: string | undefined = undefined;
+        let changePct: string | undefined = undefined;
+        let changeRaw: string | undefined = undefined;
+        let contribution: number | undefined = undefined;
+
+        if (quote && quote.changePct !== undefined && quote.changePct !== '--') {
+            price = quote.price;
+            changePct = quote.changePct;
+            changeRaw = quote.changeRaw;
+            const chgNum = parseFloat(quote.changePct);
+            if (!isNaN(chgNum)) {
+                // 单只标的对基金净值的贡献点数（百分比）：ratio% * chgNum% / 100
+                contribution = (ratio * chgNum) / 100;
+                coveredRatio += ratio;
+                totalWeightedStockChange += ratio * chgNum;
+            }
+        }
+
+        return {
+            ...stock,
+            price,
+            changePct,
+            changeRaw,
+            contribution,
+        };
+    });
+
+    if (coveredRatio === 0) {
+        return {
+            ...emptyResult,
+            totalKnownRatio: totalDisclosedRatio,
+            holdingsWithContribution,
+        };
+    }
+
+    // 2. 判断基金类型与配置模型
+    const alloc = detail.assetAllocation;
+    const parentHolding = holdingsWithContribution.find((h) => h.isParentEtf);
+    const isFeeder = !!(detail.isEtfFeeder || (alloc && alloc.etfRatio >= 70) || parentHolding);
+
+    let estimatedChangePct: number | null = null;
+    let modelType: FundEstimationResult['modelType'] = 'mixed';
+    let modelDescription = '';
+
+    // 模型 1: ETF 联接基金联动母基金模型
+    if (isFeeder && parentHolding && parentHolding.changePct !== undefined) {
+        const parentChg = parseFloat(parentHolding.changePct);
+        const parentRatio = parseFloat(parentHolding.ratio || '93.5');
+        // 母 ETF 贡献 + 其他个股（若有）贡献
+        let residualContribution = 0;
+        holdingsWithContribution.forEach(h => {
+            if (!h.isParentEtf && h.contribution !== undefined) {
+                residualContribution += h.contribution;
+            }
+        });
+
+        estimatedChangePct = (parentRatio / 100) * parentChg + residualContribution;
+        modelType = 'etf_feeder';
+        modelDescription = `ETF联接联动模型 (母ETF ${parentHolding.stockCode} 占比 ${parentRatio.toFixed(1)}%, 扣除约 ${(100 - parentRatio).toFixed(1)}% 现金拖累)`;
+    }
+    // 模型 2: 纯债 / 偏债 / 固收+ 保守计量模型
+    else if ((alloc && alloc.bondRatio >= 50) || (detail.type && (detail.type.includes('债') || detail.type.includes('理财')))) {
+        const bondRatio = alloc?.bondRatio || 85;
+        // 债券部分按年化 2.5% 自然计提日利息收益 (2.5% / 250天 ≈ 0.01% / 天)
+        const bondAccrualDaily = (bondRatio / 100) * (2.5 / 250);
+
+        // 股票持仓只做绝对加权累加（不除以低股票占比，避免虚假大幅波动）
+        let stockContribution = 0;
+        holdingsWithContribution.forEach(h => {
+            if (h.contribution !== undefined) {
+                stockContribution += h.contribution;
+            }
+        });
+
+        estimatedChangePct = stockContribution + bondAccrualDaily;
+        modelType = 'bond_conservative';
+        modelDescription = `固收+保守计量模型 (底仓股票不放大放大镜, 债券按 2.5% 年化计提日利息收益)`;
+    }
+    // 模型 3: 股票型 / 偏股混合型基金 (权益加权外推 + 实际股票仓位约束)
+    else {
+        // 获取实际股票仓位，默认为 85%（股票型通常 80%-90%，指数型通常 95%）
+        let stockAllocation = alloc?.stockRatio;
+        if (!stockAllocation || stockAllocation <= 0) {
+            if (detail.type?.includes('指数')) {
+                stockAllocation = 95;
+            } else if (detail.type?.includes('股票')) {
+                stockAllocation = 88;
+            } else {
+                stockAllocation = 80;
+            }
+        }
+
+        // 前十大重仓股加权平均涨跌幅 (Beta)
+        const top10EquityBeta = totalWeightedStockChange / coveredRatio;
+
+        // 核心修正：外推仅作用于实际股票仓位，现金与债券仓位不承受股票波动！
+        estimatedChangePct = top10EquityBeta * (stockAllocation / 100);
+
+        // 债券部分若有，计提微量利息
+        if (alloc && alloc.bondRatio > 0) {
+            estimatedChangePct += (alloc.bondRatio / 100) * (2.5 / 250);
+        }
+
+        modelType = 'equity_weighted';
+        modelDescription = `股票权益加权模型 (前十大股票加权 ${top10EquityBeta.toFixed(2)}%, 约束至实际股票仓位 ${stockAllocation.toFixed(1)}%)`;
+    }
+
+    // 3. 计算估算净值
+    let realTimeEstimatedNav: number | null = null;
+    if (estimatedChangePct !== null && estimate) {
+        // 优先使用昨日确定的单位净值 dwjz，若无则使用 gsz
+        const baseNav = parseFloat(estimate.dwjz || estimate.gsz || '0');
+        if (baseNav > 0) {
+            realTimeEstimatedNav = baseNav * (1 + estimatedChangePct / 100);
+        }
+    }
+
+    return {
+        estimatedChangePct,
+        realTimeEstimatedNav,
+        totalKnownRatio: totalDisclosedRatio,
+        effectiveCoverageRatio: coveredRatio,
+        modelType,
+        modelDescription,
+        holdingsWithContribution,
+    };
 }
 
 /**

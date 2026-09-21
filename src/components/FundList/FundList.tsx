@@ -79,7 +79,11 @@ const FundList: React.FC<FundListProps> = ({ onAdd }) => {
                             <div className="fund-card-left">
                                 <div className="fund-name">{fund.name || est?.name || fund.code}</div>
                                 <div className="fund-code">{fund.code}</div>
-                                {est && <div className="fund-nav">基金代码 {fund.code}</div>}
+                                {est && (
+                                    <div className="fund-nav">
+                                        公布净值 {parseFloat(est.dwjz || est.gsz || '0').toFixed(4)}
+                                    </div>
+                                )}
                             </div>
                             <div className="fund-card-right">
                                 {isLoading ? (
@@ -87,8 +91,8 @@ const FundList: React.FC<FundListProps> = ({ onAdd }) => {
                                 ) : change ? (
                                     <>
                                         <div className={`fund-change ${change.cls}`}>{change.text}</div>
-                                        <div className="fund-est-nav">{parseFloat(est?.gsz || '0').toFixed(4)}</div>
-                                        <div className="fund-time">{est?.gztime?.split(' ')[1] || ''}</div>
+                                        <div className="fund-est-nav">{parseFloat(est?.gsz || est?.dwjz || '0').toFixed(4)}</div>
+                                        <div className="fund-time">{est?.gztime?.split(' ')[1] || est?.gztime || ''}</div>
                                     </>
                                 ) : (
                                     <div className="fund-no-data">--</div>

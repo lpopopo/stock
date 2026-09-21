@@ -4,11 +4,12 @@ import FundList from './components/FundList/FundList';
 import FundDetail from './components/FundDetail/FundDetail';
 import AddFundModal from './components/AddFundModal/AddFundModal';
 import TrendAnalysis from './components/TrendAnalysis/TrendAnalysis';
+import { MarketDashboard } from './components/MarketDashboard/MarketDashboard';
 import './App.css';
 
 function App() {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [activeView, setActiveView] = useState<'detail' | 'trend'>('detail');
+  const [activeView, setActiveView] = useState<'market' | 'detail' | 'trend'>('market');
   const initFunds = useFundStore((state) => state.initFunds);
 
   useEffect(() => {
@@ -29,9 +30,15 @@ function App() {
               </linearGradient>
             </defs>
           </svg>
-          <span>FundTracker</span>
+          <span>Market & Fund Master</span>
         </div>
         <div className="app-header-nav">
+          <button
+            className={`nav-btn ${activeView === 'market' ? 'active' : ''}`}
+            onClick={() => setActiveView('market')}
+          >
+            📈 大盘看板
+          </button>
           <button
             className={`nav-btn ${activeView === 'detail' ? 'active' : ''}`}
             onClick={() => setActiveView('detail')}
@@ -46,13 +53,17 @@ function App() {
           </button>
         </div>
         <div className="app-header-right">
-          <span className="header-badge">最新净值</span>
+          <span className="header-badge">实时行情</span>
         </div>
       </header>
 
       {/* 主体内容 */}
       <main className="app-main">
-        {activeView === 'detail' ? (
+        {activeView === 'market' ? (
+          <section className="app-content">
+            <MarketDashboard />
+          </section>
+        ) : activeView === 'detail' ? (
           <>
             <aside className="app-sidebar">
               <FundList onAdd={() => setShowAddModal(true)} />
