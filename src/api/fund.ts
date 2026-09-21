@@ -160,9 +160,10 @@ export async function getFundDetail(code: string): Promise<FundDetail | null> {
                 let updateDate = '';
 
                 try {
-                    const holdingsPromise = axios.get(holdingsApiUrl, { timeout: 8000 });
+                    // Set timeout to 0 (no limit) as requested
+                    const holdingsPromise = axios.get(holdingsApiUrl, { timeout: 0 });
                     const allocationApiUrl = `/api/fundmobapi/FundMNewApi/FundMNAssetAllocation?FCODE=${code}&deviceid=Wap&plat=Wap&product=EFund&version=2.0`;
-                    const allocationPromise = axios.get(allocationApiUrl, { timeout: 8000 }).catch(() => null);
+                    const allocationPromise = axios.get(allocationApiUrl, { timeout: 0 }).catch(() => null);
 
                     const [res, allocationRes] = await Promise.all([holdingsPromise, allocationPromise]);
                     const data = res.data;
