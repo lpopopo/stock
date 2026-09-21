@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     HISTORICAL_A_SHARE_DATA,
     HISTORICAL_US_DATA,
@@ -10,6 +10,15 @@ import {
     type BacktestSandboxParams,
     type AnnualBacktestRecord,
 } from '../../../api/backtest';
+import {
+    getAllPresets,
+    saveCustomPreset,
+    deleteCustomPreset,
+    generatePresetId,
+    guessPresetStyle,
+    formatParamSummary,
+    type BacktestPreset,
+} from '../../../utils/backtestPresets';
 
 interface SectorBacktestPanelProps {
     colorScheme?: 'cn' | 'us';
@@ -35,6 +44,46 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
         rebalanceFreq: 'monthly',
     });
 
+    // 预设管理状态
+    const [presets, setPresets] = useState<BacktestPreset[]>(() => getAllPresets(initialMarket));
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [newPresetName, setNewPresetName] = useState('');
+    const [activePresetId, setActivePresetId] = useState<string>('builtin_balanced_a');
+
+    const refreshPresets = useCallback((mkt: 'A' | 'US') => {
+        setPresets(getAllPresets(mkt));
+    }, []);
+
+    const handleLoadPreset = (preset: BacktestPreset) => {
+        setSandboxParams({ ...preset.params, market });
+        setActivePresetId(preset.id);
+    };
+
+    const handleSavePreset = () => {
+        if (!newPresetName.trim()) return;
+        const newPreset: BacktestPreset = {
+            id: generatePresetId(),
+            name: newPresetName.trim(),
+            icon: '⭐',
+            description: formatParamSummary({ ...sandboxParams, market }),
+            style: guessPresetStyle(sandboxParams),
+            params: { ...sandboxParams, market },
+            isBuiltIn: false,
+            createdAt: Date.now(),
+        };
+        saveCustomPreset(newPreset);
+        refreshPresets(market);
+        setActivePresetId(newPreset.id);
+        setNewPresetName('');
+        setShowSaveModal(false);
+    };
+
+    const handleDeletePreset = (id: string) => {
+        deleteCustomPreset(id);
+        refreshPresets(market);
+        if (activePresetId === id) setActivePresetId('');
+    };
+
     const isCn = colorScheme === 'cn';
     const activeRecords = market === 'US' ? HISTORICAL_US_DATA : HISTORICAL_A_SHARE_DATA;
     const summary = getBacktestSummary(market);
@@ -56,6 +105,8 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
             market: newMarket,
             crowdednessThreshold: newMarket === 'US' ? 80 : 12,
         }));
+        refreshPresets(newMarket);
+        setActivePresetId(newMarket === 'A' ? 'builtin_balanced_a' : 'builtin_balanced_us');
     };
 
     const handleResetSandbox = () => {
@@ -67,6 +118,7 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
             macroFilterEnabled: true,
             rebalanceFreq: 'monthly',
         });
+        setActivePresetId(market === 'A' ? 'builtin_balanced_a' : 'builtin_balanced_us');
     };
 
     const getTrendClass = (val: number) => {
@@ -316,6 +368,71 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
             {/* 视图 2：策略因子参数动态调节沙盘 */}
             {viewMode === 'sandbox' && (
                 <div className="backtest-sandbox-view">
+                    {/* 预设快速切换栏 */}
+                    <div className="preset-selector-bar">
+                        <div className="preset-bar-left">
+                            <span className="preset-bar-label">📑 策略预设：</span>
+                            <div className="preset-pills-wrap">
+                                {presets.map(p => (
+                                    <div key={p.id} className={`preset-pill-item ${activePresetId === p.id ? 'active' : ''}`}>
+                                        <button
+                                            className="preset-pill-btn"
+                                            onClick={() => handleLoadPreset(p)}
+                                            title={p.description}
+                                        >
+                                            {p.icon} {p.name}
+                                        </button>
+                                        {!p.isBuiltIn && (
+                                            <button
+                                                className="preset-delete-btn"
+                                                onClick={() => handleDeletePreset(p.id)}
+                                                title="删除此自定义预设"
+                                                aria-label={`删除预设 ${p.name}`}
+                                            >
+                                                ×
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <button
+                            className="preset-save-btn"
+                            onClick={() => { setNewPresetName(''); setShowSaveModal(true); }}
+                            title="将当前参数组合保存为自定义预设"
+                        >
+                            💾 另存为预设
+                        </button>
+                    </div>
+
+                    {/* 保存预设弹窗 */}
+                    {showSaveModal && (
+                        <div className="preset-save-modal-overlay" onClick={() => setShowSaveModal(false)}>
+                            <div className="preset-save-modal" onClick={e => e.stopPropagation()}>
+                                <h4>💾 保存当前参数为预设</h4>
+                                <p className="preset-save-desc">{formatParamSummary({ ...sandboxParams, market })}</p>
+                                <input
+                                    className="preset-name-input"
+                                    type="text"
+                                    placeholder="输入预设名称（如：我的牛市策略）"
+                                    value={newPresetName}
+                                    onChange={e => setNewPresetName(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleSavePreset()}
+                                    autoFocus
+                                    maxLength={20}
+                                />
+                                <div className="preset-save-actions">
+                                    <button className="preset-save-confirm-btn" onClick={handleSavePreset} disabled={!newPresetName.trim()}>
+                                        ✓ 保存
+                                    </button>
+                                    <button className="preset-save-cancel-btn" onClick={() => setShowSaveModal(false)}>
+                                        取消
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* 控制面板 */}
                     <div className="sandbox-config-card">
                         <div className="sandbox-header-row">
@@ -598,9 +715,177 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
                 </div>
             )}
 
-            {/* 视图 3：20年历年调仓与轮动逻辑明细表 */}
+            {/* 视图 4：20年历年调仓与轮动逻辑明细表 + NAV曲线 */}
             {viewMode === 'details' && (
                 <div className="backtest-details-view">
+
+                    {/* ── 净值曲线 SVG 可视化区域 ── */}
+                    {(() => {
+                        const W = 860, H = 260, PAD_L = 60, PAD_R = 20, PAD_T = 24, PAD_B = 40;
+                        const chartW = W - PAD_L - PAD_R;
+                        const chartH = H - PAD_T - PAD_B;
+                        const pts = navPoints;
+                        const allVals = pts.flatMap(p => [p.strategyNav, p.csi300Nav, p.equityFundNav]);
+                        const minV = Math.min(...allVals);
+                        const maxV = Math.max(...allVals);
+                        const toX = (i: number) => PAD_L + (i / (pts.length - 1)) * chartW;
+                        const toY = (v: number) => PAD_T + chartH - ((v - minV) / (maxV - minV)) * chartH;
+                        const makePath = (vals: number[]) =>
+                            vals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${toX(i).toFixed(1)} ${toY(v).toFixed(1)}`).join(' ');
+
+                        // 最大回撤区间：找 strategy 最大从高到低的区间
+                        let peakIdx = 0, ddStart = 0, ddEnd = 0;
+                        let maxDd = 0;
+                        for (let i = 1; i < pts.length; i++) {
+                            if (pts[i].strategyNav > pts[peakIdx].strategyNav) peakIdx = i;
+                            const dd = (pts[peakIdx].strategyNav - pts[i].strategyNav) / pts[peakIdx].strategyNav;
+                            if (dd > maxDd) { maxDd = dd; ddStart = peakIdx; ddEnd = i; }
+                        }
+
+                        // 年度超额收益柱图数据（只取后10年避免过密）
+                        const excessData = activeRecords.slice(-10);
+                        const barW = chartW / (excessData.length * 1.5);
+                        const barMaxH = 60;
+                        const maxExcess = Math.max(...excessData.map(r => Math.abs(r.excessReturn))) || 1;
+
+                        // 年份标签（每3年）
+                        const yearLabels = pts.filter((_, i) => i % 3 === 0 || i === pts.length - 1);
+
+                        return (
+                            <div className="nav-chart-section">
+                                <div className="nav-chart-header">
+                                    <span className="nav-chart-title">📈 20年累计净值走势对比 (2004年末=1.00基准)</span>
+                                    <div className="nav-chart-legend">
+                                        <span className="legend-item legend-strategy">━ {summary.marketName}轮动策略</span>
+                                        <span className="legend-item legend-fund">━ {summary.fundBenchmarkName}</span>
+                                        <span className="legend-item legend-csi">━ {summary.benchmarkName}</span>
+                                        <span className="legend-item legend-dd">▓ 最大回撤区间</span>
+                                    </div>
+                                </div>
+
+                                <svg
+                                    className="nav-curve-svg"
+                                    viewBox={`0 0 ${W} ${H}`}
+                                    preserveAspectRatio="xMidYMid meet"
+                                >
+                                    {/* 背景网格 */}
+                                    {[0, 0.25, 0.5, 0.75, 1].map(t => {
+                                        const y = PAD_T + t * chartH;
+                                        const val = maxV - t * (maxV - minV);
+                                        return (
+                                            <g key={t}>
+                                                <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y}
+                                                    stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
+                                                <text x={PAD_L - 6} y={y + 4} textAnchor="end"
+                                                    className="nav-axis-label">{val.toFixed(1)}x</text>
+                                            </g>
+                                        );
+                                    })}
+
+                                    {/* 年份标签 */}
+                                    {yearLabels.map(p => {
+                                        const idx = pts.indexOf(p);
+                                        return (
+                                            <text key={p.year} x={toX(idx)} y={H - 6} textAnchor="middle"
+                                                className="nav-axis-label">{p.year}</text>
+                                        );
+                                    })}
+
+                                    {/* 最大回撤阴影 */}
+                                    <rect
+                                        x={toX(ddStart)}
+                                        y={PAD_T}
+                                        width={toX(ddEnd) - toX(ddStart)}
+                                        height={chartH}
+                                        fill="rgba(239,83,80,0.12)"
+                                        stroke="rgba(239,83,80,0.4)"
+                                        strokeWidth={1}
+                                        strokeDasharray="4 2"
+                                    />
+                                    <text
+                                        x={(toX(ddStart) + toX(ddEnd)) / 2}
+                                        y={PAD_T + 14}
+                                        textAnchor="middle"
+                                        className="nav-dd-label"
+                                    >
+                                        MDD {(maxDd * 100).toFixed(0)}%
+                                    </text>
+
+                                    {/* 基准线：等值线 y=1 */}
+                                    <line
+                                        x1={PAD_L} y1={toY(1)} x2={W - PAD_R} y2={toY(1)}
+                                        stroke="rgba(255,255,255,0.3)" strokeDasharray="6 3"
+                                    />
+
+                                    {/* 公募基金基准 */}
+                                    <path d={makePath(pts.map(p => p.equityFundNav))}
+                                        fill="none" stroke="#78909c" strokeWidth={1.5} strokeDasharray="5 3" />
+
+                                    {/* 沪深300 / 标普500 */}
+                                    <path d={makePath(pts.map(p => p.csi300Nav))}
+                                        fill="none" stroke="#42a5f5" strokeWidth={2} />
+
+                                    {/* 策略净值 */}
+                                    <path d={makePath(pts.map(p => p.strategyNav))}
+                                        fill="none" stroke="#ff7043" strokeWidth={2.5} />
+
+                                    {/* 策略终点标注 */}
+                                    {(() => {
+                                        const last = pts[pts.length - 1];
+                                        return (
+                                            <g>
+                                                <circle cx={toX(pts.length - 1)} cy={toY(last.strategyNav)} r={5} fill="#ff7043" />
+                                                <text x={toX(pts.length - 1) - 4} y={toY(last.strategyNav) - 10}
+                                                    textAnchor="end" className="nav-endpoint-label">
+                                                    {last.strategyNav.toFixed(1)}x
+                                                </text>
+                                            </g>
+                                        );
+                                    })()}
+                                </svg>
+
+                                {/* 年度超额收益柱状图 */}
+                                <div className="excess-bar-section">
+                                    <span className="excess-bar-title">近10年年度超额收益 Alpha (vs {summary.benchmarkName})</span>
+                                    <svg
+                                        className="excess-bar-svg"
+                                        viewBox={`0 0 ${W} ${barMaxH + 30}`}
+                                        preserveAspectRatio="xMidYMid meet"
+                                    >
+                                        {excessData.map((r, i) => {
+                                            const barH = (Math.abs(r.excessReturn) / maxExcess) * barMaxH;
+                                            const isPos = r.excessReturn >= 0;
+                                            const bx = PAD_L + (i / excessData.length) * chartW + barW * 0.25;
+                                            const by = isPos ? (barMaxH - barH) : barMaxH;
+                                            return (
+                                                <g key={r.year}>
+                                                    <rect
+                                                        x={bx} y={by} width={barW} height={barH}
+                                                        fill={isPos ? '#ef5350' : '#26a69a'}
+                                                        opacity={0.8} rx={2}
+                                                    />
+                                                    <text x={bx + barW / 2} y={barMaxH + 20}
+                                                        textAnchor="middle" className="nav-axis-label">{r.year}</text>
+                                                    <text
+                                                        x={bx + barW / 2}
+                                                        y={isPos ? by - 4 : by + barH + 12}
+                                                        textAnchor="middle"
+                                                        className={`excess-val-label ${isPos ? 'text-red' : 'text-green'}`}
+                                                    >
+                                                        {r.excessReturn > 0 ? '+' : ''}{r.excessReturn.toFixed(0)}%
+                                                    </text>
+                                                </g>
+                                            );
+                                        })}
+                                        {/* 零轴 */}
+                                        <line x1={PAD_L} y1={barMaxH} x2={W - PAD_R} y2={barMaxH}
+                                            stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
+                                    </svg>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                     <div className="table-filter-bar">
                         <div className="filter-summary-text">
                             展示 {summary.marketName} 记录：<strong>{displayedRecords.length}</strong> 年 (共 {filteredRecords.length} 年)

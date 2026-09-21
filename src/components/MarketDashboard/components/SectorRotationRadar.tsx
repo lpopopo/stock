@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { SectorMetric, MacroCyclePhase, SectorRotationSignal } from '../../../types/market.types';
 import { SectorBacktestPanel } from './SectorBacktestPanel';
+import { SectorDrilldownModal } from './SectorDrilldownModal';
 
 interface SectorRotationRadarProps {
     sectors: SectorMetric[];
@@ -18,6 +19,7 @@ export const SectorRotationRadar: React.FC<SectorRotationRadarProps> = ({
     const [radarViewMode, setRadarViewMode] = useState<'live' | 'backtest'>('live');
     const [flowTab, setFlowTab] = useState<'inflow' | 'outflow'>('inflow');
     const [crowdedFilter, setCrowdedFilter] = useState<'ALL' | 'overheat' | 'active' | 'cold'>('ALL');
+    const [drillSector, setDrillSector] = useState<SectorMetric | null>(null);
 
     const isCn = colorScheme === 'cn';
     const getTrendClass = (val: number) => {
@@ -174,7 +176,12 @@ export const SectorRotationRadar: React.FC<SectorRotationRadarProps> = ({
                                     </thead>
                                     <tbody>
                                         {displayedFlowSectors.map((sec, idx) => (
-                                            <tr key={sec.code}>
+                                            <tr
+                                                key={sec.code}
+                                                className="sector-row-clickable"
+                                                onClick={() => setDrillSector(sec)}
+                                                title={`点击查看 ${sec.name} 详情`}
+                                            >
                                                 <td className="sector-name-cell">
                                                     <span className="rank-badge">{idx + 1}</span>
                                                     <span className="sec-name">{sec.name}</span>
@@ -250,7 +257,12 @@ export const SectorRotationRadar: React.FC<SectorRotationRadarProps> = ({
                                     }
 
                                     return (
-                                        <div key={sec.code} className="crowded-item-row">
+                                        <div
+                                            key={sec.code}
+                                            className="crowded-item-row sector-row-clickable"
+                                            onClick={() => setDrillSector(sec)}
+                                            title={`点击查看 ${sec.name} 详情`}
+                                        >
                                             <div className="item-meta-top">
                                                 <div className="meta-left">
                                                     <span className="sector-title">{sec.name}</span>
@@ -323,6 +335,13 @@ export const SectorRotationRadar: React.FC<SectorRotationRadarProps> = ({
                 /* 视图 2：20年历史量化回测与胜率检验面板 */
                 <SectorBacktestPanel colorScheme={colorScheme} />
             )}
+
+            {/* 板块穿透持仓详情弹窗 */}
+            <SectorDrilldownModal
+                sector={drillSector}
+                colorScheme={colorScheme}
+                onClose={() => setDrillSector(null)}
+            />
         </div>
     );
 };
