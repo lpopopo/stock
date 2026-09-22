@@ -47,6 +47,10 @@ import {
     evaluateHyperscalerCapexTransmission,
     evaluateCashSecuredPutHarvesting,
     PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateSemiconductorCreditTurnStateMachine,
+    evaluatePanicToRepairMonitor,
+    evaluateCitadelClearingClock,
+    PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -1454,6 +1458,156 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         expect(PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
         expect(PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.discreteTrapCase.scenario).toContain('MRVL');
         expect(PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.zeroShareTrimCase.scenario).toContain('GLW');
+    });
+
+    it('43. should verify semiconductor credit 4-tier turn state machine (risk_off, stabilizing, repair_attempt, confirmed_turn) and 5 cross-asset checks', () => {
+        // 1. 一阶风险规避 (深幅回撤发生但未企稳，买入乘数 0.0x)
+        const riskOffRes = evaluateSemiconductorCreditTurnStateMachine({
+            asOfDate: '2026-09-08',
+            recentDrawdown63dPct: 11.2,
+            smhConsecutiveDaysNoNew10dLow: 1,
+            smh5dReturnPct: -4.5,
+            smhAboveMa10: false,
+            smhConsecutiveDaysAboveMa20: 0,
+            qqq5dReturnPct: -3.8,
+            qqqAboveMa20: false,
+            rspSpy5dRatioChange: -0.0050,
+            hygLqd5dRatioChange: -0.0060,
+            fearGateScore: 7,
+            fearGateScore5dEarlier: 6,
+        });
+        expect(riskOffRes.turnState).toBe('risk_off');
+        expect(riskOffRes.stockSleeveBuyMultiplier).toBe(0.0);
+        expect(riskOffRes.isTurnConfirmed).toBe(false);
+
+        // 2. 二阶筑底企稳 (SMH 连续 3 日未创新低，买入乘数 0.3x)
+        const stabilizingRes = evaluateSemiconductorCreditTurnStateMachine({
+            asOfDate: '2026-09-12',
+            recentDrawdown63dPct: 10.5,
+            smhConsecutiveDaysNoNew10dLow: 3,
+            smh5dReturnPct: -1.2,
+            smhAboveMa10: false,
+            smhConsecutiveDaysAboveMa20: 0,
+            qqq5dReturnPct: -0.8,
+            qqqAboveMa20: false,
+            rspSpy5dRatioChange: -0.0030,
+            hygLqd5dRatioChange: -0.0040,
+            fearGateScore: 6,
+            fearGateScore5dEarlier: 6,
+        });
+        expect(stabilizingRes.turnState).toBe('stabilizing');
+        expect(stabilizingRes.stockSleeveBuyMultiplier).toBe(0.3);
+        expect(stabilizingRes.isStabilized).toBe(true);
+        expect(stabilizingRes.isRepairAttempt).toBe(false);
+
+        // 3. 三阶修复尝试但信贷债或全市场宽度未通过 (拦截在 0.6x 试探仓，防假突破)
+        const repairRes = evaluateSemiconductorCreditTurnStateMachine({
+            asOfDate: '2026-09-18',
+            recentDrawdown63dPct: 8.8,
+            smhConsecutiveDaysNoNew10dLow: 3,
+            smh5dReturnPct: 2.5,
+            smhAboveMa10: true,
+            smhConsecutiveDaysAboveMa20: 1,
+            qqq5dReturnPct: 2.0,
+            qqqAboveMa20: false,
+            rspSpy5dRatioChange: -0.0012,
+            hygLqd5dRatioChange: -0.0025,
+            fearGateScore: 5,
+            fearGateScore5dEarlier: 5,
+        });
+        expect(repairRes.turnState).toBe('repair_attempt');
+        expect(repairRes.stockSleeveBuyMultiplier).toBe(0.6);
+        expect(repairRes.isRepairAttempt).toBe(true);
+        expect(repairRes.isTurnConfirmed).toBe(false);
+        expect(repairRes.allFiveChecksPassed).toBe(false);
+
+        // 4. 四阶右侧全面确认 (SMH 领涨、全体验证全绿灯，买入乘数 1.0x 全额放行)
+        const confirmedRes = evaluateSemiconductorCreditTurnStateMachine({
+            asOfDate: '2026-09-22',
+            recentDrawdown63dPct: 9.2,
+            smhConsecutiveDaysNoNew10dLow: 3,
+            smh5dReturnPct: 3.4,
+            smhAboveMa10: true,
+            smhConsecutiveDaysAboveMa20: 2,
+            qqq5dReturnPct: 2.1,
+            qqqAboveMa20: true,
+            rspSpy5dRatioChange: 0.0018,
+            hygLqd5dRatioChange: 0.0022,
+            fearGateScore: 4,
+            fearGateScore5dEarlier: 5,
+        });
+        expect(confirmedRes.turnState).toBe('confirmed_turn');
+        expect(confirmedRes.stockSleeveBuyMultiplier).toBe(1.0);
+        expect(confirmedRes.isTurnConfirmed).toBe(true);
+        expect(confirmedRes.allFiveChecksPassed).toBe(true);
+        expect(confirmedRes.tacticalRationale).toContain('四阶右侧反转全面确认');
+    });
+
+    it('44. should verify panic-to-repair trap monitor and Daniel-Moskowitz momentum crash warning', () => {
+        // 1. 动量二次崩塌高危预警 (深幅巨灾下跌 + 极端恐慌峰值 + 暴力反弹)
+        const crashWarningRes = evaluatePanicToRepairMonitor({
+            asOfDate: '2026-09-22',
+            spyMinDrawdown63dOverPastYearPct: -18.5,
+            peakVixLast21Sessions: 28.5,
+            spyRebound21SessionsPct: 9.4,
+        });
+        expect(crashWarningRes.panicRepairRegime).toBe('panic_to_repair');
+        expect(crashWarningRes.isMomentumCrashWarningActive).toBe(true);
+        expect(crashWarningRes.maxTacticalAddMultiplier).toBe(0.2);
+        expect(crashWarningRes.tacticalRationale).toContain('动量崩溃最高危窗口');
+
+        // 2. 深跌后常规观察态 (仅满足条件 1，未出现 VIX >= 25 与暴力轧空)
+        const watchRes = evaluatePanicToRepairMonitor({
+            asOfDate: '2026-09-15',
+            spyMinDrawdown63dOverPastYearPct: -16.0,
+            peakVixLast21Sessions: 21.0,
+            spyRebound21SessionsPct: 4.2,
+        });
+        expect(watchRes.panicRepairRegime).toBe('post_drawdown_watch');
+        expect(watchRes.isMomentumCrashWarningActive).toBe(false);
+        expect(watchRes.maxTacticalAddMultiplier).toBe(0.6);
+
+        // 3. 常态环境
+        const normalRes = evaluatePanicToRepairMonitor({
+            asOfDate: '2026-05-20',
+            spyMinDrawdown63dOverPastYearPct: -5.5,
+            peakVixLast21Sessions: 16.5,
+            spyRebound21SessionsPct: 3.5,
+        });
+        expect(normalRes.panicRepairRegime).toBe('normal');
+        expect(normalRes.maxTacticalAddMultiplier).toBe(1.0);
+    });
+
+    it('45. should verify Citadel contrarian clearing clock phases, asymmetry direction, and reaccumulation window', () => {
+        // 1. 9月下旬核心回补窗口开启 (舆论极度悲观 + 机构杠杆深度出清 + 月末抛压临近尾声 + 利率见缓)
+        const citadelReaccumRes = evaluateCitadelClearingClock({
+            asOfDate: '2026-09-22',
+            socialKolBullishSentimentPct: 18.5,
+            institutionalNetLeverageZScore: -1.75,
+            monthEndRebalancePressureDaysLeft: 2,
+            yieldStressPeaking: true,
+        });
+        expect(citadelReaccumRes.clockStage).toBe('core_reaccumulation_window');
+        expect(citadelReaccumRes.asymmetryDirection).toBe('highly_favorable_upside');
+        expect(citadelReaccumRes.reaccumulationPacePct).toBe(20.0);
+        expect(citadelReaccumRes.recommendedFocus).toContain('大举分批加回核心高确信硬件底仓');
+        expect(citadelReaccumRes.tacticalRationale).toContain('Citadel 核心回补窗口开启');
+
+        // 2. 空头抛压衰竭期
+        const exhaustRes = evaluateCitadelClearingClock({
+            asOfDate: '2026-09-15',
+            socialKolBullishSentimentPct: 32.0,
+            institutionalNetLeverageZScore: -1.2,
+            monthEndRebalancePressureDaysLeft: 6,
+            yieldStressPeaking: false,
+        });
+        expect(exhaustRes.clockStage).toBe('positioning_exhaustion');
+        expect(exhaustRes.reaccumulationPacePct).toBe(10.0);
+
+        // 3. 验证 Phase 14 综合元数据
+        expect(PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.semiconductorTurnCase.scenario).toContain('HYG/LQD');
+        expect(PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.panicToRepairCase.scenario).toContain('轧空');
     });
 });
 

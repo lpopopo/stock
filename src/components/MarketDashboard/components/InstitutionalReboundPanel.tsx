@@ -60,6 +60,13 @@ import {
     type DiscreteLotExecutionInput,
     type HyperscalerCapexInput,
     type CashSecuredPutEvaluationInput,
+    evaluateSemiconductorCreditTurnStateMachine,
+    evaluatePanicToRepairMonitor,
+    evaluateCitadelClearingClock,
+    PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type SemiconductorCreditTurnInput,
+    type PanicToRepairInput,
+    type CitadelClearingClockInput,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -87,6 +94,7 @@ type SubTabType =
     | 'tactical-guards'
     | 'calendar-vol-damping'
     | 'discrete-execution-capex'
+    | 'turn-state-machine'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -233,6 +241,42 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     const discreteResult = evaluateDiscreteLotExecution(discreteInput);
     const capexResult = evaluateHyperscalerCapexTransmission(capexInput);
     const cspResult = evaluateCashSecuredPutHarvesting(cspInput);
+
+    // Phase 14: 半导体-信贷四阶右侧确认状态机与恐慌假修复监控状态
+    const [turnInput, setTurnInput] = useState<SemiconductorCreditTurnInput>({
+        asOfDate: '2026-09-22',
+        recentDrawdown63dPct: 9.2,
+        smhConsecutiveDaysNoNew10dLow: 3,
+        smh5dReturnPct: 3.4,
+        smhAboveMa10: true,
+        smhConsecutiveDaysAboveMa20: 2,
+        qqq5dReturnPct: 2.1,
+        qqqAboveMa20: true,
+        rspSpy5dRatioChange: 0.0018,
+        hygLqd5dRatioChange: 0.0022,
+        fearGateScore: 4,
+        fearGateScore5dEarlier: 5,
+    });
+
+    const [panicRepairInput, setPanicRepairInput] = useState<PanicToRepairInput>({
+        asOfDate: '2026-09-22',
+        spyMinDrawdown63dOverPastYearPct: -16.5,
+        peakVixLast21Sessions: 26.2,
+        spyRebound21SessionsPct: 8.8,
+    });
+
+    const [citadelInput, setCitadelInput] = useState<CitadelClearingClockInput>({
+        asOfDate: '2026-09-22',
+        socialKolBullishSentimentPct: 19.5,
+        institutionalNetLeverageZScore: -1.75,
+        monthEndRebalancePressureDaysLeft: 2,
+        yieldStressPeaking: true,
+    });
+
+    // 计算 Phase 14 实时结果
+    const turnResult = evaluateSemiconductorCreditTurnStateMachine(turnInput);
+    const panicRepairResult = evaluatePanicToRepairMonitor(panicRepairInput);
+    const citadelResult = evaluateCitadelClearingClock(citadelInput);
 
     // 六维实战决策自检器交互表单状态
     const [checklistInput, setChecklistInput] = useState<TradeChecklistInput>({
@@ -467,6 +511,12 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('discrete-execution-capex')}
                 >
                     ⚙️ 离散整股防陷阱与云Capex (Phase 13)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'turn-state-machine' ? 'active' : ''}`}
+                    onClick={() => setSubTab('turn-state-machine')}
+                >
+                    🔄 半导体信贷四阶状态机 (Phase 14)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -3672,6 +3722,535 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                 </div>
                             ) : null}
                             <p className="result-directive-msg">{cspResult.tacticalRationale}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 14 半导体-信贷四阶右侧确认状态机与恐慌修复陷阱监控器 */}
+            {subTab === 'turn-state-machine' && (
+                <div className="rebound-turn-state-view">
+                    {/* 顶部总览卡片 */}
+                    <div className="turn-state-header-card">
+                        <div className="turn-state-top-row">
+                            <div className="turn-state-title-wrap">
+                                <span className="turn-state-icon">🔄</span>
+                                <div>
+                                    <h4>{PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK.name}</h4>
+                                    <span className="as-of-date">
+                                        发布于 {PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate} · 依据 prereg-market-semiconductor-turn-monitor 与 prereg-panic-to-repair-monitor 预注册预研 · 四阶右侧确认 · 动量崩溃防假修复 · Citadel 逆周期出清时钟
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="turn-state-badge-pill">
+                                <span>🔬 预注册量化实证严谨防拟合验证</span>
+                            </div>
+                        </div>
+
+                        <div className="turn-state-kpi-grid">
+                            <div className={`turn-kpi-card ${turnResult.turnState === 'confirmed_turn' ? 'highlight-card' : turnResult.turnState === 'risk_off' ? 'danger-card' : 'warning-card'}`}>
+                                <span className="kpi-label">半导体信贷四阶右侧状态</span>
+                                <div className={`kpi-val font-mono ${turnResult.turnState === 'confirmed_turn' ? 'text-green' : turnResult.turnState === 'risk_off' ? 'text-red' : 'text-gold'}`}>
+                                    {turnResult.turnState.toUpperCase()}
+                                </div>
+                                <span className="kpi-sub">
+                                    买入乘数: {turnResult.stockSleeveBuyMultiplier}x · {turnResult.isTurnConfirmed ? '✅ 右侧已全面认证' : '未满足全部5项跨资产指标'}
+                                </span>
+                            </div>
+
+                            <div className="turn-kpi-card highlight-card">
+                                <span className="kpi-label">跨资产 6 项多维检验</span>
+                                <div className="kpi-val font-mono text-cyan">
+                                    {Object.values(turnResult.fiveChecksPassed).filter(Boolean).length} / 6 项通过
+                                </div>
+                                <span className="kpi-sub">
+                                    宽度: {turnResult.fiveChecksPassed.breadthRspSpyNonNegative ? '✅' : '❌'} · 信贷: {turnResult.fiveChecksPassed.creditHygLqdNonNegative ? '✅' : '❌'} · 动量: {turnResult.fiveChecksPassed.smhOutperformingQqq ? '✅' : '❌'}
+                                </span>
+                            </div>
+
+                            <div className={`turn-kpi-card ${panicRepairResult.isMomentumCrashWarningActive ? 'danger-card' : 'highlight-card'}`}>
+                                <span className="kpi-label">恐慌暴涨假修复警报</span>
+                                <div className={`kpi-val font-mono ${panicRepairResult.isMomentumCrashWarningActive ? 'text-red' : 'text-green'}`}>
+                                    {panicRepairResult.panicRepairRegime.toUpperCase()}
+                                </div>
+                                <span className="kpi-sub">
+                                    {panicRepairResult.isMomentumCrashWarningActive ? '⚠️ 动量二次崩塌高危！加仓降至 0.2x' : '宏观健康，无假修复轧空风险'}
+                                </span>
+                            </div>
+
+                            <div className="turn-kpi-card highlight-card">
+                                <span className="kpi-label">Citadel 出清时钟阶段</span>
+                                <div className="kpi-val font-mono text-gold">
+                                    {citadelResult.clockStage.toUpperCase()}
+                                </div>
+                                <span className="kpi-sub">
+                                    非对称方向: {citadelResult.asymmetryDirection} · 推荐回补 {citadelResult.reaccumulationPacePct}%/周
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 模块 1：半导体-信贷四阶右侧确认状态机 */}
+                    <div className="turn-section-card">
+                        <div className="section-card-header">
+                            <span className="section-badge">支柱一 · 跨资产多维右侧确认</span>
+                            <h4>📊 半导体-信贷四阶右侧反转确认状态机 (Semiconductor Credit 4-Tier Turn)</h4>
+                            <p className="section-intro">
+                                依据 <code>prereg-market-semiconductor-turn-monitor.md</code> 预注册规范。科技股发生深跌后，左侧单日暴涨往往是假象。系统设计严格的 4 阶递进梯级：发生 8% 回撤压力 &rarr; SMH 连续 3 日不创新低 (企稳) &rarr; SMH 站上 MA10 且 5 日回报为正 (修复尝试) &rarr; 同时通过 SMH 连续 2 日站上 MA20、SMH 领涨 QQQ、QQQ 站上 MA20、全市场宽度 RSP/SPY 非负、信用债风险偏好 HYG/LQD 非负、恐慌分未恶化 6 大跨资产严苛检验，方能认证 <code>confirmed_turn</code> 放行 1.0x 全额进攻！
+                            </p>
+                        </div>
+
+                        {/* 预设情境加载 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载实证梯级：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setTurnInput({
+                                    asOfDate: '2026-09-22',
+                                    recentDrawdown63dPct: 9.2,
+                                    smhConsecutiveDaysNoNew10dLow: 3,
+                                    smh5dReturnPct: 3.4,
+                                    smhAboveMa10: true,
+                                    smhConsecutiveDaysAboveMa20: 2,
+                                    qqq5dReturnPct: 2.1,
+                                    qqqAboveMa20: true,
+                                    rspSpy5dRatioChange: 0.0018,
+                                    hygLqd5dRatioChange: 0.0022,
+                                    fearGateScore: 4,
+                                    fearGateScore5dEarlier: 5,
+                                })}
+                            >
+                                📘 加载 4阶右侧反转确认 (Confirmed Turn · 全部绿灯 · 1.0x 放行)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setTurnInput({
+                                    asOfDate: '2026-09-18',
+                                    recentDrawdown63dPct: 8.8,
+                                    smhConsecutiveDaysNoNew10dLow: 3,
+                                    smh5dReturnPct: 2.5,
+                                    smhAboveMa10: true,
+                                    smhConsecutiveDaysAboveMa20: 1,
+                                    qqq5dReturnPct: 2.0,
+                                    qqqAboveMa20: false,
+                                    rspSpy5dRatioChange: -0.0012,
+                                    hygLqd5dRatioChange: -0.0025,
+                                    fearGateScore: 5,
+                                    fearGateScore5dEarlier: 5,
+                                })}
+                            >
+                                📘 加载 3阶修复尝试但信贷/宽度未转正 (Repair Attempt · 0.6x 试探)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setTurnInput({
+                                    asOfDate: '2026-09-12',
+                                    recentDrawdown63dPct: 10.5,
+                                    smhConsecutiveDaysNoNew10dLow: 3,
+                                    smh5dReturnPct: -1.2,
+                                    smhAboveMa10: false,
+                                    smhConsecutiveDaysAboveMa20: 0,
+                                    qqq5dReturnPct: -0.8,
+                                    qqqAboveMa20: false,
+                                    rspSpy5dRatioChange: -0.0030,
+                                    hygLqd5dRatioChange: -0.0040,
+                                    fearGateScore: 6,
+                                    fearGateScore5dEarlier: 6,
+                                })}
+                            >
+                                📘 加载 2阶筑底企稳 (Stabilizing · 连续3日未创新低 · 0.3x 观察)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setTurnInput({
+                                    asOfDate: '2026-09-08',
+                                    recentDrawdown63dPct: 11.2,
+                                    smhConsecutiveDaysNoNew10dLow: 1,
+                                    smh5dReturnPct: -4.5,
+                                    smhAboveMa10: false,
+                                    smhConsecutiveDaysAboveMa20: 0,
+                                    qqq5dReturnPct: -3.8,
+                                    qqqAboveMa20: false,
+                                    rspSpy5dRatioChange: -0.0050,
+                                    hygLqd5dRatioChange: -0.0060,
+                                    fearGateScore: 7,
+                                    fearGateScore5dEarlier: 6,
+                                })}
+                            >
+                                📘 加载 1阶风险规避 (Risk-Off · 连创10日新低 · 0.0x 绝对冻结)
+                            </button>
+                        </div>
+
+                        {/* 交互输入网格 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>评估基准日期</label>
+                                <input
+                                    type="text"
+                                    value={turnInput.asOfDate}
+                                    onChange={(e) => setTurnInput({ ...turnInput, asOfDate: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>近期 63 日回撤深度 (%) (需 &ge; 8%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={turnInput.recentDrawdown63dPct}
+                                    onChange={(e) => setTurnInput({ ...turnInput, recentDrawdown63dPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>SMH 连续未创 10 日新低天数 (&ge; 3)</label>
+                                <input
+                                    type="number"
+                                    value={turnInput.smhConsecutiveDaysNoNew10dLow}
+                                    onChange={(e) => setTurnInput({ ...turnInput, smhConsecutiveDaysNoNew10dLow: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>SMH 5 日回报率 (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={turnInput.smh5dReturnPct}
+                                    onChange={(e) => setTurnInput({ ...turnInput, smh5dReturnPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>SMH 是否收在 MA10 上方</label>
+                                <select
+                                    value={turnInput.smhAboveMa10 ? 'true' : 'false'}
+                                    onChange={(e) => setTurnInput({ ...turnInput, smhAboveMa10: e.target.value === 'true' })}
+                                >
+                                    <option value="true">是 (站在 MA10 之上)</option>
+                                    <option value="false">否 (位于 MA10 之下)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>SMH 连续收在 MA20 上方天数 (&ge; 2)</label>
+                                <input
+                                    type="number"
+                                    value={turnInput.smhConsecutiveDaysAboveMa20}
+                                    onChange={(e) => setTurnInput({ ...turnInput, smhConsecutiveDaysAboveMa20: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>QQQ 5 日回报率 (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={turnInput.qqq5dReturnPct}
+                                    onChange={(e) => setTurnInput({ ...turnInput, qqq5dReturnPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>QQQ 是否收在 MA20 上方</label>
+                                <select
+                                    value={turnInput.qqqAboveMa20 ? 'true' : 'false'}
+                                    onChange={(e) => setTurnInput({ ...turnInput, qqqAboveMa20: e.target.value === 'true' })}
+                                >
+                                    <option value="true">是 (QQQ &gt; MA20)</option>
+                                    <option value="false">否 (QQQ &lt; MA20)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>RSP/SPY 等权全市场宽度 5 日变动 (&ge; 0)</label>
+                                <input
+                                    type="number"
+                                    step="0.001"
+                                    value={turnInput.rspSpy5dRatioChange}
+                                    onChange={(e) => setTurnInput({ ...turnInput, rspSpy5dRatioChange: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>HYG/LQD 高收益信用偏好 5 日变动 (&ge; 0)</label>
+                                <input
+                                    type="number"
+                                    step="0.001"
+                                    value={turnInput.hygLqd5dRatioChange}
+                                    onChange={(e) => setTurnInput({ ...turnInput, hygLqd5dRatioChange: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>当前恐慌分 (0~10，需 &le; 6 且未转差)</label>
+                                <input
+                                    type="number"
+                                    value={turnInput.fearGateScore}
+                                    onChange={(e) => setTurnInput({ ...turnInput, fearGateScore: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 状态机决议看板 */}
+                        <div className="calculation-result-box">
+                            <div className="result-header-row">
+                                <span className="result-title">状态梯级决议：</span>
+                                <span className={`status-badge-lg ${turnResult.turnState === 'confirmed_turn' ? 'badge-executed' : turnResult.turnState === 'risk_off' ? 'badge-danger' : 'badge-converted'}`}>
+                                    {turnResult.turnState.toUpperCase()}
+                                </span>
+                                <span className="multiplier-badge font-bold">
+                                    买入乘数: {turnResult.stockSleeveBuyMultiplier}x
+                                </span>
+                                <span className="tier-tag">
+                                    {turnResult.isTurnConfirmed ? '✅ 右侧反转已全面认证' : '⚠️ 右侧认证未就绪'}
+                                </span>
+                            </div>
+
+                            {/* 6 大跨资产严苛条件全览 */}
+                            <div className="checks-checklist-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', margin: '12px 0' }}>
+                                <div className={`stat-item ${turnResult.fiveChecksPassed.smhAboveMa20Twice ? 'text-green' : 'text-red'}`}>
+                                    <span>{turnResult.fiveChecksPassed.smhAboveMa20Twice ? '✅' : '❌'} SMH连续2日&gt;MA20</span>
+                                </div>
+                                <div className={`stat-item ${turnResult.fiveChecksPassed.smhOutperformingQqq ? 'text-green' : 'text-red'}`}>
+                                    <span>{turnResult.fiveChecksPassed.smhOutperformingQqq ? '✅' : '❌'} SMH动量跑赢QQQ</span>
+                                </div>
+                                <div className={`stat-item ${turnResult.fiveChecksPassed.qqqAboveMa20 ? 'text-green' : 'text-red'}`}>
+                                    <span>{turnResult.fiveChecksPassed.qqqAboveMa20 ? '✅' : '❌'} QQQ&gt;MA20站稳</span>
+                                </div>
+                                <div className={`stat-item ${turnResult.fiveChecksPassed.breadthRspSpyNonNegative ? 'text-green' : 'text-red'}`}>
+                                    <span>{turnResult.fiveChecksPassed.breadthRspSpyNonNegative ? '✅' : '❌'} 全市场宽度RSP/SPY&ge;0</span>
+                                </div>
+                                <div className={`stat-item ${turnResult.fiveChecksPassed.creditHygLqdNonNegative ? 'text-green' : 'text-red'}`}>
+                                    <span>{turnResult.fiveChecksPassed.creditHygLqdNonNegative ? '✅' : '❌'} 信用偏好HYG/LQD&ge;0</span>
+                                </div>
+                                <div className={`stat-item ${turnResult.fiveChecksPassed.fearGateStableOrBetter ? 'text-green' : 'text-red'}`}>
+                                    <span>{turnResult.fiveChecksPassed.fearGateStableOrBetter ? '✅' : '❌'} 恐慌分正常且未恶化</span>
+                                </div>
+                            </div>
+
+                            <p className="result-directive-msg">{turnResult.tacticalRationale}</p>
+                        </div>
+                    </div>
+
+                    {/* 模块 2：恐慌后暴力暴涨的虚假修复陷阱监控器 */}
+                    <div className="turn-section-card">
+                        <div className="section-card-header">
+                            <span className="section-badge">支柱二 · Daniel &amp; Moskowitz 动量崩塌防御</span>
+                            <h4>⚠️ 恐慌后暴力暴涨的虚假修复陷阱监控器 (Panic-to-Repair Trap)</h4>
+                            <p className="section-intro">
+                                依据 <code>prereg-panic-to-repair-monitor.md</code> 预注册规范。Daniel &amp; Moskowitz (2016) 经典论文揭示：动量崩溃绝大多数发生在暴跌后空头回补引发的暴力脉冲反弹中。当系统识别到过去 1 年最大回撤 &le; -15% 且过去 21 日峰值 VIX &ge; 25 且 SPY 21 日反弹幅度 &ge; +8% 时，自动触发 <code>PANIC_TO_REPAIR</code> 预警，强行将新增开仓降至 0.2x，严禁追逐垃圾股暴力轧空。
+                            </p>
+                        </div>
+
+                        {/* 预设情境 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载动量崩溃案卷：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setPanicRepairInput({
+                                    asOfDate: '2026-09-22',
+                                    spyMinDrawdown63dOverPastYearPct: -18.5,
+                                    peakVixLast21Sessions: 28.5,
+                                    spyRebound21SessionsPct: 9.4,
+                                })}
+                            >
+                                📘 加载 动量二次崩塌高危预警 (Panic-to-Repair · 乘数 0.2x 强制减速)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setPanicRepairInput({
+                                    asOfDate: '2026-09-15',
+                                    spyMinDrawdown63dOverPastYearPct: -16.0,
+                                    peakVixLast21Sessions: 21.0,
+                                    spyRebound21SessionsPct: 4.2,
+                                })}
+                            >
+                                📘 加载 大跌后常规观察态 (Post-Drawdown Watch · 乘数 0.6x)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setPanicRepairInput({
+                                    asOfDate: '2026-05-20',
+                                    spyMinDrawdown63dOverPastYearPct: -5.5,
+                                    peakVixLast21Sessions: 16.5,
+                                    spyRebound21SessionsPct: 3.5,
+                                })}
+                            >
+                                📘 加载 健康牛市常态 (Normal · 乘数 1.0x 全额放行)
+                            </button>
+                        </div>
+
+                        {/* 交互输入网格 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>过去 252~21 天 SPY 63日最大回撤 (%) (需 &le; -15%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={panicRepairInput.spyMinDrawdown63dOverPastYearPct}
+                                    onChange={(e) => setPanicRepairInput({ ...panicRepairInput, spyMinDrawdown63dOverPastYearPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>过去 21 日内峰值 VIX (需 &ge; 25.0)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={panicRepairInput.peakVixLast21Sessions}
+                                    onChange={(e) => setPanicRepairInput({ ...panicRepairInput, peakVixLast21Sessions: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>过去 21 日内 SPY 暴力反弹幅度 (%) (需 &ge; +8.0%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={panicRepairInput.spyRebound21SessionsPct}
+                                    onChange={(e) => setPanicRepairInput({ ...panicRepairInput, spyRebound21SessionsPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 结果看板 */}
+                        <div className="calculation-result-box">
+                            <div className="result-header-row">
+                                <span className="result-title">假修复雷达判定：</span>
+                                <span className={`status-badge-lg ${panicRepairResult.isMomentumCrashWarningActive ? 'badge-danger' : 'badge-executed'}`}>
+                                    {panicRepairResult.panicRepairRegime.toUpperCase()}
+                                </span>
+                                <span className="multiplier-badge font-bold">
+                                    加仓上限乘数: {panicRepairResult.maxTacticalAddMultiplier}x
+                                </span>
+                            </div>
+                            <div className="result-stats-row">
+                                <div className="stat-item">
+                                    <span className="lbl">深度巨灾回撤前例:</span>
+                                    <span className={`val ${panicRepairResult.isDeepDrawdownPrecedent ? 'text-red' : 'text-green'}`}>
+                                        {panicRepairResult.isDeepDrawdownPrecedent ? '是 (<= -15%)' : '否'}
+                                    </span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">极端波动率脉冲:</span>
+                                    <span className={`val ${panicRepairResult.isExtremeVixSpike ? 'text-red' : 'text-green'}`}>
+                                        {panicRepairResult.isExtremeVixSpike ? '是 (VIX >= 25)' : '否'}
+                                    </span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">短期暴力轧空反弹:</span>
+                                    <span className={`val ${panicRepairResult.isSharpReboundChasing ? 'text-red' : 'text-green'}`}>
+                                        {panicRepairResult.isSharpReboundChasing ? '是 (>= +8%)' : '否'}
+                                    </span>
+                                </div>
+                            </div>
+                            <p className="result-directive-msg">{panicRepairResult.tacticalRationale}</p>
+                        </div>
+                    </div>
+
+                    {/* 模块 3：Citadel 逆周期情绪出清时钟 */}
+                    <div className="turn-section-card">
+                        <div className="section-card-header">
+                            <span className="section-badge">支柱三 · 顶尖做市机构出清微结构</span>
+                            <h4>🕰️ Citadel 逆周期情绪出清与核心回补时钟 (Citadel Clearing Clock)</h4>
+                            <p className="section-intro">
+                                依据 Citadel 2026-09-18 最新研报《2H September: Getting Closer》。当社交媒体看多情绪跌入极度悲观 (&lt;25%)、机构净杠杆深度出清 (Z &lt; -1.5)、季末调仓接近尾声且利率压力见缓时，市场的“风险不对称性”已彻底由空头转向多头，开启分批回补核心底仓的黄金窗口。
+                            </p>
+                        </div>
+
+                        {/* 预设情境 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载 Citadel 时钟：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCitadelInput({
+                                    asOfDate: '2026-09-22',
+                                    socialKolBullishSentimentPct: 18.5,
+                                    institutionalNetLeverageZScore: -1.75,
+                                    monthEndRebalancePressureDaysLeft: 2,
+                                    yieldStressPeaking: true,
+                                })}
+                            >
+                                📘 加载 9月下旬核心回补窗口开启 (Reaccumulation Window · 每周回补 20%)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCitadelInput({
+                                    asOfDate: '2026-09-15',
+                                    socialKolBullishSentimentPct: 32.0,
+                                    institutionalNetLeverageZScore: -1.2,
+                                    monthEndRebalancePressureDaysLeft: 6,
+                                    yieldStressPeaking: false,
+                                })}
+                            >
+                                📘 加载 空头抛压衰竭期 (Positioning Exhaustion · 每周回补 10%)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCitadelInput({
+                                    asOfDate: '2026-09-08',
+                                    socialKolBullishSentimentPct: 55.0,
+                                    institutionalNetLeverageZScore: 0.2,
+                                    monthEndRebalancePressureDaysLeft: 12,
+                                    yieldStressPeaking: false,
+                                })}
+                            >
+                                📘 加载 有序去杠杆初期 (Orderly Liquidation · 观望不接飞刀)
+                            </button>
+                        </div>
+
+                        {/* 交互输入网格 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>社交媒体看多共识比例 (%) (&lt; 25% 极度悲观)</label>
+                                <input
+                                    type="number"
+                                    step="1.0"
+                                    value={citadelInput.socialKolBullishSentimentPct}
+                                    onChange={(e) => setCitadelInput({ ...citadelInput, socialKolBullishSentimentPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>机构净杠杆 Z 分位数 (&lt; -1.5 出清充分)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={citadelInput.institutionalNetLeverageZScore}
+                                    onChange={(e) => setCitadelInput({ ...citadelInput, institutionalNetLeverageZScore: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>距月末/季末再平衡结束天数 (&le; 3 天)</label>
+                                <input
+                                    type="number"
+                                    value={citadelInput.monthEndRebalancePressureDaysLeft}
+                                    onChange={(e) => setCitadelInput({ ...citadelInput, monthEndRebalancePressureDaysLeft: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>美债利率压力是否见缓筑顶</label>
+                                <select
+                                    value={citadelInput.yieldStressPeaking ? 'true' : 'false'}
+                                    onChange={(e) => setCitadelInput({ ...citadelInput, yieldStressPeaking: e.target.value === 'true' })}
+                                >
+                                    <option value="true">是 (利率上行放缓或回落)</option>
+                                    <option value="false">否 (利率仍在加速冲高)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* 结果看板 */}
+                        <div className="calculation-result-box">
+                            <div className="result-header-row">
+                                <span className="result-title">时钟刻度判定：</span>
+                                <span className={`status-badge-lg ${citadelResult.clockStage === 'core_reaccumulation_window' ? 'badge-executed' : 'badge-converted'}`}>
+                                    {citadelResult.clockStage.toUpperCase()}
+                                </span>
+                                <span className="multiplier-badge font-bold">
+                                    非对称方向: {citadelResult.asymmetryDirection}
+                                </span>
+                                {citadelResult.reaccumulationPacePct > 0 && (
+                                    <span className="tier-tag">
+                                        推荐回补速度: 每周 {citadelResult.reaccumulationPacePct}%
+                                    </span>
+                                )}
+                            </div>
+                            <div className="result-stats-row">
+                                <div className="stat-item">
+                                    <span className="lbl">聚焦方向:</span>
+                                    <span className="val text-gold">{citadelResult.recommendedFocus}</span>
+                                </div>
+                            </div>
+                            <p className="result-directive-msg">{citadelResult.tacticalRationale}</p>
                         </div>
                     </div>
                 </div>

@@ -4470,6 +4470,314 @@ export const PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK = {
     },
 };
 
+// ============================================================================
+// Phase 14: 半导体-信贷四阶右侧确认状态机与恐慌修复陷阱监控器
+// 依据 AI-Memory 预注册文档 prereg-market-semiconductor-turn-monitor.md 与
+// prereg-panic-to-repair-monitor.md 及 Citadel 2026-09 最新洞察落地
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// 1. 半导体-信贷四阶右侧反转确认状态机 (Semiconductor Credit 4-Tier Turn State Machine)
+// 包含近期压力基底、企稳、修复尝试与五大多维严苛跨资产验证
+// ----------------------------------------------------------------------------
+
+export interface SemiconductorCreditTurnInput {
+    asOfDate: string;
+    recentDrawdown63dPct: number; // QQQ 或 SMH 过去 21 日内达到的 63 日最大回撤 (需 >= 8.0% 激活基底)
+    smhConsecutiveDaysNoNew10dLow: number; // SMH 连续未创 10 日新低天数 (>= 3 确认 stabilizing)
+    smh5dReturnPct: number; // SMH 5 日回报率 (%)
+    smhAboveMa10: boolean; // SMH 是否收在 MA10 上方
+    smhConsecutiveDaysAboveMa20: number; // SMH 连续收在 MA20 上方天数 (需 >= 2)
+    qqq5dReturnPct: number; // QQQ 5 日回报率 (%) (SMH 需超越 QQQ 实现动量领涨)
+    qqqAboveMa20: boolean; // QQQ 是否收在 MA20 上方
+    rspSpy5dRatioChange: number; // RSP/SPY 等权全市场宽度比率 5 日变动 (需 >= 0)
+    hygLqd5dRatioChange: number; // HYG/LQD 高收益信用偏好比率 5 日变动 (需 >= 0)
+    fearGateScore: number; // 当前恐慌分 (需 <= 6 处于 normal 或 elevated)
+    fearGateScore5dEarlier: number; // 5 日前恐慌分 (当前需 <= 5日前，未转差)
+}
+
+export interface SemiconductorCreditTurnResult {
+    asOfDate: string;
+    turnState: 'risk_off' | 'stabilizing' | 'repair_attempt' | 'confirmed_turn';
+    hasRecentStressBase: boolean;
+    isStabilized: boolean;
+    isRepairAttempt: boolean;
+    fiveChecksPassed: {
+        smhAboveMa20Twice: boolean;
+        smhOutperformingQqq: boolean;
+        qqqAboveMa20: boolean;
+        breadthRspSpyNonNegative: boolean;
+        creditHygLqdNonNegative: boolean;
+        fearGateStableOrBetter: boolean;
+    };
+    allFiveChecksPassed: boolean;
+    isTurnConfirmed: boolean;
+    stockSleeveBuyMultiplier: number; // 股票袖子买入乘数：0.0x -> 0.3x -> 0.6x -> 1.0x
+    tacticalRationale: string;
+}
+
+/**
+ * 评估半导体-信贷四阶右侧确认状态机
+ */
+export function evaluateSemiconductorCreditTurnStateMachine(input: SemiconductorCreditTurnInput): SemiconductorCreditTurnResult {
+    const {
+        asOfDate,
+        recentDrawdown63dPct,
+        smhConsecutiveDaysNoNew10dLow,
+        smh5dReturnPct,
+        smhAboveMa10,
+        smhConsecutiveDaysAboveMa20,
+        qqq5dReturnPct,
+        qqqAboveMa20,
+        rspSpy5dRatioChange,
+        hygLqd5dRatioChange,
+        fearGateScore,
+        fearGateScore5dEarlier,
+    } = input;
+
+    // 1. 压力基底：过去 21 日内 QQQ 或 SMH 遭遇 >= 8.0% 深度回撤
+    const hasRecentStressBase = recentDrawdown63dPct >= 8.0;
+
+    // 2. 企稳：SMH 连续 3 个交易日未创新低
+    const isStabilized = hasRecentStressBase && smhConsecutiveDaysNoNew10dLow >= 3;
+
+    // 3. 修复尝试：企稳 + SMH 5 日回报为正 + 站上 MA10
+    const isRepairAttempt = isStabilized && smh5dReturnPct > 0 && smhAboveMa10;
+
+    // 4. 五大多维严苛确认条件检验
+    const smhAboveMa20Twice = smhConsecutiveDaysAboveMa20 >= 2;
+    const smhOutperformingQqq = smh5dReturnPct > qqq5dReturnPct;
+    const breadthRspSpyNonNegative = rspSpy5dRatioChange >= 0;
+    const creditHygLqdNonNegative = hygLqd5dRatioChange >= 0;
+    const fearGateStableOrBetter = fearGateScore <= 6 && fearGateScore <= fearGateScore5dEarlier;
+
+    const fiveChecksPassed = {
+        smhAboveMa20Twice,
+        smhOutperformingQqq,
+        qqqAboveMa20,
+        breadthRspSpyNonNegative,
+        creditHygLqdNonNegative,
+        fearGateStableOrBetter,
+    };
+
+    const allFiveChecksPassed =
+        smhAboveMa20Twice &&
+        smhOutperformingQqq &&
+        qqqAboveMa20 &&
+        breadthRspSpyNonNegative &&
+        creditHygLqdNonNegative &&
+        fearGateStableOrBetter;
+
+    let turnState: 'risk_off' | 'stabilizing' | 'repair_attempt' | 'confirmed_turn' = 'risk_off';
+    let stockSleeveBuyMultiplier = 0.0;
+    let tacticalRationale = '';
+
+    if (isRepairAttempt && allFiveChecksPassed) {
+        turnState = 'confirmed_turn';
+        stockSleeveBuyMultiplier = 1.0;
+        tacticalRationale = `【四阶右侧反转全面确认】SMH 连续 2 日稳居 MA20 之上，5 日动量 (+${smh5dReturnPct.toFixed(1)}%) 强势跑赢 QQQ (+${qqq5dReturnPct.toFixed(1)}%)。更关键的是，全市场等权宽度 (RSP/SPY >= 0) 与高收益信贷偏好 (HYG/LQD >= 0) 全面亮起绿灯，宏观恐慌分未转差。系统正式认证右侧反转，放行 1.0x 全额进攻买入乘数！`;
+    } else if (isRepairAttempt) {
+        turnState = 'repair_attempt';
+        stockSleeveBuyMultiplier = 0.6;
+        tacticalRationale = `【三阶修复尝试】SMH 站上 MA10 且 5 日动量转正，但尚未满足跨资产全部 5 项严苛右侧验证（如宽度或信贷未同步），买入乘数限制在 0.6x，仅允许左侧试探，防范假突破。`;
+    } else if (isStabilized) {
+        turnState = 'stabilizing';
+        stockSleeveBuyMultiplier = 0.3;
+        tacticalRationale = `【二阶筑底企稳】SMH 连续 ${smhConsecutiveDaysNoNew10dLow} 日未创新低，初现企稳苗头，但均线尚未收复，买入乘数严格限制在 0.3x 观察仓。`;
+    } else {
+        turnState = 'risk_off';
+        stockSleeveBuyMultiplier = 0.0;
+        tacticalRationale = `【一阶风险规避 (Risk-Off)】近期经历深幅回撤 (${recentDrawdown63dPct.toFixed(1)}%)，且半导体尚未出现连续 3 日不创新低，买入乘数降至 0.0x，绝对冻结右侧追高。`;
+    }
+
+    return {
+        asOfDate,
+        turnState,
+        hasRecentStressBase,
+        isStabilized,
+        isRepairAttempt,
+        fiveChecksPassed,
+        allFiveChecksPassed,
+        isTurnConfirmed: turnState === 'confirmed_turn',
+        stockSleeveBuyMultiplier,
+        tacticalRationale,
+    };
+}
+
+// ----------------------------------------------------------------------------
+// 2. 恐慌后暴力暴涨的虚假修复陷阱监控器 (Panic-to-Repair Trap Monitor)
+// 依据 prereg-panic-to-repair-monitor.md：深幅回撤 + 极端恐慌 + 暴力反弹 = 动量崩塌高危区
+// ----------------------------------------------------------------------------
+
+export interface PanicToRepairInput {
+    asOfDate: string;
+    spyMinDrawdown63dOverPastYearPct: number; // 过去 252~21 天内 SPY 63日最大回撤 (<= -15.0% 触发条件 1)
+    peakVixLast21Sessions: number; // 过去 21 日内峰值 VIX (>= 25.0 触发条件 2)
+    spyRebound21SessionsPct: number; // 过去 21 日内 SPY 反弹幅度 (>= +8.0% 触发条件 3)
+}
+
+export interface PanicToRepairResult {
+    asOfDate: string;
+    panicRepairRegime: 'panic_to_repair' | 'post_drawdown_watch' | 'normal';
+    isDeepDrawdownPrecedent: boolean;
+    isExtremeVixSpike: boolean;
+    isSharpReboundChasing: boolean;
+    isMomentumCrashWarningActive: boolean;
+    maxTacticalAddMultiplier: number;
+    recommendedAction: string;
+    tacticalRationale: string;
+}
+
+/**
+ * 评估恐慌后暴涨的虚假修复陷阱与动量崩塌风险
+ */
+export function evaluatePanicToRepairMonitor(input: PanicToRepairInput): PanicToRepairResult {
+    const {
+        asOfDate,
+        spyMinDrawdown63dOverPastYearPct,
+        peakVixLast21Sessions,
+        spyRebound21SessionsPct,
+    } = input;
+
+    const isDeepDrawdownPrecedent = spyMinDrawdown63dOverPastYearPct <= -15.0;
+    const isExtremeVixSpike = peakVixLast21Sessions >= 25.0;
+    const isSharpReboundChasing = spyRebound21SessionsPct >= 8.0;
+
+    let panicRepairRegime: 'panic_to_repair' | 'post_drawdown_watch' | 'normal' = 'normal';
+    let isMomentumCrashWarningActive = false;
+    let maxTacticalAddMultiplier = 1.0;
+    let recommendedAction = '';
+    let tacticalRationale = '';
+
+    if (isDeepDrawdownPrecedent && isExtremeVixSpike && isSharpReboundChasing) {
+        panicRepairRegime = 'panic_to_repair';
+        isMomentumCrashWarningActive = true;
+        maxTacticalAddMultiplier = 0.2;
+        recommendedAction = '⚠️ 触发 PANIC_TO_REPAIR 预警：深度恐慌后的暴涨极易引发 Daniel & Moskowitz 动量二次崩塌，强制削减新增开仓至 0.2x，严禁追逐垃圾股暴力轧空！';
+        tacticalRationale = `【假修复与动量崩溃预警】SPY 前期深度回撤达 ${spyMinDrawdown63dOverPastYearPct.toFixed(1)}%，VIX 曾飙至 ${peakVixLast21Sessions.toFixed(1)}，随后在 21 日内暴力反弹 +${spyRebound21SessionsPct.toFixed(1)}%。这是学术界与对冲基金公认的“动量崩溃最高危窗口”，表面看似V型反转，实则空头平仓引发的流动性假象，严禁盲目追高。`;
+    } else if (isDeepDrawdownPrecedent) {
+        panicRepairRegime = 'post_drawdown_watch';
+        isMomentumCrashWarningActive = false;
+        maxTacticalAddMultiplier = 0.6;
+        recommendedAction = '处于大跌后观察期 (POST_DRAWDOWN_WATCH)，维持谨慎仓位。';
+        tacticalRationale = `前期经历深跌 (${spyMinDrawdown63dOverPastYearPct.toFixed(1)}%)，但近期尚未出现 VIX >= 25 与 +8% 暴力轧空并存状态，维持观察态。`;
+    } else {
+        panicRepairRegime = 'normal';
+        isMomentumCrashWarningActive = false;
+        maxTacticalAddMultiplier = 1.0;
+        recommendedAction = '常态环境，正常执行既定仓位定寸。';
+        tacticalRationale = '宏观与回撤处于健康区间，无假修复动量崩塌隐患。';
+    }
+
+    return {
+        asOfDate,
+        panicRepairRegime,
+        isDeepDrawdownPrecedent,
+        isExtremeVixSpike,
+        isSharpReboundChasing,
+        isMomentumCrashWarningActive,
+        maxTacticalAddMultiplier,
+        recommendedAction,
+        tacticalRationale,
+    };
+}
+
+// ----------------------------------------------------------------------------
+// 3. Citadel 逆周期情绪出清时钟 (Citadel Contrarian Clearing Clock)
+// 依据 2026-09-18 Citadel 最新研报《2H September: Getting Closer》
+// ----------------------------------------------------------------------------
+
+export interface CitadelClearingClockInput {
+    asOfDate: string;
+    socialKolBullishSentimentPct: number; // 社交媒体看多比例 (如 18% 代表极度悲观)
+    institutionalNetLeverageZScore: number; // 机构净杠杆分位数 (如 -1.8 代表去杠杆出清充分)
+    monthEndRebalancePressureDaysLeft: number; // 距季末/月末再平衡结束剩余天数
+    yieldStressPeaking: boolean; // 美债名义/实际利率压力是否显露筑顶见缓迹象
+}
+
+export interface CitadelClearingClockResult {
+    asOfDate: string;
+    clockStage: 'orderly_liquidation' | 'capitulation_wash' | 'positioning_exhaustion' | 'core_reaccumulation_window';
+    asymmetryDirection: 'unfavorable_downside' | 'neutral_transitional' | 'highly_favorable_upside';
+    reaccumulationPacePct: number; // 推荐每周回补仓位比例 (如 15%~25%)
+    recommendedFocus: string;
+    tacticalRationale: string;
+}
+
+/**
+ * 评估 Citadel 逆周期出清与核心回补时钟
+ */
+export function evaluateCitadelClearingClock(input: CitadelClearingClockInput): CitadelClearingClockResult {
+    const {
+        asOfDate,
+        socialKolBullishSentimentPct,
+        institutionalNetLeverageZScore,
+        monthEndRebalancePressureDaysLeft,
+        yieldStressPeaking,
+    } = input;
+
+    let clockStage: 'orderly_liquidation' | 'capitulation_wash' | 'positioning_exhaustion' | 'core_reaccumulation_window' = 'orderly_liquidation';
+    let asymmetryDirection: 'unfavorable_downside' | 'neutral_transitional' | 'highly_favorable_upside' = 'unfavorable_downside';
+    let reaccumulationPacePct = 0;
+    let recommendedFocus = '';
+    let tacticalRationale = '';
+
+    if (socialKolBullishSentimentPct < 25.0 && institutionalNetLeverageZScore < -1.5 && monthEndRebalancePressureDaysLeft <= 3 && yieldStressPeaking) {
+        clockStage = 'core_reaccumulation_window';
+        asymmetryDirection = 'highly_favorable_upside';
+        reaccumulationPacePct = 20.0;
+        recommendedFocus = '利用月末抛压尾声，大举分批加回核心高确信硬件底仓 (GLW、QCOM、MRVL) 及大盘核心 (SPY/QQQ)。';
+        tacticalRationale = `【Citadel 核心回补窗口开启】如 Citadel 2026-09-18《2H September: Getting Closer》指出：社交舆论极度转悲 (多头共识仅 ${socialKolBullishSentimentPct}%)，机构杠杆已深度出清 (Z=${institutionalNetLeverageZScore.toFixed(1)})，月末再平衡抛压进入最后出清阶段。市场非对称性已彻底转向多头有利区，回补窗口正式打开！`;
+    } else if (socialKolBullishSentimentPct < 35.0 && institutionalNetLeverageZScore < -1.0) {
+        clockStage = 'positioning_exhaustion';
+        asymmetryDirection = 'neutral_transitional';
+        reaccumulationPacePct = 10.0;
+        recommendedFocus = '空头弹药衰竭，保持防御底仓，准备分批回补清单。';
+        tacticalRationale = '持仓已呈现衰竭迹象，但月末供需再平衡尚未完全落地，保持耐心观察。';
+    } else if (socialKolBullishSentimentPct < 45.0) {
+        clockStage = 'capitulation_wash';
+        asymmetryDirection = 'unfavorable_downside';
+        reaccumulationPacePct = 0;
+        recommendedFocus = '投降式放量洗盘中，严禁盲目接飞刀。';
+        tacticalRationale = '散户开始集中抛售割肉，流动性冲击尚未结束。';
+    } else {
+        clockStage = 'orderly_liquidation';
+        asymmetryDirection = 'unfavorable_downside';
+        reaccumulationPacePct = 0;
+        recommendedFocus = '按部就班去杠杆，执行既定止损。';
+        tacticalRationale = '市场仍处于有序去杠杆早期，供需格局不利于多头。';
+    }
+
+    return {
+        asOfDate,
+        clockStage,
+        asymmetryDirection,
+        reaccumulationPacePct,
+        recommendedFocus,
+        tacticalRationale,
+    };
+}
+
+export const PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 14 半导体-信贷四阶右侧确认状态机与恐慌修复陷阱监控器',
+    caseStudies: {
+        semiconductorTurnCase: {
+            scenario: '2026-09-11 SMH 遭遇 8.5% 回撤后企稳，但信用债 HYG/LQD 未能转正',
+            solution: '状态机严格拒绝确认 confirmed_turn，拦截在 repair_attempt (0.6x 试探)，规避了无信用债支撑的假突破反抽。',
+        },
+        panicToRepairCase: {
+            scenario: '大跌 -18% 后空头剧烈轧空，标的 3 周暴涨 +12%',
+            solution: '触发 PANIC_TO_REPAIR 假修复警报，买入乘数压制在 0.2x，成功杜绝在二次探底中发生致命的动量崩溃。',
+        },
+        citadelClearingClockCase: {
+            scenario: '2026年9月下旬：AI 情绪跌入冰点 (多头 18%)，机构持仓出清出净',
+            solution: '出清时钟判定为 CORE_REACCUMULATION_WINDOW，非对称性倒向多头，推荐以每周 20% 节奏回补优质核心底仓。',
+        },
+    },
+};
+
+
 
 
 
