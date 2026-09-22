@@ -37,6 +37,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-default);
   border-radius: 10px;
+  flex-shrink: 0;
 }
 
 .trading-status-strip {
@@ -179,12 +180,15 @@
 /* ========== Navigation Tabs ========== */
 .dashboard-navigation-tabs {
   display: flex;
+  align-items: center;
   gap: 8px;
   background: var(--bg-secondary);
   padding: 6px;
   border-radius: 10px;
   border: 1px solid var(--border-default);
   overflow-x: auto;
+  flex-shrink: 0;
+  min-height: 48px;
 }
 
 .nav-tab-pill {
@@ -218,6 +222,7 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 .section-block {
@@ -10621,6 +10626,314 @@
   gap: 8px;
   margin: 12px 0;
 }
+
+/* ========== Institutional Rebound Six Gates & Advanced Phases (Phase 16 - 25) ========== */
+.rebound-six-gates-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.six-gates-header-card {
+  background: linear-gradient(135deg, rgba(22, 27, 34, 0.95) 0%, rgba(13, 17, 23, 0.95) 100%);
+  border: 1px solid rgba(88, 166, 255, 0.2);
+  border-left: 4px solid var(--accent-blue, #58a6ff);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.six-gates-top-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.six-gates-phase-label {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--accent-blue, #58a6ff);
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.six-gates-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.six-gates-asof {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+  font-family: 'SF Mono', monospace;
+}
+
+.six-gates-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Gates Evaluation Card */
+.gates-eval-card {
+  background: var(--bg-secondary, #0d1117);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gates-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gates-card-icon {
+  font-size: 16px;
+  margin-right: 6px;
+}
+
+.gates-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gates-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gates-badge.badge-pass {
+  background: rgba(63, 185, 80, 0.15);
+  color: #3fb950;
+  border: 1px solid rgba(63, 185, 80, 0.3);
+}
+
+.gates-badge.badge-fail {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+}
+
+.gates-badge.badge-neutral {
+  background: rgba(139, 148, 158, 0.15);
+  color: #8b949e;
+  border: 1px solid rgba(139, 148, 158, 0.3);
+}
+
+/* Preset Buttons Row */
+.gates-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gates-preset-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gates-preset-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Form Grid */
+.gates-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.gates-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gates-form-row label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.gates-form-row input,
+.gates-form-row select {
+  background: var(--bg-tertiary, #161b22);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.gates-form-row input:focus,
+.gates-form-row select:focus {
+  border-color: var(--accent-blue, #58a6ff);
+}
+
+/* Meta Row */
+.gates-meta-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Tables & Grid */
+.gates-variance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.gates-variance-table th,
+.gates-variance-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gates-variance-table th {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.gates-scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.gates-scenario-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scenario-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.scenario-metric {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Unfilled / Fill Ledger */
+.gates-unfilled-ledger {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ledger-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ledger-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.ledger-item.ledger-buy {
+  background: rgba(63, 185, 80, 0.08);
+  color: #3fb950;
+}
+
+.ledger-item.ledger-sell {
+  background: rgba(248, 81, 73, 0.08);
+  color: #f85149;
+}
+
+.ledger-reason {
+  color: var(--text-muted);
+  margin-left: auto;
+  font-size: 11px;
+}
+
+/* Error Panel */
+.gates-error-panel {
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid rgba(248, 81, 73, 0.25);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #f85149;
+}
+
+.gates-error-item {
+  margin-top: 4px;
+}
+
+/* Values */
+.val-positive {
+  color: #3fb950 !important;
+  font-weight: 600;
+}
+
+.val-negative {
+  color: #f85149 !important;
+  font-weight: 600;
+}
+
 
 
 
