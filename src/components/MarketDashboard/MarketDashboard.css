@@ -10313,6 +10313,103 @@
   border-left: 3px solid #22c55e;
 }
 
+/* ==========================================================================
+   Phase 12: 宏观日历流动性脆弱阻尼与 126 日慢速定寸专属样式
+   ========================================================================== */
+
+.rebound-calendar-vol-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.calendar-vol-header-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(49, 46, 129, 0.6));
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.calendar-vol-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.calendar-vol-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendar-vol-icon {
+  font-size: 1.8rem;
+}
+
+.calendar-vol-title-wrap h4 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.calendar-vol-badge-pill {
+  background: rgba(129, 140, 248, 0.15);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  color: #a5b4fc;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.calendar-vol-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.calendar-kpi-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.calendar-kpi-card.highlight-card {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.calendar-kpi-card.warning-card {
+  border-color: rgba(234, 179, 8, 0.3);
+  background: rgba(234, 179, 8, 0.05);
+}
+
+.calendar-kpi-card.danger-card {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.calendar-section-card {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+
 
 
 

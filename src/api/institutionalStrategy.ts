@@ -3824,6 +3824,273 @@ export const PHASE11_TACTICAL_ENHANCEMENTS = {
     },
 };
 
+// ============================================================================
+// Phase 12: 宏观日历流动性脆弱阻尼与 126 日慢速波动率头寸平滑统合
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// 1. 日历敏感型流动性脆弱阻尼矩阵 (Calendar-Sensitive Liquidity Fragility Damping)
+// 借鉴 Citadel 与 AQR flow_fragility 机构框架
+// ----------------------------------------------------------------------------
+
+export type CalendarDampingLevel = 'normal' | 'moderate_damping' | 'high_damping' | 'severe_damping';
+
+export interface CalendarFragilityInput {
+    currentDate: string;
+    isQuarterEndWindow: boolean; // 是否处于季末最后 5 个交易日 (3/6/9/12月机构股债再平衡期)
+    isBuybackBlackoutActive: boolean; // 是否处于核心标的财报前 30 天回购静默期
+    isOpExWeek: boolean; // 是否处于每月第三个周五期权交割换月周 (Monthly OpEx)
+    marketDepthDeclineEstPct?: number; // 市场买盘深度估计萎缩比例 (如 45%)
+}
+
+export interface CalendarFragilityResult {
+    currentDate: string;
+    fragilityScore: number; // 0 ~ 100
+    dampingLevel: CalendarDampingLevel;
+    singleDayAddCapPct: number; // 单日新增建仓上限 (常态 15% -> 温和 10% -> 高阻尼 7.5% -> 极端 5.0%)
+    slippageToleranceToleranceBps: number; // 滑点容忍度 (常态 10bps -> 紧缩至 4bps)
+    isStopLossExempt: boolean; // 止损与阶梯锁利是否完全豁免 (永远为 true，非对称保护)
+    blackoutStatusSummary: string;
+    rebalanceStatusSummary: string;
+    opExStatusSummary: string;
+    executionDirective: string;
+}
+
+/**
+ * 评估日历敏感型流动性脆弱度并实施建仓降速阻尼
+ */
+export function evaluateCalendarLiquidityFragility(input: CalendarFragilityInput): CalendarFragilityResult {
+    const { currentDate, isQuarterEndWindow, isBuybackBlackoutActive, isOpExWeek, marketDepthDeclineEstPct = 0 } = input;
+
+    let score = 0;
+    if (isQuarterEndWindow) score += 35;
+    if (isBuybackBlackoutActive) score += 35;
+    if (isOpExWeek) score += 20;
+    if (marketDepthDeclineEstPct >= 40) score += 10;
+
+    let dampingLevel: CalendarDampingLevel = 'normal';
+    let singleDayAddCapPct = 15.0;
+    let slippageToleranceToleranceBps = 10.0;
+    let executionDirective = '';
+
+    if (score >= 70) {
+        dampingLevel = 'severe_damping';
+        singleDayAddCapPct = 5.0;
+        slippageToleranceToleranceBps = 4.0;
+        executionDirective = '【日历流动性重度脆弱 SEVERE】季末机构再平衡重叠回购静默期，买盘深度断崖下跌！单日新增建仓上限压低至 5.0%，大幅收紧滑点容忍度至 4bps。严禁激进扫货，止损平仓 100% 豁免！';
+    } else if (score >= 45) {
+        dampingLevel = 'high_damping';
+        singleDayAddCapPct = 7.5;
+        slippageToleranceToleranceBps = 6.0;
+        executionDirective = '【日历流动性高度敏感 HIGH】处于季末调仓或回购静默主窗口，单日建仓上限折半至 7.5%，微观入场门槛提高，防范被动流动性踩踏。';
+    } else if (score >= 20) {
+        dampingLevel = 'moderate_damping';
+        singleDayAddCapPct = 10.0;
+        slippageToleranceToleranceBps = 8.0;
+        executionDirective = '【日历流动性温和预警 MODERATE】月度 OpEx 交割或弱静默期，单日新增建仓上限微调至 10.0%，维持常态风控。';
+    } else {
+        dampingLevel = 'normal';
+        singleDayAddCapPct = 15.0;
+        slippageToleranceToleranceBps = 10.0;
+        executionDirective = '【日历流动性充沛 NORMAL】全市场买盘深度良好，回购窗口开放，无季末再平衡扰动，执行标准 15% 建仓上限。';
+    }
+
+    return {
+        currentDate,
+        fragilityScore: score,
+        dampingLevel,
+        singleDayAddCapPct,
+        slippageToleranceToleranceBps,
+        isStopLossExempt: true, // 核心公理：非对称执行，永不拦截平仓止损
+        blackoutStatusSummary: isBuybackBlackoutActive ? '处于财报前 30 天回购静默期 (Blackout Active)' : '回购窗口正常开放 (Open Window)',
+        rebalanceStatusSummary: isQuarterEndWindow ? '处于季末机构股债硬性再平衡窗口 (Quarter-End Active)' : '非季末再平衡期',
+        opExStatusSummary: isOpExWeek ? '处于月度期权交割换月周 (Monthly OpEx Active)' : '常规非交割周',
+        executionDirective,
+    };
+}
+
+// ----------------------------------------------------------------------------
+// 2. 股债正相关通胀冲击与抗久期实物对冲机制 (Stock-Bond Positive Corr & Inflation Defense)
+// 借鉴 2026-09 AQR Inflation Redux 与 Citadel 压力测试
+// ----------------------------------------------------------------------------
+
+export type InflationStockBondRegime = 'disinflationary_negative_corr' | 'neutral_transitional' | 'stagflationary_positive_corr';
+
+export interface StockBondInflationRegimeInput {
+    asOfDate: string;
+    rollingCorrSpyTlt63d: number; // SPY 与 TLT 63 日滚动收益率相关系数 (e.g. -0.35 or +0.42)
+    breakevenInflation10yPct: number; // 10Y Breakeven 通胀预期 (e.g. 2.35%)
+    tipsRealRate10yPct: number; // 10Y TIPS 实际利率 (e.g. 2.40%)
+    coreCpiYoYPct?: number; // 核心 CPI 同比
+}
+
+export interface StockBondInflationRegimeResult {
+    asOfDate: string;
+    regime: InflationStockBondRegime;
+    isStockBondPositiveCorrShock: boolean;
+    rollingCorrSpyTlt63d: number;
+    hedgeAssetPreference: 'TLT_treasuries' | 'physical_monopoly_commodities';
+    preferredSymbols: string[];
+    growthDurationCapPct: number; // 高估值成长股上限从 30% 压缩
+    tacticalRationale: string;
+}
+
+/**
+ * 评估股债收益率相关性与通胀冲击环境，决定避险资产倾斜方向
+ */
+export function evaluateInflationStockBondRegime(input: StockBondInflationRegimeInput): StockBondInflationRegimeResult {
+    const { asOfDate, rollingCorrSpyTlt63d, breakevenInflation10yPct, tipsRealRate10yPct } = input;
+
+    // 当股债相关性大于 +0.20 且通胀补偿/实际利率偏高时，触发通胀正相关冲击
+    const isPositiveCorr = rollingCorrSpyTlt63d >= 0.20;
+    const isInflationElevated = breakevenInflation10yPct >= 2.30 || tipsRealRate10yPct >= 2.25;
+
+    let regime: InflationStockBondRegime = 'disinflationary_negative_corr';
+    let isStockBondPositiveCorrShock = false;
+    let hedgeAssetPreference: 'TLT_treasuries' | 'physical_monopoly_commodities' = 'TLT_treasuries';
+    let preferredSymbols: string[] = ['TLT', 'IEF', 'QQQ'];
+    let growthDurationCapPct = 30.0;
+    let tacticalRationale = '';
+
+    if (isPositiveCorr && isInflationElevated) {
+        regime = 'stagflationary_positive_corr';
+        isStockBondPositiveCorrShock = true;
+        hedgeAssetPreference = 'physical_monopoly_commodities';
+        preferredSymbols = ['SO', 'CVX', 'LIN']; // 自然垄断公共事业与能源抗通胀核心
+        growthDurationCapPct = 15.0; // 高估值科技敞口减半
+        tacticalRationale = '【通胀冲击·股债正相关预警】Corr(SPY,TLT) 跃升至正值 (+0.20 以上) 且实际/通胀补偿高企，传统股债对冲失效（股债同跌）。防御端强制舍弃国债久期资产，将对冲权重全额导向具备定价权的自然垄断实物资产（SO公用事业、CVX能源、LIN特气），科技久期上限压制在 15% 以内！';
+    } else if (rollingCorrSpyTlt63d > -0.10) {
+        regime = 'neutral_transitional';
+        isStockBondPositiveCorrShock = false;
+        hedgeAssetPreference = 'physical_monopoly_commodities';
+        preferredSymbols = ['SO', 'CVX', 'SGOV'];
+        growthDurationCapPct = 25.0;
+        tacticalRationale = '【股债过渡中性区】股债负相关对冲效应减弱，适度提升现金 SGOV 与实物防御标的储备，科技卫星维持 25% 天花板。';
+    } else {
+        regime = 'disinflationary_negative_corr';
+        isStockBondPositiveCorrShock = false;
+        hedgeAssetPreference = 'TLT_treasuries';
+        preferredSymbols = ['TLT', 'SPY', 'QQQ'];
+        growthDurationCapPct = 30.0;
+        tacticalRationale = '【经典负相关反通胀常态】股债呈现良好负相关性，美债可提供充分的避险缓冲，高弹性科技卫星享有全额 30% 预算上限。';
+    }
+
+    return {
+        asOfDate,
+        regime,
+        isStockBondPositiveCorrShock,
+        rollingCorrSpyTlt63d: Number(rollingCorrSpyTlt63d.toFixed(3)),
+        hedgeAssetPreference,
+        preferredSymbols,
+        growthDurationCapPct,
+        tacticalRationale,
+    };
+}
+
+// ----------------------------------------------------------------------------
+// 3. 126 日慢速已实现波动率逆向头寸缩放 (Daniel & Moskowitz 126-Day Realized Vol Sizing)
+// 依据 AI-Memory BEHAVIORAL_MOMENTUM_SUPPLEMENT.md 规范落地
+// ----------------------------------------------------------------------------
+
+export interface RealizedVolatility126dInput {
+    symbol: string;
+    realizedVol126dPct: number; // 标的过去 126 个交易日年化已实现波动率 (如 35.0%)
+    targetVolPct?: number; // 组合目标基准波动率 (默认 20.0%)
+    baseAllocPct?: number; // 默认基准配置比例 (默认 8.0% 黄金定寸)
+    maxAllocCapPct?: number; // 单标的最高天花板 (默认 15.0%)
+    minAllocFloorPct?: number; // 单标的最低地板 (默认 2.0%)
+}
+
+export interface RealizedVolatility126dResult {
+    symbol: string;
+    realizedVol126dPct: number;
+    targetVolPct: number;
+    baseAllocPct: number;
+    volScalingMultiplier: number;
+    rawTargetAllocPct: number;
+    effectiveAllocPct: number;
+    isCapped: boolean;
+    isFloored: boolean;
+    riskContributionDesc: string;
+    tacticalRationale: string;
+}
+
+/**
+ * 计算 126 日慢速已实现波动率逆向风险平价头寸定寸
+ */
+export function calculateSlowVolatilityPositionSizing(input: RealizedVolatility126dInput): RealizedVolatility126dResult {
+    const {
+        symbol,
+        realizedVol126dPct,
+        targetVolPct = 20.0,
+        baseAllocPct = 8.0,
+        maxAllocCapPct = 15.0,
+        minAllocFloorPct = 2.0,
+    } = input;
+
+    // 核心公式：Multiplier = TargetVol / RealizedVol_126d
+    const volScalingMultiplier = realizedVol126dPct > 0 ? targetVolPct / realizedVol126dPct : 1.0;
+    const rawTargetAllocPct = baseAllocPct * volScalingMultiplier;
+
+    let effectiveAllocPct = rawTargetAllocPct;
+    let isCapped = false;
+    let isFloored = false;
+
+    if (effectiveAllocPct > maxAllocCapPct) {
+        effectiveAllocPct = maxAllocCapPct;
+        isCapped = true;
+    } else if (effectiveAllocPct < minAllocFloorPct) {
+        effectiveAllocPct = minAllocFloorPct;
+        isFloored = true;
+    }
+
+    let riskContributionDesc = '';
+    if (realizedVol126dPct > 35.0) {
+        riskContributionDesc = '高波动资产 (自动收缩头寸，防御极端甩鞭)';
+    } else if (realizedVol126dPct < 15.0) {
+        riskContributionDesc = '低波动资产 (自适应放大权重，增厚夏普底盘)';
+    } else {
+        riskContributionDesc = '中度波动资产 (基准匹配权重)';
+    }
+
+    const tacticalRationale = `标的 ${symbol} 126日慢速年化波动率 ${realizedVol126dPct.toFixed(1)}%（基准目标 ${targetVolPct.toFixed(1)}%）。逆向乘数 ${volScalingMultiplier.toFixed(2)}x，有效配置比例定寸为 ${effectiveAllocPct.toFixed(2)}%（基准 ${baseAllocPct.toFixed(1)}%）。${isCapped ? '触发 15% 上限截断。' : isFloored ? '触发 2% 地板保护。' : '定寸平滑运行。'}`;
+
+    return {
+        symbol,
+        realizedVol126dPct: Number(realizedVol126dPct.toFixed(2)),
+        targetVolPct,
+        baseAllocPct,
+        volScalingMultiplier: Number(volScalingMultiplier.toFixed(2)),
+        rawTargetAllocPct: Number(rawTargetAllocPct.toFixed(2)),
+        effectiveAllocPct: Number(effectiveAllocPct.toFixed(2)),
+        isCapped,
+        isFloored,
+        riskContributionDesc,
+        tacticalRationale,
+    };
+}
+
+export const PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 12 宏观日历流动性脆弱阻尼与 126 日慢速波动率逆向定寸',
+    caseStudies: {
+        calendarFragilityCase: {
+            scenario: '2026年9月下旬：季末机构再平衡 (Quarter-End) + 标的财报前回购静默期 (Blackout)',
+            result: '系统判定为 SEVERE 严重脆弱，单日加仓上限由 15% 自动压降至 5%，成功规避无承接买盘闪崩风险。',
+        },
+        stockBondCorrCase: {
+            scenario: '2026年通胀二次反扑：Corr(SPY,TLT) 升至 +0.38 且 10Y Breakeven 破 2.35%',
+            result: '判定为 STAGFLATIONARY_POSITIVE_CORR，股债同跌，系统将对冲核心全面切向 SO、CVX、LIN 等实物自然垄断。',
+        },
+        slowVolCase: {
+            highVolSymbol: 'NVDA (126日波动率 48.0%) -> 自动收缩权重至 3.33%',
+            lowVolSymbol: 'SO (126日波动率 13.5%) -> 自适应增厚权重至 11.85%',
+            rationale: '在不同资产间实现风险贡献均衡化 (Risk Parity-Lite)，杜绝高波动妖股绑架整体组合 NAV。',
+        },
+    },
+};
+
+
 
 
 

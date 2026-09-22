@@ -38,6 +38,10 @@ import {
     evaluateEarningsCooldownRule,
     evaluateAntiAveragingDownRule,
     PHASE11_TACTICAL_ENHANCEMENTS,
+    evaluateCalendarLiquidityFragility,
+    evaluateInflationStockBondRegime,
+    calculateSlowVolatilityPositionSizing,
+    PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK,
     type BottomReboundStock,
     type TradeChecklistInput,
     type TradeChecklistResult,
@@ -46,6 +50,9 @@ import {
     type TreasuryFedMacroInput,
     type EarningsCooldownInput,
     type AntiAveragingDownInput,
+    type CalendarFragilityInput,
+    type StockBondInflationRegimeInput,
+    type RealizedVolatility126dInput,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -71,6 +78,7 @@ type SubTabType =
     | 'fee-gate'
     | 'reclass-invariance'
     | 'tactical-guards'
+    | 'calendar-vol-damping'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -149,6 +157,36 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     const macroResult = evaluateTreasuryFedMacroMonitor(macroInput);
     const cooldownResult = evaluateEarningsCooldownRule(cooldownInput);
     const antiAveragingResult = evaluateAntiAveragingDownRule(antiAveragingInput);
+
+    // Phase 12: 宏观日历流动性脆弱阻尼与 126 日慢速波动率逆向定寸状态
+    const [calendarInput, setCalendarInput] = useState<CalendarFragilityInput>({
+        currentDate: '2026-09-22',
+        isQuarterEndWindow: true,
+        isBuybackBlackoutActive: true,
+        isOpExWeek: false,
+        marketDepthDeclineEstPct: 45,
+    });
+
+    const [inflationInput, setInflationInput] = useState<StockBondInflationRegimeInput>({
+        asOfDate: '2026-09-20',
+        rollingCorrSpyTlt63d: 0.32,
+        breakevenInflation10yPct: 2.35,
+        tipsRealRate10yPct: 2.40,
+    });
+
+    const [slowVolInput, setSlowVolInput] = useState<RealizedVolatility126dInput>({
+        symbol: 'NVDA',
+        realizedVol126dPct: 48.0,
+        targetVolPct: 20.0,
+        baseAllocPct: 8.0,
+        maxAllocCapPct: 15.0,
+        minAllocFloorPct: 2.0,
+    });
+
+    // 计算 Phase 12 实时评估结果
+    const calendarResult = evaluateCalendarLiquidityFragility(calendarInput);
+    const inflationResult = evaluateInflationStockBondRegime(inflationInput);
+    const slowVolResult = calculateSlowVolatilityPositionSizing(slowVolInput);
 
     // 六维实战决策自检器交互表单状态
     const [checklistInput, setChecklistInput] = useState<TradeChecklistInput>({
@@ -371,6 +409,12 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('tactical-guards')}
                 >
                     🛡️ 进阶实战四维硬风控 (Phase 11)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'calendar-vol-damping' ? 'active' : ''}`}
+                    onClick={() => setSubTab('calendar-vol-damping')}
+                >
+                    🌐 宏观日历阻尼与126日慢速定寸 (Phase 12)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -2680,6 +2724,340 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     </div>
                                 </div>
                                 <p className="result-directive-msg">{antiAveragingResult.rationale}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 12 宏观日历流动性脆弱阻尼与 126 日慢速波动率逆向定寸 */}
+            {subTab === 'calendar-vol-damping' && (
+                <div className="rebound-calendar-vol-view">
+                    {/* 顶部总览卡片 */}
+                    <div className="calendar-vol-header-card">
+                        <div className="calendar-vol-top-row">
+                            <div className="calendar-vol-title-wrap">
+                                <span className="calendar-vol-icon">🌐</span>
+                                <div>
+                                    <h4>{PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK.name}</h4>
+                                    <span className="as-of-date">发布于 {PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate} · 回购静默期 / 季末再平衡调仓 · 股债正相关通胀冲击 · 126日慢速波动率风险平价</span>
+                                </div>
+                            </div>
+                            <div className="calendar-vol-badge-pill">
+                                <span>🏛️ 顶尖对冲基金 2026 前沿流动性与动量防崩统合</span>
+                            </div>
+                        </div>
+
+                        <div className="calendar-vol-kpi-grid">
+                            <div className={`calendar-kpi-card ${calendarResult.dampingLevel === 'severe_damping' ? 'danger-card' : calendarResult.dampingLevel === 'high_damping' ? 'warning-card' : 'highlight-card'}`}>
+                                <span className="kpi-label">日历流动性脆弱评级</span>
+                                <div className={`kpi-val font-mono ${calendarResult.dampingLevel === 'severe_damping' ? 'text-red' : calendarResult.dampingLevel === 'high_damping' ? 'text-gold' : 'text-green'}`}>
+                                    {calendarResult.dampingLevel.toUpperCase()} ({calendarResult.fragilityScore} 分)
+                                </div>
+                                <span className="kpi-sub">单日新增上限 {calendarResult.singleDayAddCapPct}% · 滑点容忍 {calendarResult.slippageToleranceToleranceBps}bp</span>
+                            </div>
+                            <div className={`calendar-kpi-card ${inflationResult.isStockBondPositiveCorrShock ? 'danger-card' : 'highlight-card'}`}>
+                                <span className="kpi-label">股债收益率相关性环境</span>
+                                <div className={`kpi-val font-mono ${inflationResult.isStockBondPositiveCorrShock ? 'text-red' : 'text-green'}`}>
+                                    Corr: {inflationResult.rollingCorrSpyTlt63d > 0 ? `+${inflationResult.rollingCorrSpyTlt63d}` : inflationResult.rollingCorrSpyTlt63d}
+                                </div>
+                                <span className="kpi-sub">{inflationResult.isStockBondPositiveCorrShock ? '⚠️ 股债同跌！对冲全面倾斜实物垄断' : '反通胀常态，美债提供避险'}</span>
+                            </div>
+                            <div className="calendar-kpi-card highlight-card">
+                                <span className="kpi-label">对冲偏好资产核心</span>
+                                <div className="kpi-val text-cyan font-mono">
+                                    {inflationResult.preferredSymbols.join(' / ')}
+                                </div>
+                                <span className="kpi-sub">科技久期上限控制在 {inflationResult.growthDurationCapPct}% 以内</span>
+                            </div>
+                            <div className="calendar-kpi-card">
+                                <span className="kpi-label">126日慢速波动率逆向乘数</span>
+                                <div className="kpi-val text-gold font-mono">
+                                    {slowVolResult.symbol}: {slowVolResult.volScalingMultiplier}x ({slowVolResult.effectiveAllocPct}%)
+                                </div>
+                                <span className="kpi-sub">{slowVolResult.riskContributionDesc}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 模块 1：日历流动性脆弱阻尼矩阵 */}
+                    <div className="calendar-section-card">
+                        <div className="section-card-header">
+                            <span className="section-badge">支柱一 · 宏观微观流动性阻尼</span>
+                            <h4>📅 日历敏感型流动性脆弱阻尼矩阵 (Calendar Fragility Matrix)</h4>
+                            <p className="section-intro">
+                                汲取 Citadel 与 AQR <code>flow_fragility</code> 框架。美股上市公司在财报前 30 天禁止回购（Blackout），同时 3/6/9/12 季末机构养老金硬性再平衡容易诱发流动性断崖。系统实时监控日历脆弱度，自动对新增开仓实施降速阻尼（平仓止损 100% 豁免）。
+                            </p>
+                        </div>
+
+                        {/* 预设情境加载 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载日历情境：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCalendarInput({
+                                    currentDate: '2026-09-22',
+                                    isQuarterEndWindow: true,
+                                    isBuybackBlackoutActive: true,
+                                    isOpExWeek: true,
+                                    marketDepthDeclineEstPct: 50,
+                                })}
+                            >
+                                📘 加载 9月下旬三重重叠严重脆弱 (Severe · 限额 5%)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCalendarInput({
+                                    currentDate: '2026-06-25',
+                                    isQuarterEndWindow: true,
+                                    isBuybackBlackoutActive: false,
+                                    isOpExWeek: false,
+                                    marketDepthDeclineEstPct: 40,
+                                })}
+                            >
+                                📘 加载 季末机构再平衡主窗口 (High · 限额 7.5%)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCalendarInput({
+                                    currentDate: '2026-05-15',
+                                    isQuarterEndWindow: false,
+                                    isBuybackBlackoutActive: false,
+                                    isOpExWeek: false,
+                                    marketDepthDeclineEstPct: 10,
+                                })}
+                            >
+                                📘 加载 充沛流动性常态窗口 (Normal · 限额 15%)
+                            </button>
+                        </div>
+
+                        {/* 交互输入网格 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>当前评估日期</label>
+                                <input
+                                    type="text"
+                                    value={calendarInput.currentDate}
+                                    onChange={(e) => setCalendarInput({ ...calendarInput, currentDate: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>季末最后 5 个交易日 (Quarter-End)</label>
+                                <select
+                                    value={calendarInput.isQuarterEndWindow ? 'true' : 'false'}
+                                    onChange={(e) => setCalendarInput({ ...calendarInput, isQuarterEndWindow: e.target.value === 'true' })}
+                                >
+                                    <option value="true">是 (机构再平衡调仓中)</option>
+                                    <option value="false">否 (常规交易日)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>核心标的回购静默期 (Blackout)</label>
+                                <select
+                                    value={calendarInput.isBuybackBlackoutActive ? 'true' : 'false'}
+                                    onChange={(e) => setCalendarInput({ ...calendarInput, isBuybackBlackoutActive: e.target.value === 'true' })}
+                                >
+                                    <option value="true">处于静默期 (财报前30天)</option>
+                                    <option value="false">回购窗口正常开放</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>期权交割换月周 (Monthly OpEx)</label>
+                                <select
+                                    value={calendarInput.isOpExWeek ? 'true' : 'false'}
+                                    onChange={(e) => setCalendarInput({ ...calendarInput, isOpExWeek: e.target.value === 'true' })}
+                                >
+                                    <option value="true">是 (第3个周五OpEx)</option>
+                                    <option value="false">否 (非交割周)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>买盘深度估计萎缩比例 (%)</label>
+                                <input
+                                    type="number"
+                                    step="5"
+                                    value={calendarInput.marketDepthDeclineEstPct || 0}
+                                    onChange={(e) => setCalendarInput({ ...calendarInput, marketDepthDeclineEstPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 实时阻尼评估看板 */}
+                        <div className={`audit-result-banner font-mono ${calendarResult.dampingLevel === 'severe_damping' ? 'banner-danger' : calendarResult.dampingLevel === 'high_damping' ? 'banner-warning' : 'banner-safe'}`}>
+                            <div className="result-top-line">
+                                <span className="result-title">日历流动性评估裁决：</span>
+                                <span className={`state-badge state-${calendarResult.dampingLevel}`}>
+                                    {calendarResult.dampingLevel.toUpperCase()}
+                                </span>
+                                <span className="multiplier-badge">
+                                    单日新增上限: {calendarResult.singleDayAddCapPct}% (基准 15.0%)
+                                </span>
+                                <span className="multiplier-badge">
+                                    滑点容忍度: {calendarResult.slippageToleranceToleranceBps} bps
+                                </span>
+                                <span className="tag-safe font-bold">
+                                    ✓ 止损平仓 100% 豁免
+                                </span>
+                            </div>
+                            <div className="flags-overview-row">
+                                <div className="flag-group">
+                                    <span className="flag-group-title">窗口状态穿透：</span>
+                                    <span className={`flag-pill ${calendarInput.isQuarterEndWindow ? 'flag-on' : 'flag-off'}`}>{calendarResult.rebalanceStatusSummary}</span>
+                                    <span className={`flag-pill ${calendarInput.isBuybackBlackoutActive ? 'flag-on' : 'flag-off'}`}>{calendarResult.blackoutStatusSummary}</span>
+                                    <span className={`flag-pill ${calendarInput.isOpExWeek ? 'flag-on' : 'flag-off'}`}>{calendarResult.opExStatusSummary}</span>
+                                </div>
+                            </div>
+                            <p className="result-directive-msg">{calendarResult.executionDirective}</p>
+                        </div>
+                    </div>
+
+                    {/* 模块 2 与 模块 3 并列双卡 */}
+                    <div className="dual-guards-grid">
+                        {/* 左卡：股债正相关通胀冲击与实物对冲 */}
+                        <div className="calendar-section-card mini-guard-card">
+                            <div className="section-card-header">
+                                <span className="section-badge">支柱二 · 宏观跨资产对冲</span>
+                                <h4>📊 股债正相关通胀冲击与实物垄断对冲</h4>
+                                <p className="section-intro">
+                                    对标 2026-09 AQR <code>Inflation Redux</code> 报告。当通胀预期抬头且 10Y TIPS 实际利率走高时，Corr(SPY,TLT) 翻正导致股债同跌。防御端从债券转向自然垄断实物资产。
+                                </p>
+                            </div>
+
+                            <div className="interactive-form-grid mini-form-grid">
+                                <div className="form-group">
+                                    <label>63日股债相关性 Corr(SPY,TLT)</label>
+                                    <input
+                                        type="number"
+                                        step="0.05"
+                                        value={inflationInput.rollingCorrSpyTlt63d}
+                                        onChange={(e) => setInflationInput({ ...inflationInput, rollingCorrSpyTlt63d: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>10Y Breakeven 通胀预期 (%)</label>
+                                    <input
+                                        type="number"
+                                        step="0.05"
+                                        value={inflationInput.breakevenInflation10yPct}
+                                        onChange={(e) => setInflationInput({ ...inflationInput, breakevenInflation10yPct: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>10Y TIPS 实际利率 (%)</label>
+                                    <input
+                                        type="number"
+                                        step="0.05"
+                                        value={inflationInput.tipsRealRate10yPct}
+                                        onChange={(e) => setInflationInput({ ...inflationInput, tipsRealRate10yPct: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>核心 CPI 同比预测 (%)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={inflationInput.coreCpiYoYPct || 2.8}
+                                        onChange={(e) => setInflationInput({ ...inflationInput, coreCpiYoYPct: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className={`audit-result-banner font-mono ${inflationResult.isStockBondPositiveCorrShock ? 'banner-danger' : 'banner-safe'}`}>
+                                <div className="result-top-line">
+                                    <span className="result-title">跨资产状态：</span>
+                                    <span className={`state-badge state-${inflationResult.regime === 'stagflationary_positive_corr' ? 'stress' : inflationResult.regime === 'neutral_transitional' ? 'restrictive' : 'normal'}`}>
+                                        {inflationResult.regime.toUpperCase()}
+                                    </span>
+                                </div>
+                                <div className="result-stats-row">
+                                    <div className="stat-item">
+                                        <span className="lbl">对冲偏好:</span>
+                                        <span className="val text-gold font-bold">{inflationResult.hedgeAssetPreference}</span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="lbl">核心推荐标的:</span>
+                                        <span className="val text-cyan font-bold">{inflationResult.preferredSymbols.join(', ')}</span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="lbl">成长久期上限:</span>
+                                        <span className="val text-red font-bold">{inflationResult.growthDurationCapPct}%</span>
+                                    </div>
+                                </div>
+                                <p className="result-directive-msg">{inflationResult.tacticalRationale}</p>
+                            </div>
+                        </div>
+
+                        {/* 右卡：126 日慢速已实现波动率逆向定寸 */}
+                        <div className="calendar-section-card mini-guard-card">
+                            <div className="section-card-header">
+                                <span className="section-badge">支柱三 · Daniel & Moskowitz 动量防崩</span>
+                                <h4>⚖️ 126 日慢速波动率风险平价定寸</h4>
+                                <p className="section-intro">
+                                    对标 <code>BEHAVIORAL_MOMENTUM_SUPPLEMENT.md</code> 规范。避免高频波动率过度换手与失真，采用半年（126个交易日）已实现波动率逆向定寸，均衡全组合单标的风险贡献。
+                                </p>
+                            </div>
+
+                            <div className="interactive-form-grid mini-form-grid">
+                                <div className="form-group">
+                                    <label>标的代码</label>
+                                    <input
+                                        type="text"
+                                        value={slowVolInput.symbol}
+                                        onChange={(e) => setSlowVolInput({ ...slowVolInput, symbol: e.target.value.toUpperCase() })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>126日年化波动率 (%)</label>
+                                    <input
+                                        type="number"
+                                        step="0.5"
+                                        value={slowVolInput.realizedVol126dPct}
+                                        onChange={(e) => setSlowVolInput({ ...slowVolInput, realizedVol126dPct: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>基准目标波动率 (%)</label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        value={slowVolInput.targetVolPct || 20.0}
+                                        onChange={(e) => setSlowVolInput({ ...slowVolInput, targetVolPct: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>基准配置比例 (%)</label>
+                                    <input
+                                        type="number"
+                                        step="0.5"
+                                        value={slowVolInput.baseAllocPct || 8.0}
+                                        onChange={(e) => setSlowVolInput({ ...slowVolInput, baseAllocPct: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="audit-result-banner font-mono banner-safe">
+                                <div className="result-top-line">
+                                    <span className="result-title">风险平价定寸输出：</span>
+                                    <span className="multiplier-badge font-bold">
+                                        逆向乘数: {slowVolResult.volScalingMultiplier}x
+                                    </span>
+                                    <span className="tier-tag">
+                                        有效定寸: {slowVolResult.effectiveAllocPct}%
+                                    </span>
+                                    {slowVolResult.isCapped && <span className="tag-prohibited">15% 天花板截断</span>}
+                                    {slowVolResult.isFloored && <span className="tag-pending">2% 地板保护</span>}
+                                </div>
+                                <div className="result-stats-row">
+                                    <div className="stat-item">
+                                        <span className="lbl">资产属性:</span>
+                                        <span className="val text-gold">{slowVolResult.riskContributionDesc}</span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="lbl">原始目标:</span>
+                                        <span className="val text-muted">{slowVolResult.rawTargetAllocPct}%</span>
+                                    </div>
+                                </div>
+                                <p className="result-directive-msg">{slowVolResult.tacticalRationale}</p>
                             </div>
                         </div>
                     </div>

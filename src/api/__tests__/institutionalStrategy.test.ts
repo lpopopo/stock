@@ -39,6 +39,10 @@ import {
     evaluateEarningsCooldownRule,
     evaluateAntiAveragingDownRule,
     PHASE11_TACTICAL_ENHANCEMENTS,
+    evaluateCalendarLiquidityFragility,
+    evaluateInflationStockBondRegime,
+    calculateSlowVolatilityPositionSizing,
+    PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -1140,7 +1144,152 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         expect(PHASE11_TACTICAL_ENHANCEMENTS.caseStudies.earningsCooldownCase.symbol).toBe('MU');
         expect(PHASE11_TACTICAL_ENHANCEMENTS.caseStudies.antiAveragingCase.symbol).toBe('MXL');
     });
+
+    it('37. should evaluate Calendar Liquidity Fragility and enforce non-symmetric damping caps', () => {
+        // 1. 常态基准测试
+        const normalResult = evaluateCalendarLiquidityFragility({
+            currentDate: '2026-05-12',
+            isQuarterEndWindow: false,
+            isBuybackBlackoutActive: false,
+            isOpExWeek: false,
+        });
+        expect(normalResult.dampingLevel).toBe('normal');
+        expect(normalResult.fragilityScore).toBe(0);
+        expect(normalResult.singleDayAddCapPct).toBe(15.0);
+        expect(normalResult.isStopLossExempt).toBe(true);
+
+        // 2. 单独回购静默期 (Blackout Active)
+        const blackoutResult = evaluateCalendarLiquidityFragility({
+            currentDate: '2026-06-15',
+            isQuarterEndWindow: false,
+            isBuybackBlackoutActive: true,
+            isOpExWeek: false,
+        });
+        expect(blackoutResult.dampingLevel).toBe('moderate_damping');
+        expect(blackoutResult.fragilityScore).toBe(35);
+        expect(blackoutResult.singleDayAddCapPct).toBe(10.0);
+
+        // 3. 季末机构再平衡期 + 深度萎缩 40% (Quarter-End Active)
+        const quarterEndResult = evaluateCalendarLiquidityFragility({
+            currentDate: '2026-06-28',
+            isQuarterEndWindow: true,
+            isBuybackBlackoutActive: false,
+            isOpExWeek: false,
+            marketDepthDeclineEstPct: 45,
+        });
+        expect(quarterEndResult.dampingLevel).toBe('high_damping');
+        expect(quarterEndResult.fragilityScore).toBe(45);
+        expect(quarterEndResult.singleDayAddCapPct).toBe(7.5);
+        expect(quarterEndResult.slippageToleranceToleranceBps).toBe(6.0);
+
+        // 4. 季末再平衡 + 回购静默 + OpEx 三重重叠 (Severe Damping)
+        const severeResult = evaluateCalendarLiquidityFragility({
+            currentDate: '2026-09-18',
+            isQuarterEndWindow: true,
+            isBuybackBlackoutActive: true,
+            isOpExWeek: true,
+            marketDepthDeclineEstPct: 50,
+        });
+        expect(severeResult.dampingLevel).toBe('severe_damping');
+        expect(severeResult.fragilityScore).toBe(100);
+        expect(severeResult.singleDayAddCapPct).toBe(5.0);
+        expect(severeResult.slippageToleranceToleranceBps).toBe(4.0);
+        expect(severeResult.isStopLossExempt).toBe(true); // 止损绝不阻拦
+    });
+
+    it('38. should diagnose Stock-Bond positive correlation inflation shock and shift preference to physical monopoly assets', () => {
+        // 1. 经典负相关反通胀常态基准
+        const normalRegime = evaluateInflationStockBondRegime({
+            asOfDate: '2026-04-10',
+            rollingCorrSpyTlt63d: -0.35,
+            breakevenInflation10yPct: 2.10,
+            tipsRealRate10yPct: 1.80,
+        });
+        expect(normalRegime.regime).toBe('disinflationary_negative_corr');
+        expect(normalRegime.isStockBondPositiveCorrShock).toBe(false);
+        expect(normalRegime.hedgeAssetPreference).toBe('TLT_treasuries');
+        expect(normalRegime.growthDurationCapPct).toBe(30.0);
+
+        // 2. 通胀二次反扑诱发“股债同跌”正相关冲击
+        const stagflationRegime = evaluateInflationStockBondRegime({
+            asOfDate: '2026-09-15',
+            rollingCorrSpyTlt63d: 0.38, // > +0.20
+            breakevenInflation10yPct: 2.36, // >= 2.30
+            tipsRealRate10yPct: 2.40, // >= 2.25
+        });
+        expect(stagflationRegime.regime).toBe('stagflationary_positive_corr');
+        expect(stagflationRegime.isStockBondPositiveCorrShock).toBe(true);
+        expect(stagflationRegime.hedgeAssetPreference).toBe('physical_monopoly_commodities');
+        expect(stagflationRegime.preferredSymbols).toContain('SO');
+        expect(stagflationRegime.preferredSymbols).toContain('CVX');
+        expect(stagflationRegime.preferredSymbols).toContain('LIN');
+        expect(stagflationRegime.growthDurationCapPct).toBe(15.0); // 科技久期上限砍半
+
+        // 3. 中性过渡期
+        const neutralRegime = evaluateInflationStockBondRegime({
+            asOfDate: '2026-07-20',
+            rollingCorrSpyTlt63d: 0.05,
+            breakevenInflation10yPct: 2.20,
+            tipsRealRate10yPct: 2.10,
+        });
+        expect(neutralRegime.regime).toBe('neutral_transitional');
+        expect(neutralRegime.growthDurationCapPct).toBe(25.0);
+    });
+
+    it('39. should calculate 126-day slow realized volatility inverse position sizing with non-levered caps and floors', () => {
+        // 1. 高波动标的自动收缩头寸 (NVDA, 126日波动率 48.0%)
+        const highVolRes = calculateSlowVolatilityPositionSizing({
+            symbol: 'NVDA',
+            realizedVol126dPct: 48.0,
+            targetVolPct: 20.0,
+            baseAllocPct: 8.0,
+        });
+        expect(highVolRes.volScalingMultiplier).toBeCloseTo(0.42, 2);
+        expect(highVolRes.effectiveAllocPct).toBeCloseTo(3.33, 2);
+        expect(highVolRes.isCapped).toBe(false);
+        expect(highVolRes.isFloored).toBe(false);
+        expect(highVolRes.riskContributionDesc).toContain('高波动资产');
+
+        // 2. 低波动现金牛标的自适应增厚头寸 (SO, 126日波动率 13.5%)
+        const lowVolRes = calculateSlowVolatilityPositionSizing({
+            symbol: 'SO',
+            realizedVol126dPct: 13.5,
+            targetVolPct: 20.0,
+            baseAllocPct: 8.0,
+        });
+        expect(lowVolRes.volScalingMultiplier).toBeCloseTo(1.48, 2);
+        expect(lowVolRes.effectiveAllocPct).toBeCloseTo(11.85, 2);
+        expect(lowVolRes.isCapped).toBe(false);
+        expect(lowVolRes.riskContributionDesc).toContain('低波动资产');
+
+        // 3. 超低波动极端标的触发 15% 天花板截断
+        const cappedRes = calculateSlowVolatilityPositionSizing({
+            symbol: 'SHY',
+            realizedVol126dPct: 6.0,
+            targetVolPct: 20.0,
+            baseAllocPct: 8.0,
+            maxAllocCapPct: 15.0,
+        });
+        expect(cappedRes.isCapped).toBe(true);
+        expect(cappedRes.effectiveAllocPct).toBe(15.0);
+
+        // 4. 超高波动极端标的触发 2% 地板保护
+        const flooredRes = calculateSlowVolatilityPositionSizing({
+            symbol: 'MEME',
+            realizedVol126dPct: 95.0,
+            targetVolPct: 20.0,
+            baseAllocPct: 8.0,
+            minAllocFloorPct: 2.0,
+        });
+        expect(flooredRes.isFloored).toBe(true);
+        expect(flooredRes.effectiveAllocPct).toBe(2.0);
+
+        // 验证 Phase 12 综合常数
+        expect(PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.calendarFragilityCase.scenario).toContain('季末机构再平衡');
+    });
 });
+
 
 
 
