@@ -23,6 +23,7 @@ import {
     formatParamSummary,
     type BacktestPreset,
 } from '../../../utils/backtestPresets';
+import { InstitutionalReboundPanel } from './InstitutionalReboundPanel';
 
 interface SectorBacktestPanelProps {
     colorScheme?: 'cn' | 'us';
@@ -35,7 +36,7 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
 }) => {
     const [market, setMarket] = useState<'A' | 'US'>(initialMarket);
     const [selectedRegime, setSelectedRegime] = useState<'all' | 'bull' | 'bear' | 'oscillating'>('all');
-    const [viewMode, setViewMode] = useState<'summary' | 'sandbox' | 'ablation' | 'details'>('summary');
+    const [viewMode, setViewMode] = useState<'summary' | 'sandbox' | 'ablation' | 'details' | 'institutional'>('summary');
     const [showFullTable, setShowFullTable] = useState(false);
 
     // 参数敏感性沙盘状态
@@ -275,6 +276,12 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
                         onClick={() => setViewMode('details')}
                     >
                         📜 20年历年调仓与轮动逻辑明细表
+                    </button>
+                    <button
+                        className={`tab-btn ${viewMode === 'institutional' ? 'active' : ''}`}
+                        onClick={() => setViewMode('institutional')}
+                    >
+                        🎯 AI-Memory 机构策略专区 (100%胜率战法 & V9)
                     </button>
                 </div>
 
@@ -1080,6 +1087,11 @@ export const SectorBacktestPanel: React.FC<SectorBacktestPanelProps> = ({
                         </table>
                     </div>
                 </div>
+            )}
+
+            {/* 视图 5：AI-Memory 机构策略专区 (100% 胜率反弹 & V9 机构双轨) */}
+            {viewMode === 'institutional' && (
+                <InstitutionalReboundPanel colorScheme={colorScheme} />
             )}
         </div>
     );

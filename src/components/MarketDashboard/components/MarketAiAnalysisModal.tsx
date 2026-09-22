@@ -24,7 +24,7 @@ export const MarketAiAnalysisModal: React.FC<MarketAiAnalysisModalProps> = ({ vi
 
     const [apiKey, setApiKey] = useState(() => localStorage.getItem('AGY_API_KEY') || '');
     const [showKeyInput, setShowKeyInput] = useState(false);
-    const [reportType, setReportType] = useState<'all' | 'a_share' | 'us_stock'>('all');
+    const [reportType, setReportType] = useState<'all' | 'a_share' | 'us_stock' | 'hedge_fund'>('all');
     const [isGenerating, setIsGenerating] = useState(false);
     const [aiOutput, setAiOutput] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
@@ -163,6 +163,12 @@ export const MarketAiAnalysisModal: React.FC<MarketAiAnalysisModalProps> = ({ vi
                                         onClick={() => setReportType('us_stock')}
                                     >
                                         🇺🇸 美股行业时钟专报
+                                    </button>
+                                    <button
+                                        className={`type-pill-btn ${reportType === 'hedge_fund' ? 'active' : ''}`}
+                                        onClick={() => setReportType('hedge_fund')}
+                                    >
+                                        🏛️ 顶尖量化机构智库专报
                                     </button>
                                 </div>
                             </div>

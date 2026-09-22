@@ -4147,3 +4147,705 @@
   margin-top: 8px;
 }
 
+/* ==========================================================================
+   AI-Memory 跨仓库量化策略专区 (Institutional Rebound & V9 Panel)
+   ========================================================================== */
+.institutional-rebound-panel-root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.rebound-hero-header {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.05) 0%, rgba(255, 112, 67, 0.04) 50%, rgba(13, 27, 42, 0.6) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 14px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-badge-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.source-repo-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffb74d;
+  background: rgba(255, 183, 77, 0.12);
+  border: 1px solid rgba(255, 183, 77, 0.3);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.hero-super-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.hero-audit-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.12);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.rebound-hero-header .hero-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+  letter-spacing: -0.3px;
+}
+
+.rebound-hero-header .hero-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 980px;
+  margin-bottom: 20px;
+}
+
+.rebound-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.rebound-kpi-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.rebound-kpi-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.rebound-kpi-item.featured-kpi {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 215, 0, 0.02) 100%);
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+.rebound-kpi-item .lbl {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.rebound-kpi-item .val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rebound-kpi-item .val {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.rebound-kpi-item .tag-pill {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.rebound-kpi-item .win-pill {
+  background: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+  font-weight: 700;
+}
+
+.rebound-kpi-item .safe-pill {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  font-weight: 700;
+}
+
+.rebound-kpi-item .sub {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+/* 导航切换条 */
+.rebound-tabs-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rebound-tab-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.rebound-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.rebound-tab-btn.active {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  font-weight: 700;
+}
+
+.section-meta-tip {
+  background: rgba(66, 165, 245, 0.08);
+  border: 1px solid rgba(66, 165, 245, 0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  color: #90caf9;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* 6 大标的卡片网格 */
+.rebound-stocks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.rebound-stock-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.rebound-stock-card:hover {
+  border-color: rgba(255, 215, 0, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.rebound-stock-card .card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.rebound-stock-card .symbol-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.rebound-stock-card .sym-code {
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+.rebound-stock-card .sym-name {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.rebound-stock-card .industry-pill {
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.rebound-stock-card .card-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.rebound-stock-card .price-val {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.rebound-stock-card .change-badge {
+  font-size: 0.95rem;
+}
+
+.rebound-stock-card .card-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.rebound-stock-card .m-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rebound-stock-card .m-box .lbl {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.rebound-stock-card .m-box .val {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.rebound-stock-card .card-signal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rebound-stock-card .signal-badge-title {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.status-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.status-pill.status-buy {
+  background: rgba(76, 175, 80, 0.2);
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  color: #4caf50;
+}
+
+.status-pill.status-holding {
+  background: rgba(66, 165, 245, 0.18);
+  border: 1px solid rgba(66, 165, 245, 0.4);
+  color: #42a5f5;
+}
+
+.status-pill.status-wait {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+}
+
+.status-pill.status-exit {
+  background: rgba(239, 83, 80, 0.18);
+  border: 1px solid rgba(239, 83, 80, 0.4);
+  color: #ef5350;
+}
+
+.rebound-stock-card .card-moat-desc {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.rebound-stock-card .card-logic-tip {
+  font-size: 0.74rem;
+  color: #e0e0e0;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 6px 8px;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+
+/* 规则视图 */
+.rules-intro-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.rules-intro-card h4 {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.rules-intro-card p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.rules-cards-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.rule-item-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rule-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rule-step {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+.rule-title {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+
+.rule-formula-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #64b5f6;
+  width: fit-content;
+}
+
+.rule-detail {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* 逐笔明细视图 */
+.trades-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.trades-filter-bar .filter-lbl {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.epoch-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.epoch-btn.active {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  font-weight: 700;
+}
+
+.exit-reason-pill {
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+}
+
+/* V9 视图 */
+.v9-architecture-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(66, 165, 245, 0.25);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.v9-architecture-card h4 {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.v9-architecture-card p {
+  margin: 0 0 16px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.v9-alloc-bar-wrap {
+  margin-bottom: 20px;
+}
+
+.alloc-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.alloc-progress-track {
+  display: flex;
+  height: 32px;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 32px;
+  text-align: center;
+}
+
+.alloc-slice-core {
+  background: linear-gradient(90deg, #1976d2, #42a5f5);
+}
+
+.alloc-slice-alpha {
+  background: linear-gradient(90deg, #f57c00, #ffb74d);
+}
+
+.v9-specs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.spec-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spec-box .lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.spec-box .val {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+/* 恐惧之门卡片 */
+.fear-gate-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.fear-gate-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.fear-icon {
+  font-size: 2rem;
+}
+
+.fear-title-wrap h4 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.fear-title-wrap p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.current-fear-pill {
+  margin-left: auto;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.current-fear-pill.status-normal {
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  color: #4caf50;
+}
+
+.fear-levels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.fear-level-box {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fear-level-box.active-level {
+  border-color: rgba(76, 175, 80, 0.5);
+  background: rgba(76, 175, 80, 0.05);
+}
+
+.fear-level-box .lvl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fear-level-box .lvl-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.fear-level-box .lvl-vix {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.fear-level-box .lvl-term {
+  font-size: 0.72rem;
+  color: #90caf9;
+}
+
+.fear-level-box .lvl-action {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+
+/* 对冲基金智库卡片 */
+.hedgefunds-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.hedgefund-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hedgefund-card .hf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hedgefund-card .hf-institution {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffb74d;
+}
+
+.hedgefund-card .hf-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.hedgefund-card .hf-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.hedgefund-card .hf-takeaway-box {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.hedgefund-card .hf-takeaway-box p {
+  margin: 4px 0 0;
+}
+
+.hedgefund-card .hf-application-box {
+  background: rgba(255, 215, 0, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 0.76rem;
+  color: #ffd700;
+  line-height: 1.5;
+}
+
+.hedgefund-card .hf-application-box p {
+  margin: 4px 0 0;
+  color: #fff8e1;
+}
+
