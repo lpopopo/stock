@@ -11,6 +11,9 @@ import {
     FEAR_GATE_DYNAMIC_MATRIX,
     MARKET_BREADTH_DIVERGENCE_DATA,
     PREREGISTERED_MECHANISMS,
+    RSR2_MOMENTUM_SCREENER,
+    REENTRY_EXECUTION_ENGINE,
+    PORTFOLIO_RISK_BUDGET_DATA,
     type BottomReboundStock,
 } from '../../../api/institutionalStrategy';
 
@@ -23,6 +26,9 @@ type SubTabType =
     | 'live-shadow'
     | 'fear-matrix'
     | 'breadth'
+    | 'rsr-momentum'
+    | 'reentry'
+    | 'risk-budget'
     | 'mechanisms'
     | 'rules'
     | 'trades'
@@ -136,6 +142,24 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('breadth')}
                 >
                     📡 518 标的微观广度背离雷达
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'rsr-momentum' ? 'active' : ''}`}
+                    onClick={() => setSubTab('rsr-momentum')}
+                >
+                    🚀 RSR2 动量突破雷达
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'reentry' ? 'active' : ''}`}
+                    onClick={() => setSubTab('reentry')}
+                >
+                    🔄 防洗盘二次重入决策树
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'risk-budget' ? 'active' : ''}`}
+                    onClick={() => setSubTab('risk-budget')}
+                >
+                    ⚖️ 风险预算与锁利实证
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'mechanisms' ? 'active' : ''}`}
@@ -479,6 +503,247 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     <p className="hedge-caution">⚠️ 严守保守原则：仅作小额防御性对冲，单次计划最大亏损不得超过 NAV 的 0.25%，绝不进行杠杆裸空。</p>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：RSR2 相对强弱动量突破雷达 */}
+            {subTab === 'rsr-momentum' && (
+                <div className="rebound-rsr-view">
+                    <div className="rsr-banner-card">
+                        <div className="rsr-banner-head">
+                            <div>
+                                <span className="source-repo-tag">🚀 AI-Memory Alpha 进攻端</span>
+                                <h4>{RSR2_MOMENTUM_SCREENER.name}</h4>
+                                <span className="as-of-date">覆盖样本池：{RSR2_MOMENTUM_SCREENER.universe}</span>
+                            </div>
+                            <div className="rsr-stat-badges">
+                                <div className="stat-pill">
+                                    <span className="lbl">实证胜率</span>
+                                    <span className="val text-gold font-mono">{RSR2_MOMENTUM_SCREENER.historicalWinRatePct}%</span>
+                                </div>
+                                <div className="stat-pill">
+                                    <span className="lbl">利润因子 (PF)</span>
+                                    <span className="val text-cyan font-mono">{RSR2_MOMENTUM_SCREENER.profitFactor}x</span>
+                                </div>
+                                <div className="stat-pill">
+                                    <span className="lbl">平均持仓</span>
+                                    <span className="val text-green font-mono">{RSR2_MOMENTUM_SCREENER.holdingBarsExpected} 天</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rsr-criteria-strip">
+                            <span className="crit-item"><strong>铁律 1:</strong> RS Rating &ge; {RSR2_MOMENTUM_SCREENER.rsThreshold} (超越全市场 85% 股票)</span>
+                            <span className="crit-item"><strong>铁律 2:</strong> 均线多头排列 (Close &gt; MA20 &gt; MA50 &gt; MA200)</span>
+                            <span className="crit-item"><strong>铁律 3:</strong> 突破放量 &ge; {RSR2_MOMENTUM_SCREENER.volumeThreshold}x 20日均量</span>
+                            <span className="crit-item"><strong>铁律 4:</strong> 收盘强度 CLV &ge; {RSR2_MOMENTUM_SCREENER.clvThreshold} (位于日内最高 25% 区间)</span>
+                        </div>
+                    </div>
+
+                    {/* 标的卡片网格 */}
+                    <div className="rsr-stocks-grid">
+                        {RSR2_MOMENTUM_SCREENER.stocks.map(stk => (
+                            <div key={stk.symbol} className="rsr-stock-card">
+                                <div className="rsr-card-head">
+                                    <div>
+                                        <span className="sym font-mono font-bold">{stk.symbol}</span>
+                                        <span className="name">{stk.name}</span>
+                                    </div>
+                                    <span className={`rs-badge font-mono ${stk.rsRating >= 95 ? 'rs-super' : ''}`}>
+                                        RS {stk.rsRating}
+                                    </span>
+                                </div>
+
+                                <span className="rsr-sector-tag">{stk.sector}</span>
+
+                                <div className="rsr-metrics-grid">
+                                    <div className="metric-box">
+                                        <span className="lbl">现价 / 突破位</span>
+                                        <span className="val font-mono">${stk.currentPrice.toFixed(2)} / ${stk.breakoutPrice.toFixed(2)}</span>
+                                    </div>
+                                    <div className="metric-box">
+                                        <span className="lbl">放量倍数</span>
+                                        <span className="val font-mono text-cyan">{stk.volumeMultiplier.toFixed(2)}x 均量</span>
+                                    </div>
+                                    <div className="metric-box">
+                                        <span className="lbl">收盘强度 (CLV)</span>
+                                        <span className="val font-mono text-gold">{stk.closeLocationValue.toFixed(2)}</span>
+                                    </div>
+                                    <div className="metric-box">
+                                        <span className="lbl">ATR 波动带</span>
+                                        <span className="val font-mono">±${stk.atr14.toFixed(2)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="rsr-status-row">
+                                    <span className="lbl">突破状态：</span>
+                                    <span className={`rsr-status-pill status-${stk.breakoutStatus}`}>
+                                        {stk.breakoutStatus === 'confirmed' ? '🟢 突破放量确认 (主升浪)' : '🟡 观察蓄势待破 (临界点)'}
+                                    </span>
+                                </div>
+
+                                <div className="rsr-catalyst-note">
+                                    <strong>🚀 核心驱动催化剂：</strong>
+                                    <p>{stk.catalyst}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：防洗盘二次企稳重入决策树 */}
+            {subTab === 'reentry' && (
+                <div className="rebound-reentry-view">
+                    <div className="reentry-banner-card">
+                        <div className="reentry-head">
+                            <span className="reentry-icon">🔄</span>
+                            <div>
+                                <h4>{REENTRY_EXECUTION_ENGINE.version}：防洗盘二次企稳重入决策树</h4>
+                                <span className="as-of-date">解决痛点：严防优质白马在假破位洗盘触碰盘中止损后快速爆拉拉升、散户“卖飞大牛股”</span>
+                            </div>
+                        </div>
+
+                        <div className="reentry-stats-bar">
+                            <div className="stat-pill">
+                                <span className="lbl">洗盘企稳挽回率</span>
+                                <span className="val text-gold font-mono">{REENTRY_EXECUTION_ENGINE.historicalWhipsawRecoveryRatePct}%</span>
+                                <span className="sub">(26年历史 38.6% 止损被成功挽救)</span>
+                            </div>
+                            <div className="stat-pill">
+                                <span className="lbl">平均收益增厚</span>
+                                <span className="val text-cyan font-mono">+{REENTRY_EXECUTION_ENGINE.avgGainImprovementPct}%</span>
+                                <span className="sub">(相较于机械割肉离场)</span>
+                            </div>
+                            <div className="stat-pill">
+                                <span className="lbl">观察窗口期</span>
+                                <span className="val text-green font-mono">{REENTRY_EXECUTION_ENGINE.observationWindowDays} 个交易日</span>
+                                <span className="sub">(超期未收复则硬性淘汰)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 四步执行决策流 */}
+                    <div className="reentry-flow-container">
+                        <h4>🔄 严谨点时执行状态机流程</h4>
+                        <div className="flow-steps-grid">
+                            {REENTRY_EXECUTION_ENGINE.stepByStepFlow.map(s => (
+                                <div key={s.step} className="flow-step-card">
+                                    <div className="step-badge">步骤 {s.step}</div>
+                                    <h4 className="step-title">{s.title}</h4>
+                                    <p className="step-action">{s.action}</p>
+                                    <div className="step-guard">
+                                        <strong>🛡️ 严格防线：</strong>
+                                        <p>{s.riskGuard}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 实盘挽救案例 */}
+                    <div className="reentry-cases-section">
+                        <h4>📋 近期实战洗盘挽回案例台账</h4>
+                        <div className="cases-cards-grid">
+                            {REENTRY_EXECUTION_ENGINE.recentCaseStudies.map(c => (
+                                <div key={c.symbol} className="case-card">
+                                    <div className="case-top">
+                                        <span className="case-sym font-mono font-bold">{c.symbol}</span>
+                                        <span className="case-gain font-mono text-green font-bold">+{c.subsequentMaxGainPct.toFixed(2)}%</span>
+                                    </div>
+                                    <div className="case-timeline">
+                                        <div className="time-node">
+                                            <span className="date font-mono">{c.stopLossDate}</span>
+                                            <span className="label">触碰止损</span>
+                                            <span className="px font-mono">${c.stopPrice.toFixed(2)}</span>
+                                        </div>
+                                        <div className="time-arrow">➡️ 企稳 ➡️</div>
+                                        <div className="time-node">
+                                            <span className="date font-mono">{c.reentryDate}</span>
+                                            <span className="label">触发重入</span>
+                                            <span className="px font-mono">${c.reentryPrice.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="case-status-note">{c.status}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：单因子风险预算与锁利实证 */}
+            {subTab === 'risk-budget' && (
+                <div className="rebound-risk-budget-view">
+                    <div className="risk-budget-banner">
+                        <div className="budget-head">
+                            <span className="budget-icon">⚖️</span>
+                            <div>
+                                <h4>组合级单因子 30% 风险预算硬约束 & 出场机制实证</h4>
+                                <span className="as-of-date">审计基准日：{PORTFOLIO_RISK_BUDGET_DATA.asOfDate}</span>
+                            </div>
+                        </div>
+                        <div className="budget-summary-callout">
+                            {PORTFOLIO_RISK_BUDGET_DATA.summaryInsight}
+                        </div>
+                    </div>
+
+                    {/* 因子暴露约束进度 */}
+                    <div className="factors-constraint-section">
+                        <h4>📊 核心因子集中度监控 (硬约束上限: 30%)</h4>
+                        <div className="factors-list">
+                            {PORTFOLIO_RISK_BUDGET_DATA.factorConstraints.map((fc, idx) => (
+                                <div key={idx} className={`factor-budget-card status-${fc.riskLevel}`}>
+                                    <div className="fb-head">
+                                        <span className="fb-name">{fc.factorName}</span>
+                                        <span className={`fb-weight font-mono font-bold ${fc.currentWeightPct > fc.hardLimitPct ? 'text-red' : 'text-green'}`}>
+                                            {fc.currentWeightPct.toFixed(2)}% (上限 {fc.hardLimitPct.toFixed(1)}%)
+                                        </span>
+                                    </div>
+                                    <div className="fb-bar-wrap">
+                                        <div
+                                            className={`fb-bar-fill ${fc.currentWeightPct > fc.hardLimitPct ? 'fill-danger' : 'fill-safe'}`}
+                                            style={{ width: `${Math.min(fc.currentWeightPct, 100)}%` }}
+                                        />
+                                    </div>
+                                    <p className="fb-action"><strong>风控指令：</strong>{fc.actionRequired}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 出场止盈机制 26 年实证对比表 */}
+                    <div className="exit-study-section">
+                        <h4>🔬 26年历史三大出场止盈模式科学对照表 (2000–2026 全样本)</h4>
+                        <div className="exit-table-wrap">
+                            <table className="exit-comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>出场模式</th>
+                                        <th>年化复合 (CAGR)</th>
+                                        <th>夏普比率 (Sharpe)</th>
+                                        <th>最大历史回撤</th>
+                                        <th>胜率 (Win Rate)</th>
+                                        <th>换手率倍数</th>
+                                        <th>实证裁决结论</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {PORTFOLIO_RISK_BUDGET_DATA.exitMethodEmpiricalStudy.map((ex, idx) => (
+                                        <tr key={idx} className={idx === 0 ? 'highlight-winner-row' : ''}>
+                                            <td className="font-bold">{ex.method}</td>
+                                            <td className="font-mono font-bold text-gold">+{ex.cagrPct.toFixed(1)}%</td>
+                                            <td className="font-mono font-bold text-cyan">{ex.sharpeRatio.toFixed(2)}</td>
+                                            <td className="font-mono text-green">{ex.maxDrawdownPct.toFixed(2)}%</td>
+                                            <td className="font-mono">{ex.winRatePct.toFixed(1)}%</td>
+                                            <td className="font-mono">{ex.turnoverMultiplier.toFixed(1)}x</td>
+                                            <td className="verdict-cell">{ex.verdict}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

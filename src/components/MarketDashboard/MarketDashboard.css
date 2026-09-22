@@ -5577,3 +5577,636 @@
   color: #fff8e1;
 }
 
+/* ============================================================================
+   Phase 3 进阶深度协同样式：RSR2动量突破、防洗盘二次重入决策树、风险预算
+   ============================================================================ */
+
+/* 1. RSR2 相对强弱动量突破雷达 */
+.rebound-rsr-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rsr-banner-card {
+  background: linear-gradient(135deg, rgba(28, 20, 38, 0.95), rgba(16, 12, 28, 0.95));
+  border: 1px solid rgba(255, 64, 129, 0.35);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.rsr-banner-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.rsr-banner-head h4 {
+  margin: 6px 0 2px;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+.rsr-banner-head .as-of-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.rsr-stat-badges {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rsr-stat-badges .stat-pill {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 90px;
+}
+
+.rsr-stat-badges .stat-pill .lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.rsr-stat-badges .stat-pill .val {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.rsr-criteria-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.rsr-criteria-strip .crit-item {
+  font-size: 0.76rem;
+  color: #f8bbd0;
+  line-height: 1.4;
+}
+
+.rsr-criteria-strip .crit-item strong {
+  color: #ff4081;
+}
+
+.rsr-stocks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.rsr-stock-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.rsr-stock-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 64, 129, 0.45);
+}
+
+.rsr-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.rsr-card-head .sym {
+  font-size: 1.2rem;
+  color: #ff4081;
+  display: block;
+}
+
+.rsr-card-head .name {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.rs-badge {
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(255, 64, 129, 0.15);
+  color: #ff4081;
+  border: 1px solid rgba(255, 64, 129, 0.3);
+}
+
+.rs-badge.rs-super {
+  background: linear-gradient(135deg, rgba(255, 64, 129, 0.3), rgba(255, 215, 0, 0.2));
+  color: #ffd700;
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+.rsr-sector-tag {
+  font-size: 0.72rem;
+  color: #80d8ff;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 4px;
+  padding: 3px 8px;
+  align-self: flex-start;
+}
+
+.rsr-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.rsr-metrics-grid .metric-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rsr-metrics-grid .metric-box .lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.rsr-metrics-grid .metric-box .val {
+  font-size: 0.82rem;
+}
+
+.rsr-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+}
+
+.rsr-status-row .lbl {
+  color: var(--text-muted);
+}
+
+.rsr-status-pill {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.rsr-status-pill.status-confirmed {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.rsr-status-pill.status-watching {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.rsr-catalyst-note {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.rsr-catalyst-note strong {
+  color: #ff80ab;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.rsr-catalyst-note p {
+  margin: 0;
+}
+
+/* 2. 防洗盘二次企稳重入决策树 */
+.rebound-reentry-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reentry-banner-card {
+  background: linear-gradient(135deg, rgba(20, 36, 32, 0.95), rgba(12, 26, 22, 0.95));
+  border: 1px solid rgba(0, 230, 118, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reentry-banner-card .reentry-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reentry-banner-card .reentry-icon {
+  font-size: 1.8rem;
+}
+
+.reentry-banner-card h4 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #00e676;
+}
+
+.reentry-banner-card .as-of-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.reentry-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 14px;
+  border-radius: 8px;
+}
+
+.reentry-stats-bar .stat-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reentry-stats-bar .stat-pill .lbl {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.reentry-stats-bar .stat-pill .val {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.reentry-stats-bar .stat-pill .sub {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.reentry-flow-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reentry-flow-container h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.flow-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.flow-step-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.flow-step-card .step-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #00e676;
+  background: rgba(0, 230, 118, 0.12);
+  padding: 2px 8px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+.flow-step-card .step-title {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.flow-step-card .step-action {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.flow-step-card .step-guard {
+  background: rgba(255, 23, 68, 0.06);
+  border-left: 3px solid #ff1744;
+  padding: 6px 8px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: #ff8a80;
+  margin-top: auto;
+}
+
+.flow-step-card .step-guard strong {
+  display: block;
+}
+
+.flow-step-card .step-guard p {
+  margin: 0;
+}
+
+.reentry-cases-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reentry-cases-section h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.cases-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.case-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.case-card .case-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.case-card .case-sym {
+  font-size: 1.15rem;
+  color: #00e676;
+}
+
+.case-card .case-gain {
+  font-size: 1.1rem;
+}
+
+.case-timeline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.case-timeline .time-node {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.case-timeline .time-node .date {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.case-timeline .time-node .label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.case-timeline .time-node .px {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.case-timeline .time-arrow {
+  font-size: 0.75rem;
+  color: #00e676;
+}
+
+.case-status-note {
+  font-size: 0.72rem;
+  color: #b9f6ca;
+  line-height: 1.4;
+}
+
+/* 3. 单因子风险预算与锁利实证 */
+.rebound-risk-budget-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.risk-budget-banner {
+  background: linear-gradient(135deg, rgba(36, 28, 16, 0.95), rgba(24, 18, 12, 0.95));
+  border: 1px solid rgba(255, 179, 0, 0.35);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.risk-budget-banner .budget-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.risk-budget-banner .budget-icon {
+  font-size: 1.8rem;
+}
+
+.risk-budget-banner h4 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #ffb300;
+}
+
+.risk-budget-banner .as-of-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.budget-summary-callout {
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 4px solid #ffb300;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #fff8e1;
+}
+
+.factors-constraint-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.factors-constraint-section h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.factors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.factor-budget-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.factor-budget-card.status-breach {
+  border-color: rgba(255, 82, 82, 0.4);
+  background: rgba(255, 82, 82, 0.05);
+}
+
+.factor-budget-card .fb-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.factor-budget-card .fb-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.factor-budget-card .fb-bar-wrap {
+  height: 8px;
+  border-radius: 4px;
+  background: #111;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.factor-budget-card .fb-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.factor-budget-card .fb-bar-fill.fill-safe {
+  background: linear-gradient(90deg, #4caf50, #81c784);
+}
+
+.factor-budget-card .fb-bar-fill.fill-danger {
+  background: linear-gradient(90deg, #ff9800, #f44336);
+}
+
+.factor-budget-card .fb-action {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.exit-study-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.exit-study-section h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.exit-table-wrap {
+  overflow-x: auto;
+}
+
+.exit-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.exit-comparison-table th,
+.exit-comparison-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.exit-comparison-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.exit-comparison-table .highlight-winner-row {
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.exit-comparison-table .highlight-winner-row td {
+  border-bottom-color: rgba(255, 215, 0, 0.2);
+}
+
+.exit-comparison-table .verdict-cell {
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+

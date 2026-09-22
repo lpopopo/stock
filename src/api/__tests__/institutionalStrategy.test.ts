@@ -12,6 +12,9 @@ import {
     FEAR_GATE_DYNAMIC_MATRIX,
     MARKET_BREADTH_DIVERGENCE_DATA,
     PREREGISTERED_MECHANISMS,
+    RSR2_MOMENTUM_SCREENER,
+    REENTRY_EXECUTION_ENGINE,
+    PORTFOLIO_RISK_BUDGET_DATA,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -175,5 +178,53 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
             expect(m.failureRisk.length).toBeGreaterThan(15);
             expect(m.evidenceRequirement.length).toBeGreaterThan(15);
         });
+    });
+
+    it('12. should verify RSR2 momentum breakout screener parameters and top stocks', () => {
+        expect(RSR2_MOMENTUM_SCREENER.rsThreshold).toBe(85);
+        expect(RSR2_MOMENTUM_SCREENER.volumeThreshold).toBe(1.5);
+        expect(RSR2_MOMENTUM_SCREENER.clvThreshold).toBe(0.75);
+        expect(RSR2_MOMENTUM_SCREENER.profitFactor).toBeGreaterThan(2.0);
+        expect(RSR2_MOMENTUM_SCREENER.stocks.length).toBeGreaterThanOrEqual(5);
+
+        const symbols = RSR2_MOMENTUM_SCREENER.stocks.map(s => s.symbol);
+        expect(symbols).toContain('NVDA');
+        expect(symbols).toContain('AVGO');
+        expect(symbols).toContain('ANET');
+
+        RSR2_MOMENTUM_SCREENER.stocks.forEach(s => {
+            expect(s.rsRating).toBeGreaterThanOrEqual(85);
+            expect(s.volumeMultiplier).toBeGreaterThan(1.0);
+            expect(s.closeLocationValue).toBeGreaterThan(0.7);
+            expect(s.currentPrice).toBeGreaterThan(s.ma200);
+        });
+    });
+
+    it('13. should verify Re-entry anti-whipsaw execution flow and historical cases', () => {
+        expect(REENTRY_EXECUTION_ENGINE.observationWindowDays).toBe(5);
+        expect(REENTRY_EXECUTION_ENGINE.historicalWhipsawRecoveryRatePct).toBeCloseTo(38.6, 1);
+        expect(REENTRY_EXECUTION_ENGINE.avgGainImprovementPct).toBeGreaterThan(3.0);
+        expect(REENTRY_EXECUTION_ENGINE.stepByStepFlow.length).toBe(4);
+
+        REENTRY_EXECUTION_ENGINE.recentCaseStudies.forEach(c => {
+            expect(c.savedCapitalUsd).toBeGreaterThan(0);
+            expect(c.subsequentMaxGainPct).toBeGreaterThan(0);
+            expect(c.reentryPrice).toBeGreaterThan(c.stopPrice);
+        });
+    });
+
+    it('14. should verify portfolio risk budget factor limits and exit study metrics', () => {
+        expect(PORTFOLIO_RISK_BUDGET_DATA.factorConstraints.length).toBe(3);
+
+        const aiCapexConstraint = PORTFOLIO_RISK_BUDGET_DATA.factorConstraints.find(f => f.factorName.includes('AI Capex'));
+        expect(aiCapexConstraint).toBeDefined();
+        expect(aiCapexConstraint?.riskLevel).toBe('breach');
+        expect(aiCapexConstraint?.currentWeightPct).toBeGreaterThan(30.0);
+
+        expect(PORTFOLIO_RISK_BUDGET_DATA.exitMethodEmpiricalStudy.length).toBe(3);
+        const winnerMethod = PORTFOLIO_RISK_BUDGET_DATA.exitMethodEmpiricalStudy[0];
+        expect(winnerMethod.method).toContain('全额锁利');
+        expect(winnerMethod.cagrPct).toBeGreaterThan(22.0);
+        expect(winnerMethod.sharpeRatio).toBeGreaterThan(1.7);
     });
 });
