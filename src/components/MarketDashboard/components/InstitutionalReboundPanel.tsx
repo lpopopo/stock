@@ -42,6 +42,10 @@ import {
     evaluateInflationStockBondRegime,
     calculateSlowVolatilityPositionSizing,
     PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateDiscreteLotExecution,
+    evaluateHyperscalerCapexTransmission,
+    evaluateCashSecuredPutHarvesting,
+    PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK,
     type BottomReboundStock,
     type TradeChecklistInput,
     type TradeChecklistResult,
@@ -53,6 +57,9 @@ import {
     type CalendarFragilityInput,
     type StockBondInflationRegimeInput,
     type RealizedVolatility126dInput,
+    type DiscreteLotExecutionInput,
+    type HyperscalerCapexInput,
+    type CashSecuredPutEvaluationInput,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -79,6 +86,7 @@ type SubTabType =
     | 'reclass-invariance'
     | 'tactical-guards'
     | 'calendar-vol-damping'
+    | 'discrete-execution-capex'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -187,6 +195,44 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     const calendarResult = evaluateCalendarLiquidityFragility(calendarInput);
     const inflationResult = evaluateInflationStockBondRegime(inflationInput);
     const slowVolResult = calculateSlowVolatilityPositionSizing(slowVolInput);
+
+    // Phase 13: 小微实盘离散整股陷阱防御与云巨头 Capex 传导交互状态
+    const [discreteInput, setDiscreteInput] = useState<DiscreteLotExecutionInput>({
+        symbol: 'MRVL',
+        currentShares: 1,
+        actionType: 'drawdown_cut',
+        targetFraction: 0.5,
+        currentPrice: 234.79,
+        accountNav: 35000,
+        accumulatedResidualShares: 0.0,
+        commissionFee: 1.0,
+        slippageBps: 10,
+    });
+
+    const [capexInput, setCapexInput] = useState<HyperscalerCapexInput>({
+        asOfQuarter: '2026-Q3',
+        msftCapexQoQPct: 14.2,
+        googlCapexQoQPct: 18.5,
+        amznCapexQoQPct: 11.0,
+        metaCapexQoQPct: 8.3,
+        hardwareComponents: ['GLW', 'MXL', 'MRVL', 'QCOM'],
+        leadLagHorizonWeeks: 8,
+    });
+
+    const [cspInput, setCspInput] = useState<CashSecuredPutEvaluationInput>({
+        symbol: 'QCOM',
+        spotPrice: 183.82,
+        supportPrice: 170.0,
+        optionDTE: 35,
+        impliedVolPct: 32.0,
+        allocatedCash: 18000,
+        macroFearStressScore: 4,
+    });
+
+    // 计算 Phase 13 实时结果
+    const discreteResult = evaluateDiscreteLotExecution(discreteInput);
+    const capexResult = evaluateHyperscalerCapexTransmission(capexInput);
+    const cspResult = evaluateCashSecuredPutHarvesting(cspInput);
 
     // 六维实战决策自检器交互表单状态
     const [checklistInput, setChecklistInput] = useState<TradeChecklistInput>({
@@ -415,6 +461,12 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('calendar-vol-damping')}
                 >
                     🌐 宏观日历阻尼与126日慢速定寸 (Phase 12)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'discrete-execution-capex' ? 'active' : ''}`}
+                    onClick={() => setSubTab('discrete-execution-capex')}
+                >
+                    ⚙️ 离散整股防陷阱与云Capex (Phase 13)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -3059,6 +3111,567 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                 </div>
                                 <p className="result-directive-msg">{slowVolResult.tacticalRationale}</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 13 小微实盘离散整股陷阱防御与云巨头 Capex 传导 */}
+            {subTab === 'discrete-execution-capex' && (
+                <div className="rebound-discrete-capex-view">
+                    {/* 顶部总览卡片 */}
+                    <div className="discrete-capex-header-card">
+                        <div className="discrete-capex-top-row">
+                            <div className="discrete-capex-title-wrap">
+                                <span className="discrete-capex-icon">⚙️</span>
+                                <div>
+                                    <h4>{PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK.name}</h4>
+                                    <span className="as-of-date">
+                                        发布于 {PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate} · 依据 2026-09-20/21 权威实盘审计案卷 · 离散整股陷阱防御 · 云巨头Capex牛鞭传导 · 现金担保Put收益增强
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="discrete-capex-badge-pill">
+                                <span>🛡️ 2026-09 最新权威实盘审计防御落地</span>
+                            </div>
+                        </div>
+
+                        <div className="discrete-capex-kpi-grid">
+                            <div className={`discrete-kpi-card ${discreteResult.isZeroShareTrimTrapBlocked || discreteResult.isSingleShareDrawdownCutBypassed || discreteResult.isDistressedLotAbsorbed ? 'warning-card' : 'highlight-card'}`}>
+                                <span className="kpi-label">离散整股执行指令与状态</span>
+                                <div className="kpi-val font-mono text-gold">
+                                    {discreteResult.status} ({discreteResult.flooredExecutedShares} 股)
+                                </div>
+                                <span className="kpi-sub">
+                                    {discreteResult.isZeroShareTrimTrapBlocked ? '✅ 0股死循环已阻断' : discreteResult.isSingleShareDrawdownCutBypassed ? '✅ 单股回撤已转紧密止损' : discreteResult.isDistressedLotAbsorbed ? '✅ 受损批次已核销' : '整股正常出清'}
+                                </span>
+                            </div>
+
+                            <div className="discrete-kpi-card highlight-card">
+                                <span className="kpi-label">自适应规模对账容差</span>
+                                <div className="kpi-val font-mono text-cyan">
+                                    ±${discreteResult.scaleAwareDriftTolerance.toFixed(4)}
+                                </div>
+                                <span className="kpi-sub">NAV: ${discreteInput.accountNav.toLocaleString()} · 免疫浮点累积误报</span>
+                            </div>
+
+                            <div className={`discrete-kpi-card ${capexResult.capexCycleRegime === 'accelerating_expansion' ? 'highlight-card' : capexResult.capexCycleRegime === 'inventory_digestion_contraction' ? 'danger-card' : ''}`}>
+                                <span className="kpi-label">云巨头加权 Capex 环比增幅</span>
+                                <div className={`kpi-val font-mono ${capexResult.compositeCapexGrowthQoQPct >= 10 ? 'text-green' : capexResult.compositeCapexGrowthQoQPct < 2 ? 'text-red' : 'text-gold'}`}>
+                                    +{capexResult.compositeCapexGrowthQoQPct}% ({capexResult.capexCycleRegime.toUpperCase()})
+                                </div>
+                                <span className="kpi-sub">硬件仓位乘数 {capexResult.hardwareSupplyChainMultiplier}x · 天花板 {capexResult.hardwareAllocationCapPct}%</span>
+                            </div>
+
+                            <div className={`discrete-kpi-card ${cspResult.isPermitted ? 'highlight-card' : 'danger-card'}`}>
+                                <span className="kpi-label">现金担保 Put (CSP) 收益增强</span>
+                                <div className={`kpi-val font-mono ${cspResult.isPermitted ? 'text-green' : 'text-red'}`}>
+                                    {cspResult.isPermitted ? `+${cspResult.annualizedYieldEnhancementPct}% 年化` : '禁止开立'}
+                                </div>
+                                <span className="kpi-sub">
+                                    {cspResult.isPermitted ? `收取 $${cspResult.totalPremiumEarned.toFixed(2)} (行权价 $${cspResult.strikePrice})` : cspResult.statusReason}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 模块 1：小微实盘离散整股五大陷阱防御 */}
+                    <div className="discrete-section-card">
+                        <div className="section-card-header">
+                            <span className="section-badge">支柱一 · 离散微观整股执行</span>
+                            <h4>🧩 小微实盘离散整股五大陷阱防御矩阵 (Discrete Lot Trap Defense)</h4>
+                            <p className="section-intro">
+                                依据 <code>reentry-dollar-2026-09-21/antigravity-review.md</code> 权威审计。理论分数模型在 $10,000~$100,000 小微实盘中存在 5 大致命陷阱：0股减仓死循环、单股回撤无法阶梯减仓、受损残值出清抛异常崩溃、绝对容差对账假死、核心调仓离散丢失。
+                            </p>
+                        </div>
+
+                        {/* 预设情境加载 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载实盘案卷：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setDiscreteInput({
+                                    symbol: 'MRVL',
+                                    currentShares: 1,
+                                    actionType: 'drawdown_cut',
+                                    targetFraction: 0.5,
+                                    currentPrice: 234.79,
+                                    accountNav: 35000,
+                                    accumulatedResidualShares: 0.0,
+                                    commissionFee: 1.0,
+                                    slippageBps: 10,
+                                })}
+                            >
+                                📘 案卷 1: 单股 MRVL 50% 阶梯回撤 (转化为紧密止损 $230.09)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setDiscreteInput({
+                                    symbol: 'GLW',
+                                    currentShares: 2,
+                                    actionType: 'trim_profit',
+                                    targetFraction: 0.3333,
+                                    currentPrice: 165.29,
+                                    accountNav: 35000,
+                                    accumulatedResidualShares: 0.0,
+                                    commissionFee: 1.0,
+                                    slippageBps: 10,
+                                })}
+                            >
+                                📘 案卷 2: 持仓 2 股 GLW 1/3 减仓 (阻断 0股挂单死循环)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setDiscreteInput({
+                                    symbol: 'DISTRESSED',
+                                    currentShares: 1,
+                                    actionType: 'stop_loss',
+                                    targetFraction: 1.0,
+                                    currentPrice: 0.95,
+                                    accountNav: 35000,
+                                    accumulatedResidualShares: 0.0,
+                                    commissionFee: 1.0,
+                                    slippageBps: 10,
+                                })}
+                            >
+                                📘 案卷 3: 市值不足 $1 仙股出清 (安全核销，杜绝抛异常)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setDiscreteInput({
+                                    symbol: 'SPY',
+                                    currentShares: 10,
+                                    actionType: 'core_rebalance',
+                                    targetFraction: 0.04,
+                                    currentPrice: 765.15,
+                                    accountNav: 35000,
+                                    accumulatedResidualShares: 0.65,
+                                    commissionFee: 1.0,
+                                    slippageBps: 10,
+                                })}
+                            >
+                                📘 案卷 4: SPY 核心调仓 (0.4股 + 历史0.65残差 = 整股执行1股)
+                            </button>
+                        </div>
+
+                        {/* 交互输入表单 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>标的代码 (Symbol)</label>
+                                <input
+                                    type="text"
+                                    value={discreteInput.symbol}
+                                    onChange={(e) => setDiscreteInput({ ...discreteInput, symbol: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>当前持仓股数 (整数)</label>
+                                <input
+                                    type="number"
+                                    value={discreteInput.currentShares}
+                                    onChange={(e) => setDiscreteInput({ ...discreteInput, currentShares: Math.max(0, parseInt(e.target.value) || 0) })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>执行动作类型</label>
+                                <select
+                                    value={discreteInput.actionType}
+                                    onChange={(e) => setDiscreteInput({ ...discreteInput, actionType: e.target.value as any })}
+                                >
+                                    <option value="trim_profit">分批止盈减仓 (1/3 Trim)</option>
+                                    <option value="drawdown_cut">阶梯回撤减仓 (Drawdown Cut)</option>
+                                    <option value="stop_loss">全额止损平仓 (Stop Loss)</option>
+                                    <option value="core_rebalance">核心指数再平衡 (Core Rebalance)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>理论目标比例 (0.0~1.0)</label>
+                                <input
+                                    type="number"
+                                    step="0.05"
+                                    value={discreteInput.targetFraction}
+                                    onChange={(e) => setDiscreteInput({ ...discreteInput, targetFraction: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>当前市价 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={discreteInput.currentPrice}
+                                    onChange={(e) => setDiscreteInput({ ...discreteInput, currentPrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>账户总 NAV ($)</label>
+                                <input
+                                    type="number"
+                                    value={discreteInput.accountNav}
+                                    onChange={(e) => setDiscreteInput({ ...discreteInput, accountNav: parseFloat(e.target.value) || 10000 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>累积未成交残差股数</label>
+                                <input
+                                    type="number"
+                                    step="0.05"
+                                    value={discreteInput.accumulatedResidualShares || 0}
+                                    onChange={(e) => setDiscreteInput({ ...discreteInput, accumulatedResidualShares: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>单笔佣金手续费 ($)</label>
+                                <input
+                                    type="number"
+                                    value={discreteInput.commissionFee || 1.0}
+                                    onChange={(e) => setDiscreteInput({ ...discreteInput, commissionFee: parseFloat(e.target.value) || 1.0 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 计算结果看板 */}
+                        <div className="calculation-result-box">
+                            <div className="result-header-row">
+                                <span className="result-title">离散整股执行器决议：</span>
+                                <span className={`status-badge-lg ${discreteResult.status === 'EXECUTED' ? 'badge-executed' : 'badge-converted'}`}>
+                                    {discreteResult.executionDirective}
+                                </span>
+                                <span className="tier-tag">
+                                    实际执行: {discreteResult.flooredExecutedShares} 股 (理论: {discreteResult.rawDesiredShares} 股)
+                                </span>
+                                {discreteResult.tightProtectiveStopPx && (
+                                    <span className="tag-pending">紧密保护止损: ${discreteResult.tightProtectiveStopPx.toFixed(2)}</span>
+                                )}
+                            </div>
+                            <div className="result-stats-row">
+                                <div className="stat-item">
+                                    <span className="lbl">0股死循环防御:</span>
+                                    <span className={`val ${discreteResult.isZeroShareTrimTrapBlocked ? 'text-green' : 'text-muted'}`}>
+                                        {discreteResult.isZeroShareTrimTrapBlocked ? '已拦截 (标记完成)' : '未触发'}
+                                    </span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">单股回撤盲区修复:</span>
+                                    <span className={`val ${discreteResult.isSingleShareDrawdownCutBypassed ? 'text-gold' : 'text-muted'}`}>
+                                        {discreteResult.isSingleShareDrawdownCutBypassed ? '转化为紧密止损' : '未触发'}
+                                    </span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">自适应对账容差:</span>
+                                    <span className="val text-cyan">±${discreteResult.scaleAwareDriftTolerance.toFixed(4)}</span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">残差池最新结余:</span>
+                                    <span className="val font-mono">{discreteResult.updatedResidualShares} 股</span>
+                                </div>
+                            </div>
+                            <p className="result-directive-msg">{discreteResult.tacticalRationale}</p>
+                        </div>
+                    </div>
+
+                    {/* 模块 2：Hyperscaler 云巨头资本开支牛鞭传导引擎 */}
+                    <div className="discrete-section-card">
+                        <div className="section-card-header">
+                            <span className="section-badge">支柱二 · 宏观基本面领先传导</span>
+                            <h4>📡 Hyperscaler 云巨头资本开支牛鞭传导引擎 (Capex Lead-Lag)</h4>
+                            <p className="section-intro">
+                                依据 <code>strategy-paths-2026-09-20/antigravity-review.md</code> Mechanism 3。微软、谷歌、亚马逊、Meta 的季度资本开支指引是光模块（GLW）、定制计算（MRVL）、网络通信（MXL）订单的“牛鞭效应源头”，领先 4~12 周。系统通过追踪加权 Capex 环比扩张斜率，前瞻性调节硬件仓位天花板。
+                            </p>
+                        </div>
+
+                        {/* 预设情境加载 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载 Capex 周期：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCapexInput({
+                                    asOfQuarter: '2026-Q3',
+                                    msftCapexQoQPct: 14.2,
+                                    googlCapexQoQPct: 18.5,
+                                    amznCapexQoQPct: 11.0,
+                                    metaCapexQoQPct: 8.3,
+                                    hardwareComponents: ['GLW', 'MXL', 'MRVL', 'QCOM'],
+                                    leadLagHorizonWeeks: 8,
+                                })}
+                            >
+                                📘 加载 2026-Q3 算力加速爆发期 (加权 +13.7% · 乘数 1.2x · 天花板 30%)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCapexInput({
+                                    asOfQuarter: '2026-Q4',
+                                    msftCapexQoQPct: 1.2,
+                                    googlCapexQoQPct: -0.5,
+                                    amznCapexQoQPct: 0.8,
+                                    metaCapexQoQPct: -2.1,
+                                    hardwareComponents: ['GLW', 'MXL', 'MRVL', 'QCOM'],
+                                    leadLagHorizonWeeks: 10,
+                                })}
+                            >
+                                📘 加载 砍单去库存消化期 (加权 -0.1% · 乘数 0.5x · 天花板 15%)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCapexInput({
+                                    asOfQuarter: '2026-Q2',
+                                    msftCapexQoQPct: 6.5,
+                                    googlCapexQoQPct: 7.2,
+                                    amznCapexQoQPct: 5.0,
+                                    metaCapexQoQPct: 4.8,
+                                    hardwareComponents: ['GLW', 'MXL', 'MRVL', 'QCOM'],
+                                    leadLagHorizonWeeks: 8,
+                                })}
+                            >
+                                📘 加载 常态稳健扩张期 (加权 +6.1% · 乘数 1.0x · 天花板 25%)
+                            </button>
+                        </div>
+
+                        {/* 交互输入网格 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>评估季度</label>
+                                <input
+                                    type="text"
+                                    value={capexInput.asOfQuarter}
+                                    onChange={(e) => setCapexInput({ ...capexInput, asOfQuarter: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>微软 (MSFT) Capex 环比 (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={capexInput.msftCapexQoQPct}
+                                    onChange={(e) => setCapexInput({ ...capexInput, msftCapexQoQPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>谷歌 (GOOGL) Capex 环比 (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={capexInput.googlCapexQoQPct}
+                                    onChange={(e) => setCapexInput({ ...capexInput, googlCapexQoQPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>亚马逊 (AMZN) Capex 环比 (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={capexInput.amznCapexQoQPct}
+                                    onChange={(e) => setCapexInput({ ...capexInput, amznCapexQoQPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Meta Capex 环比 (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={capexInput.metaCapexQoQPct}
+                                    onChange={(e) => setCapexInput({ ...capexInput, metaCapexQoQPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>传导周期时间窗 (周)</label>
+                                <input
+                                    type="number"
+                                    value={capexInput.leadLagHorizonWeeks || 8}
+                                    onChange={(e) => setCapexInput({ ...capexInput, leadLagHorizonWeeks: parseInt(e.target.value) || 8 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 结果看板 */}
+                        <div className="calculation-result-box">
+                            <div className="result-header-row">
+                                <span className="result-title">牛鞭效应长波传导状态：</span>
+                                <span className={`status-badge-lg ${capexResult.capexCycleRegime === 'accelerating_expansion' ? 'badge-executed' : capexResult.capexCycleRegime === 'inventory_digestion_contraction' ? 'badge-danger' : 'badge-converted'}`}>
+                                    {capexResult.capexCycleRegime.toUpperCase()}
+                                </span>
+                                <span className="tier-tag">
+                                    加权增速: +{capexResult.compositeCapexGrowthQoQPct}%
+                                </span>
+                                <span className="multiplier-badge">
+                                    硬件仓位乘数: {capexResult.hardwareSupplyChainMultiplier}x
+                                </span>
+                                <span className="tier-tag">
+                                    仓位上限: {capexResult.hardwareAllocationCapPct}%
+                                </span>
+                            </div>
+                            <div className="result-stats-row">
+                                <div className="stat-item">
+                                    <span className="lbl">监控标的:</span>
+                                    <span className="val text-cyan font-mono">{capexResult.hardwareComponents.join(', ')}</span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">传导时间窗:</span>
+                                    <span className="val text-gold">{capexResult.leadLagHorizonWeeks} 周</span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">战术指引:</span>
+                                    <span className="val text-green">{capexResult.recommendedTactics}</span>
+                                </div>
+                            </div>
+                            <p className="result-directive-msg">{capexResult.tacticalRationale}</p>
+                        </div>
+                    </div>
+
+                    {/* 模块 3：防御闲置现金担保 Put 期权收益增强架构 */}
+                    <div className="discrete-section-card">
+                        <div className="section-card-header">
+                            <span className="section-badge">支柱三 · 闲置现金收益增强</span>
+                            <h4>💰 防御闲置现金担保 Put 期权收益增强架构 (Cash-Secured Put Harvesting)</h4>
+                            <p className="section-intro">
+                                依据 <code>strategy-paths-2026-09-20/antigravity-review.md</code> Mechanism 2。系统常年沉淀 30%~70% 的防御现金。在标的坚守关键技术支撑（Rule E 强底板 / MA60 / 双底中轴）且宏观无极度高压时，在支撑位下方卖出虚值现金担保 Put（Delta 0.15~0.25），系统化收割 IV Skew 偏度溢价，不仅享有全额现金担保无穿仓风险，更能以超额折扣安全接盘心仪标的。
+                            </p>
+                        </div>
+
+                        {/* 预设情境加载 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载期权方案：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCspInput({
+                                    symbol: 'QCOM',
+                                    spotPrice: 183.82,
+                                    supportPrice: 170.0,
+                                    optionDTE: 35,
+                                    impliedVolPct: 32.0,
+                                    allocatedCash: 18000,
+                                    macroFearStressScore: 4,
+                                })}
+                            >
+                                📘 QCOM 35天 CSP (现价 $183.82 · 行权价 $170 · 抵押 $17,000 · 年化 +5.8%)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCspInput({
+                                    symbol: 'GLW',
+                                    spotPrice: 165.29,
+                                    supportPrice: 150.0,
+                                    optionDTE: 40,
+                                    impliedVolPct: 29.5,
+                                    allocatedCash: 16000,
+                                    macroFearStressScore: 3,
+                                })}
+                            >
+                                📘 GLW 40天 CSP (现价 $165.29 · 行权价 $150 · 抵押 $15,000 · 年化 +5.1%)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setCspInput({
+                                    symbol: 'MRVL',
+                                    spotPrice: 234.79,
+                                    supportPrice: 215.0,
+                                    optionDTE: 30,
+                                    impliedVolPct: 45.0,
+                                    allocatedCash: 25000,
+                                    macroFearStressScore: 9,
+                                })}
+                            >
+                                📘 极端宏观高压压力测试 (Fear 9分 · 自动熔断禁止卖出)
+                            </button>
+                        </div>
+
+                        {/* 交互输入网格 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>标的代码 (Symbol)</label>
+                                <input
+                                    type="text"
+                                    value={cspInput.symbol}
+                                    onChange={(e) => setCspInput({ ...cspInput, symbol: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>当前市价 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={cspInput.spotPrice}
+                                    onChange={(e) => setCspInput({ ...cspInput, spotPrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>关键技术支撑位 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={cspInput.supportPrice}
+                                    onChange={(e) => setCspInput({ ...cspInput, supportPrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>期权到期天数 (DTE)</label>
+                                <input
+                                    type="number"
+                                    value={cspInput.optionDTE}
+                                    onChange={(e) => setCspInput({ ...cspInput, optionDTE: parseInt(e.target.value) || 30 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>隐含波动率 IV (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    value={cspInput.impliedVolPct}
+                                    onChange={(e) => setCspInput({ ...cspInput, impliedVolPct: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>组合闲置担保现金 ($)</label>
+                                <input
+                                    type="number"
+                                    value={cspInput.allocatedCash}
+                                    onChange={(e) => setCspInput({ ...cspInput, allocatedCash: parseFloat(e.target.value) || 10000 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>宏观恐慌分 (0~10分，&gt;=8 熔断)</label>
+                                <input
+                                    type="number"
+                                    value={cspInput.macroFearStressScore || 0}
+                                    onChange={(e) => setCspInput({ ...cspInput, macroFearStressScore: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 结果看板 */}
+                        <div className="calculation-result-box">
+                            <div className="result-header-row">
+                                <span className="result-title">现金担保 Put (CSP) 收益评估：</span>
+                                <span className={`status-badge-lg ${cspResult.isPermitted ? 'badge-executed' : 'badge-danger'}`}>
+                                    {cspResult.statusReason}
+                                </span>
+                                {cspResult.isPermitted && (
+                                    <>
+                                        <span className="tier-tag">
+                                            行权价: ${cspResult.strikePrice} (折价 {cspResult.strikeDiscountPct}%)
+                                        </span>
+                                        <span className="multiplier-badge font-bold">
+                                            抵押年化提升: +{cspResult.annualizedYieldEnhancementPct}%
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                            {cspResult.isPermitted ? (
+                                <div className="result-stats-row">
+                                    <div className="stat-item">
+                                        <span className="lbl">Delta 绝对值:</span>
+                                        <span className="val text-gold font-mono">{cspResult.estimatedDelta}</span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="lbl">预估权利金:</span>
+                                        <span className="val text-green">${cspResult.estimatedPremiumPerShare.toFixed(2)}/股 (总计 ${cspResult.totalPremiumEarned.toFixed(2)})</span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="lbl">开立合约数:</span>
+                                        <span className="val font-mono">{cspResult.contractCount} 手 (占用现金 ${cspResult.totalCashCollateralRequired.toLocaleString()})</span>
+                                    </div>
+                                </div>
+                            ) : null}
+                            <p className="result-directive-msg">{cspResult.tacticalRationale}</p>
                         </div>
                     </div>
                 </div>

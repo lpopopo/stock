@@ -43,6 +43,10 @@ import {
     evaluateInflationStockBondRegime,
     calculateSlowVolatilityPositionSizing,
     PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateDiscreteLotExecution,
+    evaluateHyperscalerCapexTransmission,
+    evaluateCashSecuredPutHarvesting,
+    PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -1287,6 +1291,169 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         // 验证 Phase 12 综合常数
         expect(PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
         expect(PHASE12_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.calendarFragilityCase.scenario).toContain('季末机构再平衡');
+    });
+
+    it('40. should verify discrete lot execution trap defense (zero-share loop, single-share drawdown cut, write-off, scale tolerance, residual pool)', () => {
+        // 1. 陷阱 1：持仓 2 股触发 1/3 减仓向下取整 0 股，成功拦截并标记 trimmed=true 切断死循环
+        const zeroTrimRes = evaluateDiscreteLotExecution({
+            symbol: 'GLW',
+            currentShares: 2,
+            actionType: 'trim_profit',
+            targetFraction: 0.3333,
+            currentPrice: 165.29,
+            accountNav: 35000,
+        });
+        expect(zeroTrimRes.flooredExecutedShares).toBe(0);
+        expect(zeroTrimRes.isZeroShareTrimTrapBlocked).toBe(true);
+        expect(zeroTrimRes.status).toBe('SKIPPED_MARK_TRIMMED');
+        expect(zeroTrimRes.executionDirective).toBe('MARK_TRIMMED_SKIP_ORDER');
+        expect(zeroTrimRes.tacticalRationale).toContain('零股减仓死循环防御');
+
+        // 2. 陷阱 2：持仓 1 股遭遇 50% 阶梯回撤减仓取整为 0，自动转化为紧密移动保护止损位
+        const singleCutRes = evaluateDiscreteLotExecution({
+            symbol: 'MRVL',
+            currentShares: 1,
+            actionType: 'drawdown_cut',
+            targetFraction: 0.5,
+            currentPrice: 234.79,
+            accountNav: 35000,
+        });
+        expect(singleCutRes.flooredExecutedShares).toBe(0);
+        expect(singleCutRes.isSingleShareDrawdownCutBypassed).toBe(true);
+        expect(singleCutRes.status).toBe('CONVERTED_TIGHT_STOP');
+        expect(singleCutRes.tightProtectiveStopPx).toBeCloseTo(230.09, 2); // 234.79 * 0.98
+        expect(singleCutRes.tacticalRationale).toContain('单股回撤阶梯截断防御');
+
+        // 3. 陷阱 3：受损批次残值不足以覆盖佣金手续费，激活核销吸收协议，杜绝抛未捕获异常崩溃
+        const distressedRes = evaluateDiscreteLotExecution({
+            symbol: 'PENNY',
+            currentShares: 1,
+            actionType: 'stop_loss',
+            targetFraction: 1.0,
+            currentPrice: 0.95,
+            accountNav: 35000,
+            commissionFee: 1.0,
+        });
+        expect(distressedRes.isDistressedLotAbsorbed).toBe(true);
+        expect(distressedRes.status).toBe('ABSORBED_WRITEOFF');
+        expect(distressedRes.executionDirective).toBe('DISTRESSED_LOT_WRITE_OFF');
+        expect(distressedRes.absorbedLossAmount).toBeGreaterThan(0);
+        expect(distressedRes.tacticalRationale).toContain('受损批次核销协议');
+
+        // 4. 陷阱 4：资金规模自适应对账容差计算 (max(1e-4, 1e-6 * NAV))
+        expect(zeroTrimRes.scaleAwareDriftTolerance).toBeCloseTo(0.035, 4); // 35000 * 1e-6 = 0.035
+
+        // 5. 陷阱 5：核心 ETF 调仓残差累加
+        const coreRebalRes = evaluateDiscreteLotExecution({
+            symbol: 'SPY',
+            currentShares: 10,
+            actionType: 'core_rebalance',
+            targetFraction: 0.04, // 理论 0.4 股
+            currentPrice: 765.15,
+            accountNav: 35000,
+            accumulatedResidualShares: 0.65, // 历史结余 0.65 股
+        });
+        expect(coreRebalRes.flooredExecutedShares).toBe(1); // 0.4 + 0.65 = 1.05 -> 取整 1 股
+        expect(coreRebalRes.updatedResidualShares).toBeCloseTo(0.05, 2);
+        expect(coreRebalRes.executionDirective).toBe('EXECUTE_CORE_REBALANCE');
+    });
+
+    it('41. should evaluate hyperscaler capex lead-lag transmission on optical/semiconductor supply chain multipliers', () => {
+        // 1. 算力加速爆发期 (加权 Capex 环比 >= +10%)
+        const accelRes = evaluateHyperscalerCapexTransmission({
+            asOfQuarter: '2026-Q3',
+            msftCapexQoQPct: 14.2,
+            googlCapexQoQPct: 18.5,
+            amznCapexQoQPct: 11.0,
+            metaCapexQoQPct: 8.3,
+        });
+        expect(accelRes.compositeCapexGrowthQoQPct).toBeGreaterThanOrEqual(10.0);
+        expect(accelRes.capexCycleRegime).toBe('accelerating_expansion');
+        expect(accelRes.hardwareSupplyChainMultiplier).toBe(1.2);
+        expect(accelRes.hardwareAllocationCapPct).toBe(30.0);
+        expect(accelRes.hardwareComponents).toEqual(['GLW', 'MXL', 'MRVL', 'QCOM']);
+        expect(accelRes.recommendedTactics).toContain('放行右侧突破顺势加仓');
+
+        // 2. 砍单去库存消化期 (加权 Capex 环比 < +2%)
+        const contractRes = evaluateHyperscalerCapexTransmission({
+            asOfQuarter: '2026-Q4',
+            msftCapexQoQPct: 1.2,
+            googlCapexQoQPct: -0.5,
+            amznCapexQoQPct: 0.8,
+            metaCapexQoQPct: -2.1,
+        });
+        expect(contractRes.compositeCapexGrowthQoQPct).toBeLessThan(2.0);
+        expect(contractRes.capexCycleRegime).toBe('inventory_digestion_contraction');
+        expect(contractRes.hardwareSupplyChainMultiplier).toBe(0.5);
+        expect(contractRes.hardwareAllocationCapPct).toBe(15.0);
+        expect(contractRes.recommendedTactics).toContain('前瞻压降硬件仓位上限至 15%');
+
+        // 3. 常态稳健扩张期
+        const steadyRes = evaluateHyperscalerCapexTransmission({
+            asOfQuarter: '2026-Q2',
+            msftCapexQoQPct: 6.5,
+            googlCapexQoQPct: 7.2,
+            amznCapexQoQPct: 5.0,
+            metaCapexQoQPct: 4.8,
+        });
+        expect(steadyRes.capexCycleRegime).toBe('mature_steady');
+        expect(steadyRes.hardwareSupplyChainMultiplier).toBe(1.0);
+        expect(steadyRes.hardwareAllocationCapPct).toBe(25.0);
+    });
+
+    it('42. should evaluate cash-secured put harvesting feasibility, IV skew annualized yield, and stress circuit breaker', () => {
+        // 1. 合规且充裕现金抵押的 CSP 开立 (QCOM)
+        const validCsp = evaluateCashSecuredPutHarvesting({
+            symbol: 'QCOM',
+            spotPrice: 183.82,
+            supportPrice: 170.0,
+            optionDTE: 35,
+            impliedVolPct: 32.0,
+            allocatedCash: 18000,
+            macroFearStressScore: 4,
+        });
+        expect(validCsp.isPermitted).toBe(true);
+        expect(validCsp.statusReason).toBe('APPROVED_AND_COLLATERALIZED');
+        expect(validCsp.strikePrice).toBe(169); // Math.floor(min(170, 183.82 * 0.92 = 169.11))
+        expect(validCsp.contractCount).toBe(1);
+        expect(validCsp.totalCashCollateralRequired).toBe(16900);
+        expect(validCsp.totalPremiumEarned).toBeGreaterThan(0);
+        expect(validCsp.annualizedYieldEnhancementPct).toBeGreaterThan(3.0);
+        expect(validCsp.tacticalRationale).toContain('以大幅折扣接盘核心资产');
+
+        // 2. 宏观极度恐慌熔断 (Fear Gate >= 8) 全面禁止卖出 Put
+        const stressCsp = evaluateCashSecuredPutHarvesting({
+            symbol: 'MRVL',
+            spotPrice: 234.79,
+            supportPrice: 215.0,
+            optionDTE: 30,
+            impliedVolPct: 45.0,
+            allocatedCash: 25000,
+            macroFearStressScore: 9,
+        });
+        expect(stressCsp.isPermitted).toBe(false);
+        expect(stressCsp.statusReason).toBe('MACRO_FEAR_STRESS_ACTIVE');
+        expect(stressCsp.contractCount).toBe(0);
+        expect(stressCsp.tacticalRationale).toContain('极端高压状态，全面禁止卖出 Cash-Secured Put');
+
+        // 3. 闲置现金不足单手全额抵押拦截
+        const insufficientCashCsp = evaluateCashSecuredPutHarvesting({
+            symbol: 'QCOM',
+            spotPrice: 183.82,
+            supportPrice: 170.0,
+            optionDTE: 35,
+            impliedVolPct: 32.0,
+            allocatedCash: 5000, // 不足 $16,900
+            macroFearStressScore: 4,
+        });
+        expect(insufficientCashCsp.isPermitted).toBe(false);
+        expect(insufficientCashCsp.statusReason).toBe('INSUFFICIENT_CASH_COLLATERAL');
+        expect(insufficientCashCsp.contractCount).toBe(0);
+
+        // 验证 Phase 13 框架元数据
+        expect(PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.discreteTrapCase.scenario).toContain('MRVL');
+        expect(PHASE13_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.zeroShareTrimCase.scenario).toContain('GLW');
     });
 });
 
