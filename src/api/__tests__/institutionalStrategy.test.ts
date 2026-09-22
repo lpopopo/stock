@@ -66,6 +66,17 @@ import {
     PHASE18_ADVANCED_INSTITUTIONAL_FRAMEWORK,
     evaluateCapitalReservationArbitration,
     PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateAShareExecutionMicrostructure,
+    PHASE20_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateStationaryBlockBootstrap,
+    PHASE21_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateWalCrashRecovery,
+    PHASE22_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateHistoricalRevisionConflictGuard,
+    computeBarChecksum,
+    PHASE23_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateSemanticReplayAuditor,
+    PHASE24_ADVANCED_INSTITUTIONAL_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -2279,5 +2290,209 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
 
         expect(PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
         expect(PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('Capital Reservation');
+    });
+
+    it('Test 55: Phase 20 — A 股交易微结构适配（T+1 锁定惩罚 / 涨跌停流动性断裂 / 印花税过户费）', () => {
+        // 1. T+1 锁定硬约束：买入当日严禁日内卖出平仓
+        const t1LockResult = evaluateAShareExecutionMicrostructure({
+            symbol: '600519',
+            action: 'SELL',
+            shares: 100,
+            intendedPrice: 1800,
+            prevClose: 1850,
+            isEntryDay: true, // 买入当日
+            bar: { open: 1820, high: 1830, low: 1780, close: 1790 },
+        });
+        expect(t1LockResult.executed).toBe(false);
+        expect(t1LockResult.t1LockedPending).toBe(true);
+        expect(t1LockResult.freezeReason).toBe('t_plus_1_locked_cannot_sell');
+
+        // 2. 涨跌停流动性断裂：主板 10% 涨停买入拦截，双创 20% 跌停卖出拦截
+        const limitUpBuyResult = evaluateAShareExecutionMicrostructure({
+            symbol: '600000', // 主板 10%
+            action: 'BUY',
+            shares: 1000,
+            intendedPrice: 11.0,
+            prevClose: 10.0,
+            isEntryDay: false,
+            bar: { open: 11.0, high: 11.0, low: 11.0, close: 11.0 }, // 涨停开盘
+        });
+        expect(limitUpBuyResult.executed).toBe(false);
+        expect(limitUpBuyResult.freezeReason).toBe('limit_up_buy_frozen');
+        expect(limitUpBuyResult.priceLimitType).toBe('main_10pct');
+
+        const limitDownSellResult = evaluateAShareExecutionMicrostructure({
+            symbol: '300058', // 创业板 20%
+            action: 'SELL',
+            shares: 1000,
+            intendedPrice: 8.0,
+            prevClose: 10.0,
+            isEntryDay: false,
+            bar: { open: 8.0, high: 8.0, low: 8.0, close: 8.0 }, // 跌停开盘
+        });
+        expect(limitDownSellResult.executed).toBe(false);
+        expect(limitDownSellResult.freezeReason).toBe('limit_down_sell_frozen');
+        expect(limitDownSellResult.priceLimitType).toBe('chinext_star_20pct');
+
+        // 3. 正常卖出成交与实战摩擦费率：1000 股 @ ¥100 = ¥100,000
+        const normalSellResult = evaluateAShareExecutionMicrostructure({
+            symbol: '600519',
+            action: 'SELL',
+            shares: 1000,
+            intendedPrice: 100,
+            prevClose: 100,
+            isEntryDay: false,
+            bar: { open: 100, high: 102, low: 99, close: 101 },
+            slippageBps: 10, // 0.1% 滑点 -> 卖出价 99.9
+        });
+        expect(normalSellResult.executed).toBe(true);
+        expect(normalSellResult.stampDuty).toBeCloseTo(99900 * 0.0005, 1); // 印花税 0.05%
+        expect(normalSellResult.transferFee).toBeCloseTo(99900 * 0.00001, 2); // 过户费 0.001%
+        expect(normalSellResult.commission).toBeGreaterThanOrEqual(5.0); // 佣金
+        expect(normalSellResult.netCashDelta).toBeLessThan(normalSellResult.grossNotional);
+
+        expect(PHASE20_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE20_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('微结构');
+    });
+
+    it('Test 56: Phase 21 — 事件簇平稳块状 Bootstrap 统计检验', () => {
+        // 优质策略收益序列：日均 +0.08%，年化 ~20%
+        const goodReturns = [
+            0.005, -0.002, 0.008, 0.001, -0.003, 0.006, 0.004, -0.001, 0.007, 0.003,
+            0.004, -0.002, 0.005, 0.002, -0.001, 0.006, 0.003, -0.002, 0.004, 0.005,
+        ];
+        const bootstrapResult = evaluateStationaryBlockBootstrap({
+            dailyReturns: goodReturns,
+            meanBlockSize: 5,
+            iterations: 500,
+            riskFreeRate: 0.02,
+            seed: 42,
+        });
+
+        expect(bootstrapResult.iterations).toBe(500);
+        expect(bootstrapResult.sharpeDistribution.p50).toBeGreaterThan(0.0);
+        expect(bootstrapResult.cagrDistribution.mean).toBeGreaterThan(0.0);
+        expect(bootstrapResult.isPromotable).toBe(true);
+        expect(bootstrapResult.verdict).toContain('准入合格');
+
+        // 持续亏损序列检验
+        const badReturns = [-0.005, -0.002, -0.008, 0.001, -0.003, -0.006];
+        const badResult = evaluateStationaryBlockBootstrap({
+            dailyReturns: badReturns,
+            meanBlockSize: 3,
+            iterations: 200,
+            seed: 42,
+        });
+        expect(badResult.isPromotable).toBe(false);
+        expect(badResult.verdict).toContain('准入拦截');
+
+        expect(PHASE21_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE21_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('Bootstrap');
+    });
+
+    it('Test 57: Phase 22 — WAL 预写日志与 4 阶段崩溃原子恢复机制', () => {
+        const initialState = { cash: 5000, holdings: { GLW: 10 } };
+        const pendingTrades = [{ symbol: 'MRVL', shares: 4, price: 200, side: 'BUY' as const }];
+
+        // 1. 阶段 2 (订单已暂存，尚未写账本) 崩溃注入
+        const stage2CrashResult = evaluateWalCrashRecovery({
+            initialState,
+            simulatedCrashStage: 'STAGE_2_TRADES_APPENDED',
+            pendingTrades,
+        });
+        expect(stage2CrashResult.wasInterrupted).toBe(true);
+        expect(stage2CrashResult.recoveryAction).toBe('rollback_dirty_state');
+        expect(stage2CrashResult.finalRecoveredState.cash).toBe(5000); // 现金完美还原，无扣款
+        expect(stage2CrashResult.finalRecoveredState.holdings.MRVL).toBeUndefined();
+        expect(stage2CrashResult.duplicateTradesPrevented).toBe(1);
+        expect(stage2CrashResult.isAtomicallyConsistent).toBe(true);
+
+        // 2. 阶段 4 正常提交
+        const stage4CommitResult = evaluateWalCrashRecovery({
+            initialState,
+            simulatedCrashStage: 'STAGE_4_COMMITTED',
+            pendingTrades,
+            commission: 1.0,
+        });
+        expect(stage4CommitResult.wasInterrupted).toBe(false);
+        expect(stage4CommitResult.recoveryAction).toBe('fast_forward_commit');
+        expect(stage4CommitResult.finalRecoveredState.cash).toBe(5000 - 800 - 1); // 4 * 200 + 1 = 801 扣减
+        expect(stage4CommitResult.finalRecoveredState.holdings.MRVL).toBe(4);
+        expect(stage4CommitResult.isAtomicallyConsistent).toBe(true);
+
+        expect(PHASE22_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE22_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('WAL');
+    });
+
+    it('Test 58: Phase 23 — 行情源历史修订冲突防护与指纹存证', () => {
+        const date = '2026-09-18';
+        const rawBar = { date, open: 240, high: 248, low: 238, close: 245, volume: 1000000 };
+        const frozenChecksum = computeBarChecksum(rawBar);
+        const frozenRegistry = {
+            [date]: { ...rawBar, sha256Signature: frozenChecksum },
+        };
+
+        // 1. 正常数据：远程返回与本地历史指纹 100% 一致
+        const cleanResult = evaluateHistoricalRevisionConflictGuard({
+            symbol: 'MRVL',
+            historicalFrozenRegistry: frozenRegistry,
+            incomingRemoteBars: [rawBar],
+        });
+        expect(cleanResult.conflictDetected).toBe(false);
+        expect(cleanResult.actionTaken).toBe('approved_and_indexed');
+        expect(cleanResult.quarantineFolder).toBeNull();
+
+        // 2. 异常篡改：远程悄悄将 2026-09-18 的收盘价从 245 改为 240
+        const tamperedBar = { ...rawBar, close: 240 };
+        const breachResult = evaluateHistoricalRevisionConflictGuard({
+            symbol: 'MRVL',
+            historicalFrozenRegistry: frozenRegistry,
+            incomingRemoteBars: [tamperedBar],
+        });
+        expect(breachResult.conflictDetected).toBe(true);
+        expect(breachResult.conflictedDates).toContain('2026-09-18');
+        expect(breachResult.actionTaken).toBe('quarantined_to_failed_staging');
+        expect(breachResult.quarantineFolder).toContain('snapshots/failed_staging/MRVL_2026-09-18');
+
+        expect(PHASE23_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE23_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('Historical Revision');
+    });
+
+    it('Test 59: Phase 24 — 独立第三方语义重放与逐 Bit 审计器', () => {
+        const rawBars = [
+            { date: '2026-09-21', open: 100, high: 105, low: 98, close: 102, volume: 5000 },
+            { date: '2026-09-22', open: 102, high: 106, low: 101, close: 104, volume: 6000 },
+        ];
+
+        // 1. 完美匹配生产账本
+        const cleanLedger = [
+            { date: '2026-09-21', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 3000 + 10 * 102 },
+            { date: '2026-09-22', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 3000 + 10 * 104 },
+        ];
+        const cleanAudit = evaluateSemanticReplayAuditor({
+            rawBars,
+            productionLedger: cleanLedger,
+            initialCapital: 4000,
+        });
+        expect(cleanAudit.auditVerdict).toBe('VERIFIED_CLEAN');
+        expect(cleanAudit.maxNavDiscrepancy).toBeLessThanOrEqual(0.01);
+        expect(cleanAudit.integrityChecksum).toContain('PASS');
+
+        // 2. 存在 $0.05 累计浮点偏差 -> 立即触发熔断
+        const dirtyLedger = [
+            { date: '2026-09-21', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 3000 + 10 * 102 + 0.05 },
+            { date: '2026-09-22', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 3000 + 10 * 104 },
+        ];
+        const breachAudit = evaluateSemanticReplayAuditor({
+            rawBars,
+            productionLedger: dirtyLedger,
+            initialCapital: 4000,
+        });
+        expect(breachAudit.auditVerdict).toBe('DISCREPANCY_BREACH');
+        expect(breachAudit.breachRecords).toHaveLength(1);
+        expect(breachAudit.integrityChecksum).toContain('FAIL');
+
+        expect(PHASE24_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE24_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('Semantic Replay');
     });
 });

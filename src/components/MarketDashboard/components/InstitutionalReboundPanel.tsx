@@ -89,6 +89,22 @@ import {
     evaluateCapitalReservationArbitration,
     PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK,
     type CapitalReservationArbitrationInput,
+    evaluateAShareExecutionMicrostructure,
+    PHASE20_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type AShareExecutionInput,
+    evaluateStationaryBlockBootstrap,
+    PHASE21_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type BlockBootstrapInput,
+    evaluateWalCrashRecovery,
+    PHASE22_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type WalCrashRecoveryInput,
+    evaluateHistoricalRevisionConflictGuard,
+    computeBarChecksum,
+    PHASE23_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type RevisionConflictInput,
+    evaluateSemanticReplayAuditor,
+    PHASE24_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type SemanticReplayInput,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -131,7 +147,8 @@ type SubTabType =
     | 'v9'
     | 'hedgefunds'
     | 'three-arm-reentry'
-    | 'portfolio-orchestrator-arbitration';
+    | 'portfolio-orchestrator-arbitration'
+    | 'production-infrastructure';
 
 export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps> = ({
     colorScheme = 'cn',
@@ -492,6 +509,72 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     });
     const capitalArbitrationResult = evaluateCapitalReservationArbitration(arbitrationInput);
 
+    // Phase 20: A 股交易微结构适配状态
+    const [aShareInput, setAShareInput] = useState<AShareExecutionInput>({
+        symbol: '600519',
+        action: 'SELL',
+        shares: 100,
+        intendedPrice: 1800,
+        prevClose: 1850,
+        isEntryDay: false,
+        stopLossPrice: 1780,
+        bar: { open: 1820, high: 1830, low: 1775, close: 1790 },
+        slippageBps: 10,
+        liquidityHaircutBps: 50,
+    });
+    const aShareResult = evaluateAShareExecutionMicrostructure(aShareInput);
+
+    // Phase 21: 事件簇平稳块状 Bootstrap 统计检验状态
+    const [bootstrapInput, setBootstrapInput] = useState<BlockBootstrapInput>({
+        dailyReturns: [
+            0.005, -0.002, 0.008, 0.001, -0.003, 0.006, 0.004, -0.001, 0.007, 0.003,
+            0.004, -0.002, 0.005, 0.002, -0.001, 0.006, 0.003, -0.002, 0.004, 0.005,
+        ],
+        meanBlockSize: 22,
+        iterations: 1000,
+        riskFreeRate: 0.02,
+        seed: 42,
+    });
+    const bootstrapResult = evaluateStationaryBlockBootstrap(bootstrapInput);
+
+    // Phase 22: WAL 预写日志与 4 阶段崩溃原子恢复状态
+    const [walInput, setWalInput] = useState<WalCrashRecoveryInput>({
+        initialState: { cash: 5000, holdings: { GLW: 10 } },
+        simulatedCrashStage: 'STAGE_2_TRADES_APPENDED',
+        pendingTrades: [{ symbol: 'MRVL', shares: 4, price: 200, side: 'BUY' }],
+        commission: 1.0,
+    });
+    const walResult = evaluateWalCrashRecovery(walInput);
+
+    // Phase 23: 行情源历史修订冲突防护状态
+    const [revisionInput, setRevisionInput] = useState<RevisionConflictInput>({
+        symbol: 'MRVL',
+        historicalFrozenRegistry: {
+            '2026-09-18': {
+                date: '2026-09-18', open: 240, high: 248, low: 238, close: 245, volume: 1000000,
+                sha256Signature: computeBarChecksum({ date: '2026-09-18', open: 240, high: 248, low: 238, close: 245, volume: 1000000 }),
+            },
+        },
+        incomingRemoteBars: [
+            { date: '2026-09-18', open: 240, high: 248, low: 238, close: 245, volume: 1000000 },
+        ],
+    });
+    const revisionResult = evaluateHistoricalRevisionConflictGuard(revisionInput);
+
+    // Phase 24: 独立第三方语义重放审计状态
+    const [replayInput, setReplayInput] = useState<SemanticReplayInput>({
+        rawBars: [
+            { date: '2026-09-21', open: 100, high: 105, low: 98, close: 102, volume: 5000 },
+            { date: '2026-09-22', open: 102, high: 106, low: 101, close: 104, volume: 6000 },
+        ],
+        productionLedger: [
+            { date: '2026-09-21', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 4020 },
+            { date: '2026-09-22', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 4040 },
+        ],
+        initialCapital: 4000,
+    });
+    const replayResult = evaluateSemanticReplayAuditor(replayInput);
+
     // 六维实战决策自检器交互表单状态
     const [checklistInput, setChecklistInput] = useState<TradeChecklistInput>({
         symbol: 'NVDA',
@@ -749,6 +832,12 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('portfolio-orchestrator-arbitration')}
                 >
                     🌐 组合风控·连续调度·资金仲裁 (Phase 17-19)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'production-infrastructure' ? 'active' : ''}`}
+                    onClick={() => setSubTab('production-infrastructure')}
+                >
+                    🏭 生产级基建·A股微结构与审计 (Phase 20-24)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -5624,6 +5713,406 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                         )}
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
                             元数据: {PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK.name}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 20-24 生产级量化基建·A股微结构与独立审计 */}
+            {subTab === 'production-infrastructure' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-top-row">
+                            <span className="six-gates-phase-label">Phase 20 - 24</span>
+                            <span className="six-gates-title">🏭 生产级量化基建 · A股微结构与独立审计</span>
+                            <span className="six-gates-asof">{PHASE20_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate}</span>
+                        </div>
+                        <div className="six-gates-subtitle">
+                            A股 T+1 惩罚与涨跌停断裂 · 22天平稳块 Bootstrap 置信检验 · WAL 4阶段崩溃原子恢复 · 行情历史修订隔离 · 逐 Bit 语义重放审计
+                        </div>
+                    </div>
+
+                    {/* Card 1: Phase 20 A 股交易微结构与实战摩擦 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🇨🇳</span>
+                            <span className="gates-card-title">Phase 20: A 股交易微结构适配与摩擦账本 (A-Share Microstructure)</span>
+                            <span className={`gates-badge ${aShareResult.executed ? 'badge-pass' : 'badge-fail'}`}>
+                                {aShareResult.executed ? '✅ 撮合成交' : '🚫 执行拦截 / T+1挂起'}
+                            </span>
+                        </div>
+                        <div className="gates-preset-row">
+                            <button
+                                className="gates-preset-btn"
+                                onClick={() => setAShareInput({
+                                    symbol: '600519',
+                                    action: 'SELL',
+                                    shares: 100,
+                                    intendedPrice: 1800,
+                                    prevClose: 1850,
+                                    isEntryDay: true, // 买入当日
+                                    stopLossPrice: 1780,
+                                    bar: { open: 1820, high: 1830, low: 1775, close: 1790 },
+                                    slippageBps: 10,
+                                    liquidityHaircutBps: 50,
+                                })}
+                            >
+                                Preset 1: T+1 锁定卖出测试 (买入日禁止日内平仓)
+                            </button>
+                            <button
+                                className="gates-preset-btn"
+                                onClick={() => setAShareInput({
+                                    symbol: '300058', // 创业板 20%
+                                    action: 'BUY',
+                                    shares: 1000,
+                                    intendedPrice: 12.0,
+                                    prevClose: 10.0,
+                                    isEntryDay: false,
+                                    bar: { open: 12.0, high: 12.0, low: 12.0, close: 12.0 }, // 20% 一字涨停
+                                    slippageBps: 10,
+                                    liquidityHaircutBps: 50,
+                                })}
+                            >
+                                Preset 2: 涨跌停流动性断裂测试 (双创 20% 涨停买入拦截)
+                            </button>
+                            <button
+                                className="gates-preset-btn"
+                                onClick={() => setAShareInput({
+                                    symbol: '600519',
+                                    action: 'SELL',
+                                    shares: 1000,
+                                    intendedPrice: 100,
+                                    prevClose: 100,
+                                    isEntryDay: false,
+                                    bar: { open: 100, high: 102, low: 99, close: 101 },
+                                    slippageBps: 10,
+                                    liquidityHaircutBps: 50,
+                                })}
+                            >
+                                Preset 3: 正常 A 股卖出与印花税/过户费明细
+                            </button>
+                        </div>
+                        <div className="gates-form-grid">
+                            <div className="gates-form-row">
+                                <label>股票代码 (前缀识别板块)</label>
+                                <input
+                                    type="text"
+                                    value={aShareInput.symbol}
+                                    onChange={e => setAShareInput({ ...aShareInput, symbol: e.target.value.trim().toUpperCase() })}
+                                />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>交易方向</label>
+                                <select
+                                    value={aShareInput.action}
+                                    onChange={e => setAShareInput({ ...aShareInput, action: e.target.value as 'BUY' | 'SELL' })}
+                                >
+                                    <option value="BUY">买入 (BUY)</option>
+                                    <option value="SELL">卖出 / 止损 (SELL)</option>
+                                </select>
+                            </div>
+                            <div className="gates-form-row">
+                                <label>是否为买入当日 (T+1 锁定)</label>
+                                <select
+                                    value={aShareInput.isEntryDay ? 'true' : 'false'}
+                                    onChange={e => setAShareInput({ ...aShareInput, isEntryDay: e.target.value === 'true' })}
+                                >
+                                    <option value="false">否（非买入当日，可自由卖出）</option>
+                                    <option value="true">是（买入当日持仓，受 T+1 物理锁定）</option>
+                                </select>
+                            </div>
+                            <div className="gates-form-row">
+                                <label>交易股数</label>
+                                <input
+                                    type="number"
+                                    value={aShareInput.shares}
+                                    onChange={e => setAShareInput({ ...aShareInput, shares: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>昨日收盘基准价 (¥)</label>
+                                <input
+                                    type="number"
+                                    value={aShareInput.prevClose}
+                                    onChange={e => setAShareInput({ ...aShareInput, prevClose: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>当日开盘价 (¥)</label>
+                                <input
+                                    type="number"
+                                    value={aShareInput.bar.open}
+                                    onChange={e => setAShareInput({ ...aShareInput, bar: { ...aShareInput.bar, open: parseFloat(e.target.value) || 0 } })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="gates-result-panel">
+                            <div className="gates-meta-row">
+                                <span>板块类型: {aShareResult.priceLimitType === 'main_10pct' ? '主板 (±10%)' : aShareResult.priceLimitType === 'chinext_star_20pct' ? '科创/创业板 (±20%)' : '北交所 (±30%)'}</span>
+                                <span>涨停价上限: ¥{aShareResult.upperPriceLimit.toFixed(2)}</span>
+                                <span>跌停价下限: ¥{aShareResult.lowerPriceLimit.toFixed(2)}</span>
+                                <span>成交状态: {aShareResult.executed ? '✅ 成交' : `🚫 冻结 (${aShareResult.freezeReason})`}</span>
+                            </div>
+                            {aShareResult.executed && (
+                                <div className="gates-meta-row">
+                                    <span>名义总额: ¥{aShareResult.grossNotional.toFixed(2)}</span>
+                                    <span>印花税(0.05%): ¥{aShareResult.stampDuty.toFixed(2)}</span>
+                                    <span>过户费(0.001%): ¥{aShareResult.transferFee.toFixed(2)}</span>
+                                    <span>券商佣金(最低¥5): ¥{aShareResult.commission.toFixed(2)}</span>
+                                    <span>净资金变动: ¥{aShareResult.netCashDelta.toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="gates-result-row">
+                                <span>执行说明：</span>
+                                <span className="gates-result-reason">{aShareResult.explanation}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 2: Phase 21 平稳块状 Bootstrap 检验 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🎲</span>
+                            <span className="gates-card-title">Phase 21: 事件簇平稳块状 Bootstrap 统计检验 (Stationary Block Bootstrap)</span>
+                            <span className={`gates-badge ${bootstrapResult.isPromotable ? 'badge-pass' : 'badge-fail'}`}>
+                                {bootstrapResult.isPromotable ? '✅ 准入合格 (CI下界>0)' : '⚠️ 准入拦截 (CI下界<=0)'}
+                            </span>
+                        </div>
+                        <div className="gates-preset-row">
+                            <button
+                                className="gates-preset-btn"
+                                onClick={() => setBootstrapInput({
+                                    dailyReturns: [
+                                        0.005, -0.002, 0.008, 0.001, -0.003, 0.006, 0.004, -0.001, 0.007, 0.003,
+                                        0.004, -0.002, 0.005, 0.002, -0.001, 0.006, 0.003, -0.002, 0.004, 0.005,
+                                    ],
+                                    meanBlockSize: 22,
+                                    iterations: 1000,
+                                    riskFreeRate: 0.02,
+                                    seed: 42,
+                                })}
+                            >
+                                检验数据集 1: 优质稳健正Alpha序列 (1000次重抽样)
+                            </button>
+                            <button
+                                className="gates-preset-btn"
+                                onClick={() => setBootstrapInput({
+                                    dailyReturns: [-0.005, -0.002, -0.008, 0.001, -0.003, -0.006, 0.002, -0.004],
+                                    meanBlockSize: 10,
+                                    iterations: 500,
+                                    riskFreeRate: 0.02,
+                                    seed: 42,
+                                })}
+                            >
+                                检验数据集 2: 高衰减/虚高伪装序列 (测试刚性拦截)
+                            </button>
+                        </div>
+                        <div className="gates-meta-row">
+                            <span>重抽样次数: {bootstrapResult.iterations} 次</span>
+                            <span>平均块大小: {bootstrapResult.meanBlockSize} 日</span>
+                            <span>样本年化收益: {bootstrapResult.empiricalMeanReturn.toFixed(2)}%</span>
+                            <span>样本 Sharpe: {bootstrapResult.empiricalSharpe.toFixed(2)}</span>
+                        </div>
+                        <div className="gates-form-grid" style={{ marginTop: '10px' }}>
+                            <div className="stat-card" style={{ padding: '12px', background: 'var(--card-bg-subtle)', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Sharpe Ratio 90% 置信区间</div>
+                                <div style={{ fontSize: '18px', fontWeight: 600, marginTop: '4px' }}>
+                                    [{bootstrapResult.sharpeDistribution.p05.toFixed(2)}, {bootstrapResult.sharpeDistribution.p95.toFixed(2)}]
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>中位数: {bootstrapResult.sharpeDistribution.p50.toFixed(2)}</div>
+                            </div>
+                            <div className="stat-card" style={{ padding: '12px', background: 'var(--card-bg-subtle)', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>CAGR 90% 置信区间</div>
+                                <div style={{ fontSize: '18px', fontWeight: 600, marginTop: '4px' }}>
+                                    [{bootstrapResult.cagrDistribution.p05.toFixed(1)}%, {bootstrapResult.cagrDistribution.p95.toFixed(1)}%]
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>期望值: {bootstrapResult.cagrDistribution.mean.toFixed(1)}%</div>
+                            </div>
+                            <div className="stat-card" style={{ padding: '12px', background: 'var(--card-bg-subtle)', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>胜率分布 (Win Rate)</div>
+                                <div style={{ fontSize: '18px', fontWeight: 600, marginTop: '4px' }}>
+                                    {bootstrapResult.winRateDistribution.mean.toFixed(1)}%
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>5%极值: {bootstrapResult.winRateDistribution.p05.toFixed(1)}%</div>
+                            </div>
+                        </div>
+                        <div className="gates-result-panel" style={{ marginTop: '10px' }}>
+                            <span className="gates-result-reason"><strong>审计裁决：</strong>{bootstrapResult.verdict} ({PHASE21_ADVANCED_INSTITUTIONAL_FRAMEWORK.name})</span>
+                        </div>
+                    </div>
+
+                    {/* Card 3: Phase 22 WAL 预写日志与崩溃原子恢复 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">⚡</span>
+                            <span className="gates-card-title">Phase 22: WAL 预写日志与 4 阶段崩溃原子恢复 (WAL & Crash Resilience)</span>
+                            <span className={`gates-badge ${walResult.isAtomicallyConsistent ? 'badge-pass' : 'badge-fail'}`}>
+                                {walResult.isAtomicallyConsistent ? '🛡️ 100% 确定性自愈' : '⚠️ 状态异常'}
+                            </span>
+                        </div>
+                        <div className="gates-preset-row">
+                            <button
+                                className={`gates-preset-btn ${walInput.simulatedCrashStage === 'STAGE_1_OBSERVATION_RECORDED' ? 'active' : ''}`}
+                                onClick={() => setWalInput({ ...walInput, simulatedCrashStage: 'STAGE_1_OBSERVATION_RECORDED' })}
+                            >
+                                断点 1: 观察已记录时崩溃
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${walInput.simulatedCrashStage === 'STAGE_2_TRADES_APPENDED' ? 'active' : ''}`}
+                                onClick={() => setWalInput({ ...walInput, simulatedCrashStage: 'STAGE_2_TRADES_APPENDED' })}
+                            >
+                                断点 2: 订单已暂存尚未写账本时崩溃
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${walInput.simulatedCrashStage === 'STAGE_3_POSITION_WRITTEN' ? 'active' : ''}`}
+                                onClick={() => setWalInput({ ...walInput, simulatedCrashStage: 'STAGE_3_POSITION_WRITTEN' })}
+                            >
+                                断点 3: 持仓写入但提交令牌缺失时崩溃
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${walInput.simulatedCrashStage === 'STAGE_4_COMMITTED' ? 'active' : ''}`}
+                                onClick={() => setWalInput({ ...walInput, simulatedCrashStage: 'STAGE_4_COMMITTED' })}
+                            >
+                                正常流: 原子提交成功 (Stage 4)
+                            </button>
+                        </div>
+                        <div className="gates-meta-row">
+                            <span>崩溃模拟点: {walResult.crashStage}</span>
+                            <span>自愈动作: {walResult.recoveryAction === 'rollback_dirty_state' ? '🔄 回滚脏数据至安全快照' : '⏩ 前向快进确认'}</span>
+                            <span>拦截重复交易: {walResult.duplicateTradesPrevented} 笔</span>
+                            <span>恢复后现金: ${walResult.finalRecoveredState.cash.toFixed(2)}</span>
+                        </div>
+                        <div style={{ marginTop: '10px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>WAL 预写不可变日志终端流：</div>
+                            <div style={{ background: '#0a0d14', color: '#10b981', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '11px', marginTop: '4px', lineHeight: '1.6' }}>
+                                {walResult.walLogEntries.map((log, idx) => (
+                                    <div key={idx}>{log}</div>
+                                ))}
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                            元数据: {PHASE22_ADVANCED_INSTITUTIONAL_FRAMEWORK.name}
+                        </div>
+                    </div>
+
+                    {/* Card 4: Phase 23 & Phase 24 历史修订冲突防护与独立语义重放 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🔍</span>
+                            <span className="gates-card-title">Phase 23 & 24: 行情历史修订防护 (Phase 23) 与 独立语义重放审计 (Phase 24)</span>
+                            <span className="gates-badge badge-neutral">双轨对账引擎</span>
+                        </div>
+
+                        <div className="gates-form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                            {/* Phase 23 部分 */}
+                            <div style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <strong style={{ fontSize: '13px' }}>🛡️ Phase 23 行情历史修订冲突侦测</strong>
+                                    <span className={`gates-badge ${revisionResult.conflictDetected ? 'badge-fail' : 'badge-pass'}`}>
+                                        {revisionResult.conflictDetected ? '🚨 发现篡改' : '✅ 指纹一致'}
+                                    </span>
+                                </div>
+                                <div className="gates-preset-row">
+                                    <button
+                                        className="gates-preset-btn"
+                                        onClick={() => setRevisionInput({
+                                            symbol: 'MRVL',
+                                            historicalFrozenRegistry: {
+                                                '2026-09-18': {
+                                                    date: '2026-09-18', open: 240, high: 248, low: 238, close: 245, volume: 1000000,
+                                                    sha256Signature: computeBarChecksum({ date: '2026-09-18', open: 240, high: 248, low: 238, close: 245, volume: 1000000 }),
+                                                },
+                                            },
+                                            incomingRemoteBars: [{ date: '2026-09-18', open: 240, high: 248, low: 238, close: 245, volume: 1000000 }],
+                                        })}
+                                    >
+                                        正常数据输入
+                                    </button>
+                                    <button
+                                        className="gates-preset-btn"
+                                        onClick={() => setRevisionInput({
+                                            symbol: 'MRVL',
+                                            historicalFrozenRegistry: {
+                                                '2026-09-18': {
+                                                    date: '2026-09-18', open: 240, high: 248, low: 238, close: 245, volume: 1000000,
+                                                    sha256Signature: computeBarChecksum({ date: '2026-09-18', open: 240, high: 248, low: 238, close: 245, volume: 1000000 }),
+                                                },
+                                            },
+                                            incomingRemoteBars: [{ date: '2026-09-18', open: 240, high: 248, low: 238, close: 240, volume: 1000000 }], // 篡改收盘价为 240
+                                        })}
+                                    >
+                                        模拟第三方篡改历史收盘价
+                                    </button>
+                                </div>
+                                <div style={{ fontSize: '12px', marginTop: '10px', lineHeight: '1.6' }}>
+                                    <div>处置状态: <strong>{revisionResult.actionTaken}</strong></div>
+                                    {revisionResult.quarantineFolder && (
+                                        <div style={{ color: 'var(--loss-color)', fontFamily: 'monospace', fontSize: '11px', wordBreak: 'break-all' }}>
+                                            隔离目录: {revisionResult.quarantineFolder}
+                                        </div>
+                                    )}
+                                    <div style={{ color: 'var(--text-muted)', marginTop: '4px' }}>{revisionResult.explanation}</div>
+                                </div>
+                            </div>
+
+                            {/* Phase 24 部分 */}
+                            <div style={{ padding: '14px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <strong style={{ fontSize: '13px' }}>⚖️ Phase 24 独立语义重放逐 Bit 对账</strong>
+                                    <span className={`gates-badge ${replayResult.auditVerdict === 'VERIFIED_CLEAN' ? 'badge-pass' : 'badge-fail'}`}>
+                                        {replayResult.auditVerdict === 'VERIFIED_CLEAN' ? '🟢 逐 Bit 通过' : '🔴 一票熔断'}
+                                    </span>
+                                </div>
+                                <div className="gates-preset-row">
+                                    <button
+                                        className="gates-preset-btn"
+                                        onClick={() => setReplayInput({
+                                            rawBars: [
+                                                { date: '2026-09-21', open: 100, high: 105, low: 98, close: 102, volume: 5000 },
+                                                { date: '2026-09-22', open: 102, high: 106, low: 101, close: 104, volume: 6000 },
+                                            ],
+                                            productionLedger: [
+                                                { date: '2026-09-21', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 4020 },
+                                                { date: '2026-09-22', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 4040 },
+                                            ],
+                                            initialCapital: 4000,
+                                        })}
+                                    >
+                                        精准账本重放对账
+                                    </button>
+                                    <button
+                                        className="gates-preset-btn"
+                                        onClick={() => setReplayInput({
+                                            rawBars: [
+                                                { date: '2026-09-21', open: 100, high: 105, low: 98, close: 102, volume: 5000 },
+                                                { date: '2026-09-22', open: 102, high: 106, low: 101, close: 104, volume: 6000 },
+                                            ],
+                                            productionLedger: [
+                                                { date: '2026-09-21', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 4020.05 }, // 注入 0.05 误差
+                                                { date: '2026-09-22', reportedCash: 3000, reportedHoldings: { GLW: 10 }, reportedNav: 4040 },
+                                            ],
+                                            initialCapital: 4000,
+                                        })}
+                                    >
+                                        注入 $0.05 累加误差
+                                    </button>
+                                </div>
+                                <div style={{ fontSize: '12px', marginTop: '10px', lineHeight: '1.6' }}>
+                                    <div>对账检查点会话: <strong>{replayResult.totalCheckedSessions} 个</strong></div>
+                                    <div>最大 NAV 偏差: <strong>${replayResult.maxNavDiscrepancy.toFixed(3)}</strong> (门槛 $0.01)</div>
+                                    <div>完整性校验码: <span style={{ fontFamily: 'monospace' }}>{replayResult.integrityChecksum}</span></div>
+                                    {replayResult.breachRecords.length > 0 && (
+                                        <div style={{ color: 'var(--loss-color)', fontSize: '11px' }}>
+                                            ⚠️ 熔断日期: {replayResult.breachRecords.map(b => `${b.date} (差值 $${b.discrepancy})`).join(', ')}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                            元数据: {PHASE23_ADVANCED_INSTITUTIONAL_FRAMEWORK.name} · {PHASE24_ADVANCED_INSTITUTIONAL_FRAMEWORK.name}
                         </div>
                     </div>
                 </div>
