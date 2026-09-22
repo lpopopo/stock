@@ -81,6 +81,14 @@ import {
     type EpisodeBar,
     type SessionDecision,
     type IntradayStopCheckInput,
+    evaluatePortfolioGuard,
+    PHASE17_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type PortfolioGuardInput,
+    evaluateMultiDayForwardOrchestration,
+    PHASE18_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateCapitalReservationArbitration,
+    PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type CapitalReservationArbitrationInput,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -122,7 +130,8 @@ type SubTabType =
     | 'trades'
     | 'v9'
     | 'hedgefunds'
-    | 'three-arm-reentry';
+    | 'three-arm-reentry'
+    | 'portfolio-orchestrator-arbitration';
 
 export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps> = ({
     colorScheme = 'cn',
@@ -406,6 +415,83 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     });
     const intradayCheckResult = evaluateIntradayStopCheck(intradayCheckInput);
 
+    // Phase 17: 组合层限额穿透与核心再平衡排他保护
+    const [portfolioGuardInput, setPortfolioGuardInput] = useState<PortfolioGuardInput>({
+        cash: 3500,
+        assets: {
+            SPY: { shares: 10, price: 500, is_core: true, themes: [] },
+            MRVL: { shares: 6, price: 250, is_core: false, themes: ['ai_capex'] },
+            MXL: { shares: 10, price: 80, is_core: false, themes: ['ai_capex'] },
+        },
+        pendingOrders: [],
+        proposal: { symbol: 'GLW', target_weight: 0.08, max_price: 150, candidate_themes: ['ai_capex'] },
+        limits: {
+            stock: 0.30,
+            single: 0.20,
+            gross: 1.00,
+            cash_floor: 0.25,
+            new_stock: 0.15,
+            themes: { 'ai_capex': 0.55, 'semiconductor': 0.40 },
+            min_economic_notional: 200.0,
+            max_round_trip_fee_ratio: 0.01,
+        },
+        episode_cash: 1000,
+        original_shares: 8,
+        has_unbounded_core_rebalance: false,
+    });
+    const portfolioGuardResult = evaluatePortfolioGuard(portfolioGuardInput);
+
+    // Phase 18: 多日连续前瞻调度器
+    const [multiDaySessions, setMultiDaySessions] = useState<string[]>(['2026-09-22', '2026-09-23', '2026-09-24']);
+    const [multiDayHasGap, setMultiDayHasGap] = useState<boolean>(false);
+    const p18SessionsToRun = multiDayHasGap ? ['2026-09-22', '2026-09-24'] : multiDaySessions;
+    const p18DemoBars: Record<string, Record<string, EpisodeBar>> = {
+        '2026-09-22': { MRVL: { session: '2026-09-22', open_at: '2026-09-22T13:30:00Z', close_at: '2026-09-22T20:00:00Z', open: 240, high: 245, low: 238, close: 242, corporate_action: false } },
+        '2026-09-23': { MRVL: { session: '2026-09-23', open_at: '2026-09-23T13:30:00Z', close_at: '2026-09-23T20:00:00Z', open: 242, high: 248, low: 240, close: 246, corporate_action: false } },
+        '2026-09-24': { MRVL: { session: '2026-09-24', open_at: '2026-09-24T13:30:00Z', close_at: '2026-09-24T20:00:00Z', open: 246, high: 252, low: 244, close: 250, corporate_action: false } },
+    };
+    const p18DemoDecisions: Record<string, Record<string, SessionDecision>> = {
+        '2026-09-22': {
+            MRVL: {
+                recorded_at: '2026-09-22T20:30:00Z', inherited_exit: false, evidence_id: 'ev-1',
+                next_stops: { hold: null, exit_reentry: null },
+                buy: {
+                    gates: { information: true, trend: true, fear: true, concentration: true, cooldown: true, stop_plan: true },
+                    max_shares: 4, max_price: 245, exit_execution_mode: 'completed_close_next_open',
+                },
+            },
+        },
+        '2026-09-23': { MRVL: { recorded_at: '2026-09-23T20:30:00Z', inherited_exit: false, evidence_id: 'ev-2', next_stops: { hold: null, exit_reentry: null } } },
+        '2026-09-24': { MRVL: { recorded_at: '2026-09-24T20:30:00Z', inherited_exit: false, evidence_id: 'ev-3', next_stops: { hold: null, exit_reentry: null } } },
+    };
+    const multiDayResult = evaluateMultiDayForwardOrchestration({
+        sessions: p18SessionsToRun,
+        initialCash: 5000,
+        initialHoldings: { MRVL: 0 },
+        dailyBars: p18DemoBars,
+        dailyDecisions: p18DemoDecisions,
+        portfolioPolicy: portfolioGuardInput.limits,
+    });
+
+    // Phase 19: 多标的资金排他预留与 MCR 仲裁器
+    const [arbitrationInput, setArbitrationInput] = useState<CapitalReservationArbitrationInput>({
+        candidates: [
+            { candidateId: 'cand-glw', symbol: 'GLW', requestedShares: 5, price: 100, targetWeight: 0.08, sixGatesPass: true, sixGatesScore: 88, rsScore: 82, marginalRiskContribution: 0.08, theme: 'ai_capex' },
+            { candidateId: 'cand-mrvl', symbol: 'MRVL', requestedShares: 4, price: 240, targetWeight: 0.08, sixGatesPass: true, sixGatesScore: 92, rsScore: 90, marginalRiskContribution: 0.45, theme: 'ai_capex' },
+            { candidateId: 'cand-mxl', symbol: 'MXL', requestedShares: 6, price: 80, targetWeight: 0.06, sixGatesPass: true, sixGatesScore: 80, rsScore: 85, marginalRiskContribution: 0.25, theme: 'ai_capex' },
+            { candidateId: 'cand-intc', symbol: 'INTC', requestedShares: 10, price: 30, targetWeight: 0.05, sixGatesPass: false, sixGatesScore: 45, rsScore: 35, marginalRiskContribution: 0.20, theme: 'semiconductor' },
+        ],
+        availableCash: 3500,
+        portfolioNav: 10000,
+        themeCaps: { 'ai_capex': 0.55, 'semiconductor': 0.40 },
+        currentThemeAllocations: { 'ai_capex': 2500, 'semiconductor': 0 },
+        arbitrationStrategy: 'mcr_min_first',
+        cashFloorPct: 0.25,
+        stockCapPct: 0.30,
+        currentStockDollars: 2500,
+    });
+    const capitalArbitrationResult = evaluateCapitalReservationArbitration(arbitrationInput);
+
     // 六维实战决策自检器交互表单状态
     const [checklistInput, setChecklistInput] = useState<TradeChecklistInput>({
         symbol: 'NVDA',
@@ -657,6 +743,12 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('three-arm-reentry')}
                 >
                     ⚖️ 三组对照减仓重入框架 (Phase 16)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'portfolio-orchestrator-arbitration' ? 'active' : ''}`}
+                    onClick={() => setSubTab('portfolio-orchestrator-arbitration')}
+                >
+                    🌐 组合风控·连续调度·资金仲裁 (Phase 17-19)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -5220,6 +5312,318 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                 <span>说明：</span>
                                 <span className="gates-result-reason">{intradayCheckResult.reason}</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 17-19 组合风控·连续调度·资金仲裁全生命周期系统 */}
+            {subTab === 'portfolio-orchestrator-arbitration' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-top-row">
+                            <span className="six-gates-phase-label">Phase 17 - 19</span>
+                            <span className="six-gates-title">🌐 组合风控 · 连续前瞻调度 · 资金排他仲裁</span>
+                            <span className="six-gates-asof">{PHASE17_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate}</span>
+                        </div>
+                        <div className="six-gates-subtitle">
+                            组合4维刚性限额穿透 · 未定界核心再平衡排他保护 · 真实交易日历连续性守卫 · 逐日状态递进 · MCR边际方差资金排他仲裁
+                        </div>
+                    </div>
+
+                    {/* Card 1: Phase 17 组合层容量穿透与核心保全 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🛡️</span>
+                            <span className="gates-card-title">Phase 17: 组合层容量穿透与核心再平衡排他保护 (Portfolio Guard)</span>
+                            <span className={`gates-badge ${portfolioGuardResult.order_authorized ? 'badge-pass' : 'badge-fail'}`}>
+                                {portfolioGuardResult.order_authorized ? '✅ 允许建仓' : '🚫 拦截禁止'}
+                            </span>
+                        </div>
+                        <div className="gates-preset-row">
+                            <button
+                                className="gates-preset-btn"
+                                onClick={() => setPortfolioGuardInput({
+                                    ...portfolioGuardInput,
+                                    has_unbounded_core_rebalance: false,
+                                    episode_cash: 1000,
+                                    original_shares: 8,
+                                    proposal: { symbol: 'GLW', target_weight: 0.08, max_price: 150, candidate_themes: ['ai_capex'] }
+                                })}
+                            >
+                                Preset 1: 正常 4 重限额穿透
+                            </button>
+                            <button
+                                className="gates-preset-btn"
+                                onClick={() => setPortfolioGuardInput({
+                                    ...portfolioGuardInput,
+                                    has_unbounded_core_rebalance: true, // 模拟核心调仓排他
+                                })}
+                            >
+                                Preset 2: 核心再平衡排他拦截 (Unbounded Core)
+                            </button>
+                            <button
+                                className="gates-preset-btn"
+                                onClick={() => setPortfolioGuardInput({
+                                    ...portfolioGuardInput,
+                                    has_unbounded_core_rebalance: false,
+                                    episode_cash: 120, // 仅购买 1 股 $120 < $200 门槛
+                                    original_shares: 1,
+                                    proposal: { symbol: 'SO', target_weight: 0.08, max_price: 120, candidate_themes: ['semiconductor'] }
+                                })}
+                            >
+                                Preset 3: 经济费率阀拦截 (&lt; $200)
+                            </button>
+                        </div>
+                        <div className="gates-form-grid">
+                            <div className="gates-form-row">
+                                <label>未定界核心再平衡正在执行</label>
+                                <select
+                                    value={portfolioGuardInput.has_unbounded_core_rebalance ? 'true' : 'false'}
+                                    onChange={e => setPortfolioGuardInput({ ...portfolioGuardInput, has_unbounded_core_rebalance: e.target.value === 'true' })}
+                                >
+                                    <option value="false">否（核心仓位稳定，允许评估个股）</option>
+                                    <option value="true">是（V8核心正在调仓，一票冻结个股）</option>
+                                </select>
+                            </div>
+                            <div className="gates-form-row">
+                                <label>账户总现金 ($)</label>
+                                <input
+                                    type="number"
+                                    value={portfolioGuardInput.cash}
+                                    onChange={e => setPortfolioGuardInput({ ...portfolioGuardInput, cash: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>本笔专款资金 ($)</label>
+                                <input
+                                    type="number"
+                                    value={portfolioGuardInput.episode_cash}
+                                    onChange={e => setPortfolioGuardInput({ ...portfolioGuardInput, episode_cash: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>拟买入标的</label>
+                                <input
+                                    type="text"
+                                    value={portfolioGuardInput.proposal.symbol}
+                                    onChange={e => setPortfolioGuardInput({ ...portfolioGuardInput, proposal: { ...portfolioGuardInput.proposal, symbol: e.target.value.toUpperCase() } })}
+                                />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>拟买入限价 ($)</label>
+                                <input
+                                    type="number"
+                                    value={portfolioGuardInput.proposal.max_price}
+                                    onChange={e => setPortfolioGuardInput({ ...portfolioGuardInput, proposal: { ...portfolioGuardInput.proposal, max_price: parseFloat(e.target.value) || 0 } })}
+                                />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>计划最大股数</label>
+                                <input
+                                    type="number"
+                                    value={portfolioGuardInput.original_shares}
+                                    onChange={e => setPortfolioGuardInput({ ...portfolioGuardInput, original_shares: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="gates-result-panel">
+                            <div className="gates-meta-row">
+                                <span>组合总 NAV: ${portfolioGuardResult.nav.toFixed(2)}</span>
+                                <span>待成交预留锁定: ${portfolioGuardResult.reserved_pending_cash.toFixed(2)}</span>
+                                <span>执行后剩余现金: ${portfolioGuardResult.post_buy_cash.toFixed(2)}</span>
+                                <span>现金底线(25%): ${(portfolioGuardResult.nav * portfolioGuardInput.limits.cash_floor).toFixed(2)}</span>
+                            </div>
+                            <div className="gates-result-row">
+                                <span>最终允许整股买入股数：</span>
+                                <strong className={portfolioGuardResult.max_reentry_shares > 0 ? 'val-positive' : 'val-negative'}>
+                                    {portfolioGuardResult.max_reentry_shares} 股 (名义金额 ${(portfolioGuardResult.max_reentry_shares * portfolioGuardInput.proposal.max_price).toFixed(2)})
+                                </strong>
+                            </div>
+                            {portfolioGuardResult.binding_or_next_share_failures.length > 0 && (
+                                <div className="gates-result-row">
+                                    <span>约束/拦截代码：</span>
+                                    <span className="gates-result-reason">
+                                        {portfolioGuardResult.binding_or_next_share_failures.join(' · ')}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Card 2: Phase 18 多日连续前瞻调度器 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📅</span>
+                            <span className="gates-card-title">Phase 18: 多日连续前瞻调度器与交易日历守卫 (Forward Orchestrator)</span>
+                            <span className={`gates-badge ${multiDayResult.calendarValidation.isValid ? 'badge-pass' : 'badge-fail'}`}>
+                                {multiDayResult.calendarValidation.isValid ? '🟢 日历连续合规' : '🔴 日历序列异常'}
+                            </span>
+                        </div>
+                        <div className="gates-preset-row">
+                            <button
+                                className={`gates-preset-btn ${!multiDayHasGap ? 'active' : ''}`}
+                                onClick={() => {
+                                    setMultiDaySessions(['2026-09-22', '2026-09-23', '2026-09-24']);
+                                    setMultiDayHasGap(false);
+                                }}
+                            >
+                                正常 3 日连续交易日 (2026-09-22 ~ 09-24)
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${multiDayHasGap ? 'active' : ''}`}
+                                onClick={() => setMultiDayHasGap(true)}
+                            >
+                                注入跳日异常 (跳过 09-23 交易日)
+                            </button>
+                        </div>
+
+                        {multiDayResult.calendarValidation.isValid ? (
+                            <>
+                                <div className="gates-meta-row">
+                                    <span>初始 NAV: ${multiDayResult.initialNav.toFixed(2)}</span>
+                                    <span>期末 NAV: ${multiDayResult.finalNav.toFixed(2)}</span>
+                                    <span>全期累计收益: {multiDayResult.totalReturnPct >= 0 ? '+' : ''}{multiDayResult.totalReturnPct.toFixed(2)}%</span>
+                                    <span>累计佣金摩擦: ${multiDayResult.totalCommissions.toFixed(2)}</span>
+                                    <span>滑点损耗: ${multiDayResult.totalSlippageCost.toFixed(2)}</span>
+                                </div>
+
+                                <table className="gates-variance-table">
+                                    <thead>
+                                        <tr>
+                                            <th>交易日</th>
+                                            <th>开盘持仓</th>
+                                            <th>日末现金</th>
+                                            <th>日末净值 (NAV)</th>
+                                            <th>单日 PnL</th>
+                                            <th>不可变检查点 (Idempotent Checkpoint)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {multiDayResult.dailySnapshots.map((snap, idx) => {
+                                            const exec = multiDayResult.dailyExecutions[idx];
+                                            return (
+                                                <tr key={snap.session}>
+                                                    <td><strong>{snap.session}</strong></td>
+                                                    <td>MRVL: {snap.holdings.MRVL ?? 0} 股</td>
+                                                    <td>${snap.cash.toFixed(2)}</td>
+                                                    <td>${snap.nav.toFixed(2)}</td>
+                                                    <td className={(exec?.dailyPnl ?? 0) >= 0 ? 'val-positive' : 'val-negative'}>
+                                                        {(exec?.dailyPnl ?? 0) >= 0 ? '+' : ''}{exec?.dailyPnl.toFixed(2)}
+                                                    </td>
+                                                    <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>{snap.checkpointId}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                    幂等签名哈希: <span style={{ fontFamily: 'monospace' }}>{multiDayResult.idempotentCheckpointSignature}</span> ({PHASE18_ADVANCED_INSTITUTIONAL_FRAMEWORK.name})
+                                </div>
+                            </>
+                        ) : (
+                            <div className="gates-error-panel">
+                                <strong>⚠️ 交易日历连续性守卫已阻断前瞻调度：</strong>
+                                {multiDayResult.calendarValidation.errors.map((err, i) => (
+                                    <div key={i} className="gates-error-item">· {err}</div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Card 3: Phase 19 多标的资金排他预留与 MCR 仲裁器 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">⚖️</span>
+                            <span className="gates-card-title">Phase 19: 多标的资金排他预留与 MCR 仲裁器 (Capital Reservation)</span>
+                            <span className="gates-badge badge-neutral">
+                                策略: {arbitrationInput.arbitrationStrategy}
+                            </span>
+                        </div>
+                        <div className="gates-preset-row">
+                            <button
+                                className={`gates-preset-btn ${arbitrationInput.arbitrationStrategy === 'mcr_min_first' ? 'active' : ''}`}
+                                onClick={() => setArbitrationInput({ ...arbitrationInput, arbitrationStrategy: 'mcr_min_first' })}
+                            >
+                                🛡️ MCR 方差增量最小优先 (mcr_min_first)
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${arbitrationInput.arbitrationStrategy === 'momentum_rs_first' ? 'active' : ''}`}
+                                onClick={() => setArbitrationInput({ ...arbitrationInput, arbitrationStrategy: 'momentum_rs_first' })}
+                            >
+                                🚀 RS 相对强弱动量领军优先 (momentum_rs_first)
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${arbitrationInput.arbitrationStrategy === 'balanced_score' ? 'active' : ''}`}
+                                onClick={() => setArbitrationInput({ ...arbitrationInput, arbitrationStrategy: 'balanced_score' })}
+                            >
+                                ⚖️ 六门控+RS+方差综合平衡 (balanced_score)
+                            </button>
+                        </div>
+
+                        <div className="gates-meta-row">
+                            <span>初始可用资金: ${capitalArbitrationResult.initialAvailableCash.toFixed(2)}</span>
+                            <span>已分配预留: ${(capitalArbitrationResult.initialAvailableCash - capitalArbitrationResult.remainingAvailableCash).toFixed(2)}</span>
+                            <span>剩余可用资金: ${capitalArbitrationResult.remainingAvailableCash.toFixed(2)}</span>
+                            <span>资金利用率: {capitalArbitrationResult.cashUtilizationPct}%</span>
+                            <span>合格候选数: {capitalArbitrationResult.qualifiedCandidatesCount} / {capitalArbitrationResult.totalCandidates}</span>
+                        </div>
+
+                        {/* 分配结果表格 */}
+                        <div style={{ marginTop: '12px' }}>
+                            <strong>📝 排他资金预留账本（{capitalArbitrationResult.allocatedReservations.length} 笔成功预留）：</strong>
+                            <table className="gates-variance-table" style={{ marginTop: '6px' }}>
+                                <thead>
+                                    <tr>
+                                        <th>仲裁顺位</th>
+                                        <th>标的</th>
+                                        <th>申请股数</th>
+                                        <th>分配整股</th>
+                                        <th>预留单价</th>
+                                        <th>名义占用</th>
+                                        <th>佣金预提</th>
+                                        <th>扣减总额</th>
+                                        <th>综合得分</th>
+                                        <th>主题分类</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {capitalArbitrationResult.allocatedReservations.map(res => (
+                                        <tr key={res.reservationId}>
+                                            <td><strong>#{res.priorityRank}</strong></td>
+                                            <td><span className="stock-chip">{res.symbol}</span></td>
+                                            <td>{arbitrationInput.candidates.find(c => c.symbol === res.symbol)?.requestedShares} 股</td>
+                                            <td><strong className="val-positive">{res.allocatedShares} 股</strong></td>
+                                            <td>${res.fillPrice.toFixed(2)}</td>
+                                            <td>${res.notionalCost.toFixed(2)}</td>
+                                            <td>${res.estimatedCommission.toFixed(2)}</td>
+                                            <td>${res.totalCashDeducted.toFixed(2)}</td>
+                                            <td>{res.compositeScore.toFixed(1)}</td>
+                                            <td><span className="theme-tag">{res.theme}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 被拒绝或未分配候选者 */}
+                        {capitalArbitrationResult.rejectedCandidates.length > 0 && (
+                            <div style={{ marginTop: '14px' }}>
+                                <strong>🚫 未分配/拦截候选列表（{capitalArbitrationResult.rejectedCandidates.length} 笔）：</strong>
+                                <div className="gates-unfilled-ledger" style={{ marginTop: '6px' }}>
+                                    {capitalArbitrationResult.rejectedCandidates.map((rej, i) => (
+                                        <div key={i} className="ledger-item ledger-sell">
+                                            <span><strong>{rej.symbol}</strong></span>
+                                            <span style={{ color: 'var(--loss-color)', fontWeight: 600 }}>[{rej.reasonCode}]</span>
+                                            <span className="ledger-reason">{rej.reasonDetail}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                            元数据: {PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK.name}
                         </div>
                     </div>
                 </div>

@@ -59,6 +59,13 @@ import {
     evaluateIntradayStopCheck,
     PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK,
     type SessionDecision,
+    evaluatePortfolioGuard,
+    PHASE17_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateSessionCalendarSequence,
+    evaluateMultiDayForwardOrchestration,
+    PHASE18_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateCapitalReservationArbitration,
+    PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -2049,7 +2056,228 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         expect(PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('三组对照');
         expect(PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.gapDownCase.solution).toContain('min(open, stop_price)');
     });
+
+    it('Test 52: Phase 17 — 组合层容量穿透、核心再平衡排他拦截与经济费率阀', () => {
+        const defaultLimits = {
+            stock: 0.30,
+            single: 0.20,
+            gross: 1.00,
+            cash_floor: 0.25,
+            new_stock: 0.15,
+            themes: { 'ai_capex': 0.55, 'semiconductor': 0.40 },
+            min_economic_notional: 200.0,
+            max_round_trip_fee_ratio: 0.01,
+        };
+
+        // 1. 核心再平衡排他检查：若存在未定界 V8 核心调仓，一票否决个股买入
+        const coreBlockedRes = evaluatePortfolioGuard({
+            cash: 4000,
+            assets: {
+                SPY: { shares: 10, price: 500, is_core: true, themes: [] },
+                MRVL: { shares: 4, price: 250, is_core: false, themes: ['ai_capex'] },
+            },
+            pendingOrders: [],
+            proposal: { symbol: 'GLW', target_weight: 0.08, max_price: 150, candidate_themes: ['ai_capex'] },
+            limits: defaultLimits,
+            episode_cash: 1000,
+            original_shares: 5,
+            has_unbounded_core_rebalance: true, // 核心正在再平衡
+        });
+        expect(coreBlockedRes.max_reentry_shares).toBe(0);
+        expect(coreBlockedRes.is_blocked_by_core_order).toBe(true);
+        expect(coreBlockedRes.order_authorized).toBe(false);
+        expect(coreBlockedRes.binding_or_next_share_failures).toContain('unbounded_core_order_blocks_stock_add');
+
+        // 2. 正常场景：受现金底线 (25%) 与主题上限 (55%) 约束，二分搜索整股计算
+        const normalRes = evaluatePortfolioGuard({
+            cash: 3500, // NAV = 3500 + 5000(SPY) + 1500(MRVL) = 10000. Cash floor = 2500. Max spendable cash = 1000.
+            assets: {
+                SPY: { shares: 10, price: 500, is_core: true, themes: [] },
+                MRVL: { shares: 6, price: 250, is_core: false, themes: ['ai_capex'] }, // $1500 (15%)
+            },
+            pendingOrders: [],
+            proposal: { symbol: 'GLW', target_weight: 0.08, max_price: 100, candidate_themes: ['ai_capex'] },
+            limits: defaultLimits,
+            episode_cash: 800, // 专款 $800
+            original_shares: 10,
+            has_unbounded_core_rebalance: false,
+        });
+        expect(coreBlockedRes.is_blocked_by_core_order).toBe(true);
+        expect(normalRes.max_reentry_shares).toBe(7); // ($800 - $1) / 100 = 7 shares (notional $700, fees $1, cash remaining $3500 - $701 = $2799 >= $2500 floor)
+        expect(normalRes.post_buy_cash).toBeGreaterThanOrEqual(2500);
+        expect(normalRes.order_authorized).toBe(true);
+
+        // 3. 经济费率阀拦截：小微金额买入 ($120 < $200 门槛)
+        const feeGateRes = evaluatePortfolioGuard({
+            cash: 3000,
+            assets: { SPY: { shares: 10, price: 500, is_core: true, themes: [] } },
+            pendingOrders: [],
+            proposal: { symbol: 'SO', target_weight: 0.08, max_price: 60, candidate_themes: ['semiconductor'] },
+            limits: defaultLimits,
+            episode_cash: 120, // 仅够买 2 股 = $120 < $200 门槛
+            original_shares: 2,
+            has_unbounded_core_rebalance: false,
+        });
+        expect(feeGateRes.max_reentry_shares).toBe(0);
+        expect(feeGateRes.binding_or_next_share_failures).toContain('economic_fee_gate');
+
+        expect(PHASE17_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE17_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('Portfolio Guard');
+    });
+
+    it('Test 53: Phase 18 — 多日连续前瞻调度器与交易日历连续性守卫', () => {
+        // 1. 交易日历异常拦截：包含周末 (2026-09-20 周日)
+        const weekendCheck = evaluateSessionCalendarSequence(['2026-09-18', '2026-09-20', '2026-09-21']);
+        expect(weekendCheck.isValid).toBe(false);
+        expect(weekendCheck.errors.some(e => e.includes('weekend'))).toBe(true);
+
+        // 2. 交易日历跳日拦截：周二跨周四跳过周三 (2026-09-22 -> 2026-09-24)
+        const gapCheck = evaluateSessionCalendarSequence(['2026-09-22', '2026-09-24']);
+        expect(gapCheck.isValid).toBe(false);
+        expect(gapCheck.errors.some(e => e.includes('gap in trading sessions'))).toBe(true);
+
+        // 3. 正常连续交易日序列 (周二至周四)
+        const validSeq = ['2026-09-22', '2026-09-23', '2026-09-24'];
+        const validCheck = evaluateSessionCalendarSequence(validSeq);
+        expect(validCheck.isValid).toBe(true);
+
+        // 4. 多日连续调度推进仿真
+        const demoLimits = {
+            stock: 0.30, single: 0.20, gross: 1.00, cash_floor: 0.25, new_stock: 0.15,
+            themes: { 'ai_capex': 0.55 }, min_economic_notional: 200, max_round_trip_fee_ratio: 0.01,
+        };
+
+        const dailyBars = {
+            '2026-09-22': {
+                MRVL: makeBar('2026-09-22', '2026-09-22', 200, 205, 198, 202),
+            },
+            '2026-09-23': {
+                MRVL: makeBar('2026-09-23', '2026-09-23', 202, 208, 201, 206),
+            },
+            '2026-09-24': {
+                MRVL: makeBar('2026-09-24', '2026-09-24', 206, 210, 204, 209),
+            },
+        };
+
+        const dailyDecisions = {
+            '2026-09-22': {
+                MRVL: {
+                    recorded_at: '2026-09-22T20:30:00+00:00', inherited_exit: false, evidence_id: 'ev-1',
+                    next_stops: { hold: null, exit_reentry: null },
+                    buy: {
+                        gates: { information: true, trend: true, fear: true, concentration: true, cooldown: true, stop_plan: true },
+                        max_shares: 4, max_price: 205, exit_execution_mode: 'completed_close_next_open' as const,
+                    },
+                },
+            },
+            '2026-09-23': {
+                MRVL: makeDecision('2026-09-23', '2026-09-23'),
+            },
+            '2026-09-24': {
+                MRVL: makeDecision('2026-09-24', '2026-09-24'),
+            },
+        };
+
+        const orchResult = evaluateMultiDayForwardOrchestration({
+            sessions: validSeq,
+            initialCash: 5000,
+            initialHoldings: { MRVL: 0 },
+            dailyBars,
+            dailyDecisions,
+            portfolioPolicy: demoLimits,
+        });
+
+        expect(orchResult.orchestrationStatus).toBe('completed');
+        expect(orchResult.dailySnapshots).toHaveLength(3);
+        expect(orchResult.dailyExecutions).toHaveLength(3);
+        expect(orchResult.idempotentCheckpointSignature).toContain('SIG-2026-09-22-TO-2026-09-24');
+        expect(orchResult.totalCommissions).toBeGreaterThan(0);
+        expect(orchResult.dailySnapshots[2].holdings.MRVL).toBe(4); // Day 1 bought 4 shares
+        expect(orchResult.finalNav).toBeGreaterThan(orchResult.initialNav); // Price increased from 200 to 209
+
+        expect(PHASE18_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE18_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('Forward Orchestrator');
+    });
+
+    it('Test 54: Phase 19 — 多标的资金排他预留与 MCR 仲裁器', () => {
+        const candidates = [
+            {
+                candidateId: 'cand-1',
+                symbol: 'GLW',
+                requestedShares: 5,
+                price: 100,
+                targetWeight: 0.08,
+                sixGatesPass: true,
+                sixGatesScore: 88,
+                rsScore: 82,
+                marginalRiskContribution: 0.08, // 极低方差增量
+                theme: 'ai_capex',
+            },
+            {
+                candidateId: 'cand-2',
+                symbol: 'MRVL',
+                requestedShares: 6,
+                price: 100,
+                targetWeight: 0.08,
+                sixGatesPass: true,
+                sixGatesScore: 92,
+                rsScore: 90,
+                marginalRiskContribution: 0.45, // 高方差增量
+                theme: 'ai_capex',
+            },
+            {
+                candidateId: 'cand-3',
+                symbol: 'INTC',
+                requestedShares: 10,
+                price: 30,
+                targetWeight: 0.05,
+                sixGatesPass: false, // 六门控不通过
+                sixGatesScore: 50,
+                rsScore: 40,
+                marginalRiskContribution: 0.20,
+                theme: 'semiconductor',
+            },
+        ];
+
+        // 1. 测试 mcr_min_first 策略：低 MCR 的 GLW 获得最高仲裁优先权
+        const mcrArbResult = evaluateCapitalReservationArbitration({
+            candidates,
+            availableCash: 3500, // Cash floor 2500 (25% of 10000) -> Net available = 1000.
+            portfolioNav: 10000,
+            themeCaps: { 'ai_capex': 0.55, 'semiconductor': 0.40 },
+            currentThemeAllocations: { 'ai_capex': 2000, 'semiconductor': 0 },
+            arbitrationStrategy: 'mcr_min_first',
+            cashFloorPct: 0.25,
+            stockCapPct: 0.30,
+            currentStockDollars: 2000,
+        });
+
+        expect(mcrArbResult.totalCandidates).toBe(3);
+        expect(mcrArbResult.qualifiedCandidatesCount).toBe(2); // INTC 门控未过被筛除
+        expect(mcrArbResult.rejectedCandidates.some(r => r.symbol === 'INTC' && r.reasonCode === 'six_gates_failed')).toBe(true);
+
+        // 验证排序：GLW (MCR 0.08) 得分高于 MRVL (MCR 0.45)
+        expect(mcrArbResult.allocatedReservations.length).toBeGreaterThanOrEqual(1);
+        expect(mcrArbResult.allocatedReservations[0].symbol).toBe('GLW');
+        expect(mcrArbResult.allocatedReservations[0].priorityRank).toBe(1);
+
+        // 2. 测试 theme_cap 饱和场景：若主题额度仅剩 $300，GLW 分配 2 股 ($200)，MRVL 因超额被拒
+        const themeCapResult = evaluateCapitalReservationArbitration({
+            candidates,
+            availableCash: 4000,
+            portfolioNav: 10000,
+            themeCaps: { 'ai_capex': 0.25 }, // 25% = $2500 上限
+            currentThemeAllocations: { 'ai_capex': 2200 }, // 已占 $2200，仅剩 $300 额度
+            arbitrationStrategy: 'mcr_min_first',
+            cashFloorPct: 0.25,
+        });
+
+        // GLW 申请 5 股 @ $100 = $500，但主题空间仅 $300 -> 整股分配 2 股 = $200，随后 MRVL 无足额空间触发 theme_cap_saturated
+        expect(themeCapResult.allocatedReservations[0].symbol).toBe('GLW');
+        expect(themeCapResult.allocatedReservations[0].allocatedShares).toBe(2);
+        expect(themeCapResult.rejectedCandidates.some(r => r.symbol === 'MRVL' && r.reasonCode === 'theme_cap_saturated')).toBe(true);
+
+        expect(PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE19_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('Capital Reservation');
+    });
 });
-
-
-
