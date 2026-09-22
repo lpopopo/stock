@@ -134,6 +134,13 @@ import {
     evaluatePortfolioHealthCheck,
     PHASE30_PORTFOLIO_PRESCRIPTION_FRAMEWORK,
     type PortfolioHoldingItem,
+    DEFAULT_FX_POSITIONS,
+    evaluateFxHedgingAndDecomposition,
+    evaluateTailRiskOptionHedging,
+    DEFAULT_TAX_LOTS,
+    evaluateTaxLossHarvesting,
+    evaluateGlobalCentralBankLiquidity,
+    evaluateDynamicRiskParity,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -148,6 +155,11 @@ type SubTabType =
     | 'gap-vwap-microstructure'
     | 'webhook-alerts'
     | 'portfolio-health-check'
+    | 'fx-hedging'
+    | 'tail-risk-options'
+    | 'tax-loss-harvesting'
+    | 'central-bank-liquidity'
+    | 'dynamic-risk-parity'
     | 'live-shadow'
     | 'fear-matrix'
     | 'breadth'
@@ -668,6 +680,50 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     const [holdings, setHoldings] = useState<PortfolioHoldingItem[]>(DEFAULT_PORTFOLIO_PRESETS['retail_tech_heavy']);
     const healthResult = useMemo(() => evaluatePortfolioHealthCheck(holdings), [holdings]);
 
+    // Phase 31: 跨境汇率对冲与损益穿透状态
+    const fxPositions = DEFAULT_FX_POSITIONS;
+    const fxTargetCurrency: 'CNH' | 'USD' = 'CNH';
+    const fxResult = useMemo(() => evaluateFxHedgingAndDecomposition({
+        positions: fxPositions,
+        portfolioTargetCurrency: fxTargetCurrency,
+        domesticRiskFreeRatePct: 2.0,
+        foreignRiskFreeRatePct: 4.8,
+    }), [fxPositions, fxTargetCurrency]);
+
+    // Phase 32: 极端尾部风险期权对冲状态
+    const [tailBudgetPct, setTailBudgetPct] = useState<number>(0.8);
+    const [tailCrisisEvent, setTailCrisisEvent] = useState<'flash_crash_20' | 'stagflation_grind_15' | 'systemic_liquidity_freeze_30'>('flash_crash_20');
+    const tailResult = useMemo(() => evaluateTailRiskOptionHedging({
+        portfolioNav: 1000000,
+        annualTailBudgetPct: tailBudgetPct,
+        currentVix: 15.5,
+        stressCrisisEvent: tailCrisisEvent,
+    }), [tailBudgetPct, tailCrisisEvent]);
+
+    // Phase 33: 税务批次优化与损失收割状态
+    const taxLots = DEFAULT_TAX_LOTS;
+    const [taxDisposalMethod, setTaxDisposalMethod] = useState<'FIFO' | 'LIFO' | 'HIFO' | 'SPECIFIC_LOT'>('HIFO');
+    const taxResult = useMemo(() => evaluateTaxLossHarvesting({
+        lots: taxLots,
+        disposalMethod: taxDisposalMethod,
+        shortTermTaxRatePct: 35.0,
+        longTermTaxRatePct: 15.0,
+    }), [taxLots, taxDisposalMethod]);
+
+    // Phase 34: 全球四大央行净流动性宏观时钟状态
+    const [liquidityPulseChange, setLiquidityPulseChange] = useState<number>(1.85);
+    const globalLiquidityResult = useMemo(() => evaluateGlobalCentralBankLiquidity({
+        sixtyDayNetLiquidityChangePct: liquidityPulseChange,
+    }), [liquidityPulseChange]);
+
+    // Phase 35: 动态风险平价 (ERC) 与协方差收缩状态
+    const [riskParitySurge, setRiskParitySurge] = useState<boolean>(false);
+    const [shrinkageDelta, setShrinkageDelta] = useState<number>(0.28);
+    const riskParityResult = useMemo(() => evaluateDynamicRiskParity({
+        shrinkageIntensityDelta: shrinkageDelta,
+        stressCorrelationSurge: riskParitySurge,
+    }), [shrinkageDelta, riskParitySurge]);
+
     const [backtestSandboxParams, setBacktestSandboxParams] = useState<V9BacktestSandboxParams>({
         coreWeightPct: 70,
         stockSleeveWeightPct: 30,
@@ -978,6 +1034,36 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('portfolio-health-check')}
                 >
                     🩺 个人持仓体检与调仓处方 (Phase 30)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'fx-hedging' ? 'active' : ''}`}
+                    onClick={() => setSubTab('fx-hedging')}
+                >
+                    💱 跨境汇率对冲与损益穿透 (Phase 31)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'tail-risk-options' ? 'active' : ''}`}
+                    onClick={() => setSubTab('tail-risk-options')}
+                >
+                    🛡️ 极端尾部期权黑天鹅保险 (Phase 32)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'tax-loss-harvesting' ? 'active' : ''}`}
+                    onClick={() => setSubTab('tax-loss-harvesting')}
+                >
+                    🧾 税收损失收割与批次优化 (Phase 33)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'central-bank-liquidity' ? 'active' : ''}`}
+                    onClick={() => setSubTab('central-bank-liquidity')}
+                >
+                    🌐 全球央行净流动性宏观时钟 (Phase 34)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'dynamic-risk-parity' ? 'active' : ''}`}
+                    onClick={() => setSubTab('dynamic-risk-parity')}
+                >
+                    ⚖️ 动态风险平价ERC与协方差收缩 (Phase 35)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -7356,6 +7442,664 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 31 跨境多币种汇率对冲与损益穿透 */}
+            {subTab === 'fx-hedging' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">💱</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 31</span>
+                                    <h4>跨境多币种汇率汇兑对冲与损益穿透引擎 (Cross-Currency FX Hedging)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    两步收益穿透分解：原币资产回报 + 汇率变动收益 + 交叉互乘项 · 抛补利率平价 (CIP) 远期对冲成本与利差贴水精确测算
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* KPI 指标卡片网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>本地原币估值</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: '4px' }}>
+                                ${(fxResult.totalPortfolioValueLocal).toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>USD/HKD 离散总值</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>折合本币总市值</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#58a6ff', marginTop: '4px' }}>
+                                ¥{(fxResult.totalPortfolioValueTarget).toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>按当前 CNH 汇率穿透</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>综合本币总回报率</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                +{fxResult.totalReturnTargetPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>原币 + 汇率 + 交叉</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>纯资产回报 vs 汇率增益</div>
+                            <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: '4px' }}>
+                                +{fxResult.pureAssetReturnContributionPct}% / +{fxResult.pureFxReturnContributionPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>美元升值提供缓冲垫</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CIP 利差贴水与锁汇比率</div>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#faad14', marginTop: '4px' }}>
+                                {fxResult.cipBasisAnnualSpreadPct}% | {(fxResult.optimalHedgeRatio * 100).toFixed(0)}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>最小方差对冲比率</div>
+                        </div>
+                    </div>
+
+                    {/* Card 1: 细分持仓多币种汇率收益穿透对账表 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📋</span>
+                            <span className="gates-card-title">细分持仓多币种汇率收益穿透拆解明细表</span>
+                            <span className="gates-badge badge-pass">恒等式穿透闭合</span>
+                        </div>
+                        <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                            <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>标的代码</th>
+                                        <th style={{ padding: '8px' }}>资产名称</th>
+                                        <th style={{ padding: '8px' }}>基准币种</th>
+                                        <th style={{ padding: '8px' }}>原币估值</th>
+                                        <th style={{ padding: '8px' }}>原币收益</th>
+                                        <th style={{ padding: '8px' }}>汇率变动</th>
+                                        <th style={{ padding: '8px' }}>折算本币收益</th>
+                                        <th style={{ padding: '8px' }}>对冲状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {fxResult.positions.map(p => (
+                                        <tr key={p.symbol} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', fontFamily: 'monospace' }}>{p.symbol}</td>
+                                            <td style={{ padding: '8px' }}>{p.assetName}</td>
+                                            <td style={{ padding: '8px' }}><span style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px' }}>{p.baseCurrency}</span></td>
+                                            <td style={{ padding: '8px', fontFamily: 'monospace' }}>${p.marketValueLocal.toLocaleString()}</td>
+                                            <td style={{ padding: '8px', color: 'var(--gain-color)' }}>+{p.assetReturnPct}%</td>
+                                            <td style={{ padding: '8px', color: '#58a6ff' }}>+{p.fxReturnPct}%</td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', color: 'var(--gain-color)' }}>+{p.totalReturnInTargetCurrencyPct}%</td>
+                                            <td style={{ padding: '8px' }}>
+                                                <span style={{
+                                                    padding: '2px 8px', borderRadius: '4px', fontSize: '11px',
+                                                    background: p.isHedged ? 'rgba(0,192,135,0.15)' : 'rgba(250,173,20,0.15)',
+                                                    color: p.isHedged ? 'var(--gain-color)' : '#faad14',
+                                                }}>
+                                                    {p.isHedged ? '🛡️ 已锁汇 (Net ' + p.hedgedNetReturnPct + '%)' : '🌐 原币敞口'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            💡 <strong>汇率对冲与套保指引</strong>：{fxResult.hedgingRecommendation}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 32 极端尾部风险期权对冲与黑天鹅保险测算 */}
+            {subTab === 'tail-risk-options' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">🛡️</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 32</span>
+                                    <h4>极端尾部风险期权对冲与黑天鹅保险测算台 (Volatility Skew & Tail-Risk Hedging)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    基于波动率偏斜 (Skew) 深度虚值 Put / VIX Call 凸性定价 · 0.5%~1.0% NAV 极低摩擦季度预算 · 危机爆发 8x~15x 收益穿透
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* 交互调节面板 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">⚙️</span>
+                            <span className="gates-card-title">尾部保险预算定寸与危机冲击情景选择</span>
+                            <span className="gates-badge badge-pass">凸性保护启用</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', marginTop: '10px' }}>
+                            <div>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginRight: '8px' }}>危机冲击情景：</span>
+                                <button className={`gates-preset-btn ${tailCrisisEvent === 'flash_crash_20' ? 'active' : ''}`} onClick={() => setTailCrisisEvent('flash_crash_20')}>
+                                    ⚡ 单日闪崩 -20% (熔断暴跌)
+                                </button>
+                                <button className={`gates-preset-btn ${tailCrisisEvent === 'stagflation_grind_15' ? 'active' : ''}`} onClick={() => setTailCrisisEvent('stagflation_grind_15')} style={{ marginLeft: '6px' }}>
+                                    📉 滞胀阴跌 -15% (熊市磨底)
+                                </button>
+                                <button className={`gates-preset-btn ${tailCrisisEvent === 'systemic_liquidity_freeze_30' ? 'active' : ''}`} onClick={() => setTailCrisisEvent('systemic_liquidity_freeze_30')} style={{ marginLeft: '6px' }}>
+                                    🌪️ 流动性冻结 -30% (雷曼黑天鹅)
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>年度保费预算：</span>
+                                <input
+                                    type="range" min="0.3" max="1.5" step="0.1" value={tailBudgetPct}
+                                    onChange={e => setTailBudgetPct(parseFloat(e.target.value))}
+                                    style={{ width: '120px' }}
+                                />
+                                <strong style={{ fontSize: '13px', color: '#faad14' }}>{tailBudgetPct}% NAV</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* KPI 英雄网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>组合评估净值 (NAV)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: '4px' }}>
+                                ${(tailResult.portfolioNav).toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>模拟基准总资产</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>年度保险预算 / 月磨损</div>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#faad14', marginTop: '4px' }}>
+                                ${tailResult.annualBudgetDollar} / ${tailResult.monthlyThetaDecayDollar}/月
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Theta 时间价值极低耗损</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>未对冲极端回撤</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--loss-color)', marginTop: '4px' }}>
+                                {tailResult.unhedgedPortfolioDrawdownPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>裸多头全额承担穿透</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>对冲后实战受保回撤</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                {tailResult.hedgedPortfolioDrawdownPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>凸性对冲吸收巨灾冲击</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>挽回极端亏损金额</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#58a6ff', marginTop: '4px' }}>
+                                +${tailResult.lossMitigatedDollar.toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>缓冲垫提升 +{tailResult.cushionImprovementPct}%</div>
+                        </div>
+                    </div>
+
+                    {/* Card 1: 尾部期权持仓与爆发赔付矩阵 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">⚡</span>
+                            <span className="gates-card-title">尾部期权持仓配置与危机凸性爆发赔付矩阵</span>
+                            <span className="gates-badge badge-pass">3 只核心虚值保险合约</span>
+                        </div>
+                        <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                            <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>合约代码</th>
+                                        <th style={{ padding: '8px' }}>标的</th>
+                                        <th style={{ padding: '8px' }}>类型</th>
+                                        <th style={{ padding: '8px' }}>行权价</th>
+                                        <th style={{ padding: '8px' }}>Delta</th>
+                                        <th style={{ padding: '8px' }}>隐含波动率</th>
+                                        <th style={{ padding: '8px' }}>成本</th>
+                                        <th style={{ padding: '8px' }}>张数</th>
+                                        <th style={{ padding: '8px' }}>危机爆发倍数</th>
+                                        <th style={{ padding: '8px' }}>危机总赔付额</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tailResult.contracts.map(c => (
+                                        <tr key={c.contractId} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', fontFamily: 'monospace' }}>{c.contractId}</td>
+                                            <td style={{ padding: '8px' }}>{c.underlyingSymbol}</td>
+                                            <td style={{ padding: '8px', color: c.optionType === 'PUT' ? '#faad14' : '#58a6ff' }}>{c.optionType}</td>
+                                            <td style={{ padding: '8px' }}>${c.strikePrice} ({c.moneynessPct}%)</td>
+                                            <td style={{ padding: '8px' }}>{c.delta}</td>
+                                            <td style={{ padding: '8px' }}>{c.impliedVolPct}%</td>
+                                            <td style={{ padding: '8px' }}>${c.costPerContract}</td>
+                                            <td style={{ padding: '8px' }}>{c.contractsHeld} 张</td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', color: 'var(--gain-color)' }}>{c.crisisGainMultiplier}x</td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', color: 'var(--gain-color)' }}>+${c.crisisDollarPayoff.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            💡 <strong>Universa / Nassim Taleb 凸性收割规程</strong>：{tailResult.monetizationRecommendation}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 33 税收损失收割与批次优化 */}
+            {subTab === 'tax-loss-harvesting' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">🧾</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 33</span>
+                                    <h4>税收损失收割与特定批次税务优化台 (Tax-Loss Harvesting & Wash-Sale Guard)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    HIFO (最高成本先出) vs FIFO 批次选优 · 短期 (35%) vs 长期 (15%) 税率差异化收割 · 30天洗售阻断与 0.90+ 替代标的无缝映射
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* 处置方法切换 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">⚖️</span>
+                            <span className="gates-card-title">税务批次处置法则 (Tax Lot Disposal Rule)</span>
+                            <span className="gates-badge badge-pass">当前：{taxDisposalMethod}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                            <button className={`gates-preset-btn ${taxDisposalMethod === 'HIFO' ? 'active' : ''}`} onClick={() => setTaxDisposalMethod('HIFO')}>
+                                🏆 HIFO (最高成本先出 - 节税最大化)
+                            </button>
+                            <button className={`gates-preset-btn ${taxDisposalMethod === 'FIFO' ? 'active' : ''}`} onClick={() => setTaxDisposalMethod('FIFO')}>
+                                ⏳ FIFO (先进先出 - 传统默认)
+                            </button>
+                            <button className={`gates-preset-btn ${taxDisposalMethod === 'LIFO' ? 'active' : ''}`} onClick={() => setTaxDisposalMethod('LIFO')}>
+                                ⏱️ LIFO (后进先出)
+                            </button>
+                            <button className={`gates-preset-btn ${taxDisposalMethod === 'SPECIFIC_LOT' ? 'active' : ''}`} onClick={() => setTaxDisposalMethod('SPECIFIC_LOT')}>
+                                🎯 Specific Lot (单批次精确指定)
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* KPI 英雄网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>待实现浮盈总额</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                +${taxResult.totalUnrealizedGainDollar.toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>长期增值持仓储备</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>可收割浮亏总额</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--loss-color)', marginTop: '4px' }}>
+                                -${taxResult.totalUnrealizedLossDollar.toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>优质税盾减免弹药</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>净应税资本利得</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#faad14', marginTop: '4px' }}>
+                                ${taxResult.netTaxableGainLossDollar.toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>盈亏抵消后应税额</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>预估资本利得税负</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: '4px' }}>
+                                ${taxResult.estimatedTaxLiabilityDollar.toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>按长期利得 15% 计提</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>亏损收割税收 Alpha</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#58a6ff', marginTop: '4px' }}>
+                                +${taxResult.harvestableTaxSavingsDollar.toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>短期税盾 35% 递延节税</div>
+                        </div>
+                    </div>
+
+                    {/* Card 1: 批次处置明细表 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📋</span>
+                            <span className="gates-card-title">特定批次 (Tax Lots) 处置分析与无缝替代标的映射</span>
+                            <span className="gates-badge badge-pass">防洗售已启用</span>
+                        </div>
+                        <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                            <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>批次号</th>
+                                        <th style={{ padding: '8px' }}>标的代码</th>
+                                        <th style={{ padding: '8px' }}>买入日期</th>
+                                        <th style={{ padding: '8px' }}>持有天数</th>
+                                        <th style={{ padding: '8px' }}>股数</th>
+                                        <th style={{ padding: '8px' }}>成本基准</th>
+                                        <th style={{ padding: '8px' }}>当前价格</th>
+                                        <th style={{ padding: '8px' }}>浮盈亏</th>
+                                        <th style={{ padding: '8px' }}>税阶</th>
+                                        <th style={{ padding: '8px' }}>推荐操作</th>
+                                        <th style={{ padding: '8px' }}>防洗售替代标的</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {taxResult.lotsWithRecommendation.map(lot => (
+                                        <tr key={lot.lotId} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <td style={{ padding: '8px', fontFamily: 'monospace' }}>{lot.lotId}</td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold' }}>{lot.symbol}</td>
+                                            <td style={{ padding: '8px' }}>{lot.buyDate}</td>
+                                            <td style={{ padding: '8px' }}>{lot.holdingDays}天</td>
+                                            <td style={{ padding: '8px' }}>{lot.shares}</td>
+                                            <td style={{ padding: '8px' }}>${lot.costBasisPerShare.toFixed(2)}</td>
+                                            <td style={{ padding: '8px' }}>${lot.currentPrice.toFixed(2)}</td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', color: lot.unrealizedGainLossDollar >= 0 ? 'var(--gain-color)' : 'var(--loss-color)' }}>
+                                                {lot.unrealizedGainLossDollar > 0 ? `+$${lot.unrealizedGainLossDollar}` : `-$${Math.abs(lot.unrealizedGainLossDollar)}`} ({lot.unrealizedGainLossPct}%)
+                                            </td>
+                                            <td style={{ padding: '8px' }}>
+                                                <span style={{
+                                                    padding: '2px 6px', borderRadius: '4px', fontSize: '11px',
+                                                    background: lot.taxTier === 'LONG_TERM' ? 'rgba(88,166,255,0.15)' : 'rgba(250,173,20,0.15)',
+                                                    color: lot.taxTier === 'LONG_TERM' ? '#58a6ff' : '#faad14',
+                                                }}>
+                                                    {lot.taxTier === 'LONG_TERM' ? '长期 (15%)' : '短期 (35%)'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '8px' }}>
+                                                <span style={{
+                                                    padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold',
+                                                    background: lot.actionRecommendation === 'HARVEST_LOSS' ? 'rgba(248,81,73,0.2)' : 'rgba(0,192,135,0.2)',
+                                                    color: lot.actionRecommendation === 'HARVEST_LOSS' ? '#f85149' : 'var(--gain-color)',
+                                                }}>
+                                                    {lot.actionRecommendation === 'HARVEST_LOSS' ? '✂️ 收割亏损' : lot.actionRecommendation === 'HOLD_FOR_LONG_TERM' ? '⏳ 待转长期' : '💰 止盈锁定'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '8px' }}>
+                                                {lot.replacementProxySymbol ? (
+                                                    <span style={{ color: '#58a6ff', fontWeight: 'bold' }}>
+                                                        🔄 换仓至 {lot.replacementProxySymbol} ({lot.replacementProxyName?.split(' ')[0]})
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ color: 'var(--text-muted)' }}>-</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            <strong>🛡️ 30天洗售红线防踩坑规则</strong>：
+                            {taxResult.washSaleGuardRules.map((rule, rIdx) => (
+                                <div key={rIdx} style={{ marginTop: '3px' }}>· {rule}</div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 34 全球四大央行净流动性宏观时钟 */}
+            {subTab === 'central-bank-liquidity' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">🌐</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 34</span>
+                                    <h4>全球四大央行净流动性脉冲与宏观资产负债表时钟 (Global Central Bank Net Liquidity)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    美联储净流动性 (Total Assets - TGA - RRP) 三合一精确解算 · 全球四大央行统一折算万亿美元流动性池 · 60天领先滞后与大类资产配置偏置
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* 流动性调节滑块 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🚰</span>
+                            <span className="gates-card-title">60 天全球净流动性脉冲变动模拟台</span>
+                            <span className="gates-badge badge-pass">{globalLiquidityResult.metrics.macroRegime}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '10px' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>60天净流动性脉冲变动率：</span>
+                            <input
+                                type="range" min="-6.0" max="6.0" step="0.25" value={liquidityPulseChange}
+                                onChange={e => setLiquidityPulseChange(parseFloat(e.target.value))}
+                                style={{ flex: 1 }}
+                            />
+                            <strong style={{ fontSize: '16px', color: liquidityPulseChange >= 0 ? 'var(--gain-color)' : 'var(--loss-color)', minWidth: '80px' }}>
+                                {liquidityPulseChange > 0 ? `+${liquidityPulseChange}` : liquidityPulseChange}%
+                            </strong>
+                        </div>
+                    </div>
+
+                    {/* KPI 英雄网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>美联储真实净流动性</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#58a6ff', marginTop: '4px' }}>
+                                ${globalLiquidityResult.metrics.fedNetLiquidityTrillion} 万亿美元
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Assets - TGA - RRP</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>财政部TGA / 隔夜逆回购RRP</div>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: '4px' }}>
+                                ${globalLiquidityResult.metrics.fedTgaTrillion}T / ${globalLiquidityResult.metrics.fedRrpTrillion}T
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>流动性吸纳水库</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>全球四大央行综合流动性池</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#faad14', marginTop: '4px' }}>
+                                ${globalLiquidityResult.metrics.globalNetLiquidityUsdTrillion} 万亿美元
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Fed + ECB + BOJ + PBOC</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>标普500历史流动性相关度</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                {globalLiquidityResult.historicalCorrelationWithSpy} (极强正相关)
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>大类资产顶层定价之锚</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>建议大类权益 / SGOV 偏置</div>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: globalLiquidityResult.equityAllocationBiasPct >= 0 ? 'var(--gain-color)' : 'var(--loss-color)', marginTop: '4px' }}>
+                                {globalLiquidityResult.equityAllocationBiasPct > 0 ? `+${globalLiquidityResult.equityAllocationBiasPct}% 权益` : `${globalLiquidityResult.equityAllocationBiasPct}% 权益`}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>现金SGOV偏置 {globalLiquidityResult.sgovCashAllocationBiasPct > 0 ? `+${globalLiquidityResult.sgovCashAllocationBiasPct}%` : `${globalLiquidityResult.sgovCashAllocationBiasPct}%`}</div>
+                        </div>
+                    </div>
+
+                    {/* Card 1: 核心恒等式与宏观时钟 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🧭</span>
+                            <span className="gates-card-title">宏观流动性周期定位与四大央行资产负债表</span>
+                            <span className="gates-badge badge-pass">{globalLiquidityResult.liquidityCyclePhase.split(' ')[0]}</span>
+                        </div>
+                        <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '13px', marginTop: '10px' }}>
+                            <strong>📐 {globalLiquidityResult.fedNetLiquidityFormula}</strong>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', marginTop: '12px' }}>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>🇺🇸 美联储 (Federal Reserve)</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '4px' }}>${globalLiquidityResult.metrics.fedTotalAssetsTrillion}T</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>缩表 QT 渐进平稳，净流动性维持 $6.0T+ 支撑</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>🇪🇺 欧洲央行 (ECB)</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '4px' }}>€{globalLiquidityResult.metrics.ecbTotalAssetsEurTrillion}T (~$6.91T)</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>降息周期开启，TLTRO 出清完毕</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>🇯🇵 日本央行 (BOJ)</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '4px' }}>¥{globalLiquidityResult.metrics.bojTotalAssetsJpyTrillion}T (~$4.95T)</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>退出负利率与 YCC，套息交易 Carry Trade 波动源</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>🇨🇳 中国央行 (PBOC)</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '4px' }}>¥{globalLiquidityResult.metrics.pbocTotalAssetsCnyTrillion}T (~$6.23T)</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>降准降息宽货币，买卖国债纳入公开市场操作</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 35 动态风险平价 (ERC) 与 Ledoit-Wolf 协方差收缩 */}
+            {subTab === 'dynamic-risk-parity' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">⚖️</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 35</span>
+                                    <h4>动态风险平价 (ERC) 与 Ledoit-Wolf 协方差收缩抗脆弱矩阵 (Dynamic Risk Parity)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    传统 70/30 静态组合风险失衡纠偏 · Ledoit-Wolf 结构化协方差收缩去噪 · 等风险贡献 (Equal Risk Contribution) 数值解算与多资产抗共振
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* 交互调节面板 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🎛️</span>
+                            <span className="gates-card-title">Ledoit-Wolf 协方差收缩参数与危机相关性共振应激</span>
+                            <span className="gates-badge badge-pass">
+                                {riskParityResult.correlationSurgeAlert ? '⚠️ 相关性异常击穿报警' : '✅ 资产低相关健康'}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', marginTop: '10px' }}>
+                            <button
+                                className={`gates-preset-btn ${riskParitySurge ? 'active' : ''}`}
+                                onClick={() => setRiskParitySurge(!riskParitySurge)}
+                            >
+                                {riskParitySurge ? '🔴 正在模拟危机相关性飙升 (Avg Corr = 0.72)' : '⚪ 正常低相关常态 (Avg Corr = 0.25)'}
+                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Ledoit-Wolf 收缩强度 δ：</span>
+                                <input
+                                    type="range" min="0.0" max="0.8" step="0.02" value={shrinkageDelta}
+                                    onChange={e => setShrinkageDelta(parseFloat(e.target.value))}
+                                    style={{ width: '120px' }}
+                                />
+                                <strong style={{ fontSize: '13px', color: '#58a6ff' }}>{shrinkageDelta}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* KPI 英雄网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>传统 70/30 组合年化波动率</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--loss-color)', marginTop: '4px' }}>
+                                {riskParityResult.portfolioVolTraditionalPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>权益单项主导全部波动</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>动态风险平价 (ERC) 波动率</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                {riskParityResult.portfolioVolErcPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>波动率显著降幅 {riskParityResult.volatilityReductionPct}%</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Ledoit-Wolf 收缩强度 δ</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#58a6ff', marginTop: '4px' }}>
+                                {riskParityResult.ledoitWolfShrinkageIntensity}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>病态协方差去噪优化</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>矩阵条件数改善倍数</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                {riskParityResult.conditionNumberImprovement}x
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>数值解算稳定性提升</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>资产间滚动平均相关性</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: riskParityResult.rollingInterAssetCorrelationAvg > 0.60 ? 'var(--loss-color)' : 'var(--text-primary)', marginTop: '4px' }}>
+                                {riskParityResult.rollingInterAssetCorrelationAvg}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{riskParityResult.correlationSurgeAlert ? '⚠️ 踩踏防共振启动' : '常态资产分散良好'}</div>
+                        </div>
+                    </div>
+
+                    {/* Card 1: 风险贡献对比明细表 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📋</span>
+                            <span className="gates-card-title">资产风险贡献对比明细表 (70/30 静态失衡 vs 动态 ERC 平衡)</span>
+                            <span className="gates-badge badge-pass">ERC风险等分</span>
+                        </div>
+                        <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                            <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>标的代码</th>
+                                        <th style={{ padding: '8px' }}>资产名称</th>
+                                        <th style={{ padding: '8px' }}>资产类别</th>
+                                        <th style={{ padding: '8px' }}>当前静态权重</th>
+                                        <th style={{ padding: '8px' }}>年化波动率</th>
+                                        <th style={{ padding: '8px' }}>传统风险贡献率</th>
+                                        <th style={{ padding: '8px' }}>ERC目标平价权重</th>
+                                        <th style={{ padding: '8px' }}>ERC风险贡献率</th>
+                                        <th style={{ padding: '8px' }}>动态调仓差值 Δ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {riskParityResult.assets.map(a => (
+                                        <tr key={a.assetId} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', fontFamily: 'monospace' }}>{a.assetId}</td>
+                                            <td style={{ padding: '8px' }}>{a.nameCn}</td>
+                                            <td style={{ padding: '8px' }}><span style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px' }}>{a.assetType}</span></td>
+                                            <td style={{ padding: '8px' }}>{a.currentWeightPct}%</td>
+                                            <td style={{ padding: '8px' }}>{a.annualVolatilityPct}%</td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', color: a.traditionalRiskContributionPct > 50 ? 'var(--loss-color)' : 'var(--text-primary)' }}>
+                                                {a.traditionalRiskContributionPct}%
+                                            </td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', color: '#58a6ff' }}>{a.ercTargetWeightPct}%</td>
+                                            <td style={{ padding: '8px', color: 'var(--gain-color)' }}>{a.ercRiskContributionPct}%</td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', color: a.weightAdjustmentPct >= 0 ? 'var(--gain-color)' : 'var(--loss-color)' }}>
+                                                {a.weightAdjustmentPct > 0 ? `+${a.weightAdjustmentPct}` : a.weightAdjustmentPct}%
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            💡 <strong>动态风险平价诊断结论</strong>：{riskParityResult.diagnosticSummary}
                         </div>
                     </div>
                 </div>

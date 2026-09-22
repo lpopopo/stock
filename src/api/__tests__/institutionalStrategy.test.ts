@@ -103,6 +103,21 @@ import {
     evaluatePortfolioHealthCheck,
     generateRebalancePrescription,
     PHASE30_PORTFOLIO_PRESCRIPTION_FRAMEWORK,
+    DEFAULT_FX_POSITIONS,
+    evaluateFxHedgingAndDecomposition,
+    PHASE31_FX_HEDGING_FRAMEWORK,
+    DEFAULT_TAIL_HEDGE_INSTRUMENTS,
+    evaluateTailRiskOptionHedging,
+    PHASE32_TAIL_RISK_HEDGING_FRAMEWORK,
+    DEFAULT_TAX_LOTS,
+    evaluateTaxLossHarvesting,
+    PHASE33_TAX_LOSS_HARVESTING_FRAMEWORK,
+    DEFAULT_CENTRAL_BANK_METRICS,
+    evaluateGlobalCentralBankLiquidity,
+    PHASE34_CENTRAL_BANK_LIQUIDITY_FRAMEWORK,
+    DEFAULT_RISK_PARITY_ASSETS,
+    evaluateDynamicRiskParity,
+    PHASE35_DYNAMIC_RISK_PARITY_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -2840,5 +2855,182 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         expect(sgovStep).toBeDefined();
 
         expect(PHASE30_PORTFOLIO_PRESCRIPTION_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 75: Phase 31 — 跨境多币种汇率收益穿透拆解与三维收益恒等式验证', () => {
+        expect(DEFAULT_FX_POSITIONS.length).toBe(4);
+        const res = evaluateFxHedgingAndDecomposition({
+            positions: DEFAULT_FX_POSITIONS,
+            portfolioTargetCurrency: 'CNH',
+            domesticRiskFreeRatePct: 2.0,
+            foreignRiskFreeRatePct: 4.8,
+        });
+
+        expect(res.totalPortfolioValueLocal).toBeGreaterThan(0);
+        expect(res.totalPortfolioValueTarget).toBeGreaterThan(0);
+        expect(res.pureAssetReturnContributionPct).toBeGreaterThan(0);
+        expect(res.pureFxReturnContributionPct).toBeGreaterThan(0);
+        expect(res.crossInteractionReturnContributionPct).toBeGreaterThan(0);
+
+        // 验证三维收益拆解恒等式：Total ≈ Asset + FX + Cross
+        const sumComponents = res.pureAssetReturnContributionPct + res.pureFxReturnContributionPct + res.crossInteractionReturnContributionPct;
+        expect(Math.abs(res.totalReturnTargetPct - sumComponents)).toBeLessThan(0.1);
+
+        // 验证持仓项穿透
+        const spyPos = res.positions.find(p => p.symbol === 'SPY')!;
+        expect(spyPos.pureAssetContributionPct).toBe(15.2);
+        expect(spyPos.pureFxContributionPct).toBe(5.4);
+        expect(spyPos.totalReturnInTargetCurrencyPct).toBeGreaterThan(20.0);
+    });
+
+    it('Test 76: Phase 31 — 抛补利率平价 (CIP) 远期对冲成本与利差贴水测算', () => {
+        const res = evaluateFxHedgingAndDecomposition({
+            positions: DEFAULT_FX_POSITIONS,
+            portfolioTargetCurrency: 'CNH',
+            domesticRiskFreeRatePct: 2.0,
+            foreignRiskFreeRatePct: 4.8, // 美元利率高出 2.8%
+        });
+
+        expect(res.cipBasisAnnualSpreadPct).toBe(-2.8);
+        expect(res.forwardHedgeCostPct).toBe(2.8);
+        expect(res.optimalHedgeRatio).toBe(0.60);
+        expect(res.hedgingRecommendation).toContain('全额远期锁汇成本高昂');
+
+        expect(PHASE31_FX_HEDGING_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 77: Phase 32 — 极端尾部风险期权对冲与波动率偏斜凸性定价', () => {
+        expect(DEFAULT_TAIL_HEDGE_INSTRUMENTS.length).toBe(3);
+        const res = evaluateTailRiskOptionHedging({
+            portfolioNav: 1000000,
+            annualTailBudgetPct: 0.8,
+            currentVix: 15.5,
+            stressCrisisEvent: 'flash_crash_20',
+        });
+
+        expect(res.portfolioNav).toBe(1000000);
+        expect(res.annualBudgetDollar).toBe(8000);
+        expect(res.monthlyThetaDecayDollar).toBe(667);
+        expect(res.contracts.length).toBe(3);
+
+        const spyPut = res.contracts.find(c => c.contractId === 'SPY-OTM-PUT-15')!;
+        expect(spyPut.delta).toBe(-0.12);
+        expect(spyPut.impliedVolPct).toBeGreaterThan(20);
+        expect(spyPut.crisisGainMultiplier).toBeGreaterThan(5.0);
+    });
+
+    it('Test 78: Phase 32 — 危机情景爆发期权 8x~15x 收益穿透与组合回撤压缩', () => {
+        const res = evaluateTailRiskOptionHedging({
+            portfolioNav: 1000000,
+            annualTailBudgetPct: 0.8,
+            currentVix: 15.5,
+            stressCrisisEvent: 'flash_crash_20', // -20% 暴跌
+        });
+
+        expect(res.unhedgedPortfolioDrawdownPct).toBe(-20.0);
+        // 对冲后回撤显著收窄
+        expect(Math.abs(res.hedgedPortfolioDrawdownPct)).toBeLessThan(Math.abs(res.unhedgedPortfolioDrawdownPct));
+        expect(res.lossMitigatedDollar).toBeGreaterThan(50000);
+        expect(res.cushionImprovementPct).toBeGreaterThan(5.0);
+        expect(res.monetizationRecommendation).toContain('Nassim Taleb');
+
+        expect(PHASE32_TAIL_RISK_HEDGING_FRAMEWORK.releaseDate).toBe('2026-09-22');
+    });
+
+    it('Test 79: Phase 33 — 税收批次优化与短期/长期利得税率差异化收割', () => {
+        expect(DEFAULT_TAX_LOTS.length).toBe(4);
+        const res = evaluateTaxLossHarvesting({
+            lots: DEFAULT_TAX_LOTS,
+            disposalMethod: 'HIFO',
+            shortTermTaxRatePct: 35.0,
+            longTermTaxRatePct: 15.0,
+        });
+
+        expect(res.totalUnrealizedGainDollar).toBeGreaterThan(0);
+        expect(res.totalUnrealizedLossDollar).toBeGreaterThan(0);
+        expect(res.harvestableTaxSavingsDollar).toBeGreaterThan(0);
+        expect(res.lotsWithRecommendation.length).toBe(4);
+
+        const lossLot = res.lotsWithRecommendation.find(l => l.symbol === 'NVDA')!;
+        expect(lossLot.actionRecommendation).toBe('HARVEST_LOSS');
+        expect(lossLot.taxTier).toBe('SHORT_TERM');
+    });
+
+    it('Test 80: Phase 33 — 30天洗售阻断与 0.90+ 行业近似替代标的映射', () => {
+        const res = evaluateTaxLossHarvesting({
+            lots: DEFAULT_TAX_LOTS,
+            disposalMethod: 'HIFO',
+        });
+
+        const soLot = res.lotsWithRecommendation.find(l => l.lotId === 'LOT-SO-01')!;
+        expect(soLot.actionRecommendation).toBe('HARVEST_LOSS');
+        expect(soLot.replacementProxySymbol).toBe('DUK');
+        expect(soLot.replacementProxyName).toContain('杜克能源');
+        expect(soLot.washSaleWarning).toContain('30 天内切勿重新买入');
+
+        expect(res.washSaleGuardRules.length).toBe(3);
+        expect(PHASE33_TAX_LOSS_HARVESTING_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 81: Phase 34 — 美联储净流动性 (Total Assets - TGA - RRP) 三合一精确解算', () => {
+        expect(DEFAULT_CENTRAL_BANK_METRICS.globalNetLiquidityUsdTrillion).toBeGreaterThan(20);
+        const res = evaluateGlobalCentralBankLiquidity({
+            fedTotalAssetsTrillion: 7.20,
+            fedTgaTrillion: 0.80,
+            fedRrpTrillion: 0.30,
+        });
+
+        expect(res.metrics.fedNetLiquidityTrillion).toBe(6.10); // 7.20 - 0.80 - 0.30
+        expect(res.fedNetLiquidityFormula).toContain('美联储净流动性');
+        expect(res.fedNetLiquidityFormula).toContain('$6.1T');
+        expect(res.historicalCorrelationWithSpy).toBe(0.84);
+    });
+
+    it('Test 82: Phase 34 — 全球四大央行综合净流动性与宏观时钟引擎', () => {
+        const expansion = evaluateGlobalCentralBankLiquidity({
+            sixtyDayNetLiquidityChangePct: 2.5,
+        });
+        expect(expansion.metrics.macroRegime).toBe('EXPANSION');
+        expect(expansion.equityAllocationBiasPct).toBe(5);
+        expect(expansion.sgovCashAllocationBiasPct).toBe(-5);
+        expect(expansion.liquidityCyclePhase).toContain('流动性充裕扩张期');
+
+        const contraction = evaluateGlobalCentralBankLiquidity({
+            sixtyDayNetLiquidityChangePct: -4.0,
+        });
+        expect(contraction.metrics.macroRegime).toBe('STRESS_DRAIN');
+        expect(contraction.equityAllocationBiasPct).toBe(-15);
+        expect(contraction.macroWarningSignals.length).toBeGreaterThan(0);
+
+        expect(PHASE34_CENTRAL_BANK_LIQUIDITY_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 83: Phase 35 — 传统 70/30 风险失衡诊断与 Ledoit-Wolf 协方差收缩矩阵', () => {
+        expect(DEFAULT_RISK_PARITY_ASSETS.length).toBe(4);
+        const res = evaluateDynamicRiskParity();
+
+        expect(res.assets.length).toBe(4);
+        const spyAsset = res.assets.find(a => a.assetId === 'SPY')!;
+        // 传统 70/30 组合中，权益单项贡献了超过 80% 的总波动率方差风险
+        expect(spyAsset.traditionalRiskContributionPct).toBeGreaterThan(80.0);
+        expect(res.ledoitWolfShrinkageIntensity).toBe(0.28);
+        expect(res.conditionNumberImprovement).toBe(3.4);
+    });
+
+    it('Test 84: Phase 35 — 等风险贡献 (ERC) 权重自适应解算与相关性异常击穿报警', () => {
+        const normalRes = evaluateDynamicRiskParity({
+            stressCorrelationSurge: false,
+        });
+        expect(normalRes.correlationSurgeAlert).toBe(false);
+        expect(normalRes.volatilityReductionPct).toBeGreaterThan(15.0);
+        expect(normalRes.portfolioVolErcPct).toBeLessThan(normalRes.portfolioVolTraditionalPct);
+
+        const surgeRes = evaluateDynamicRiskParity({
+            stressCorrelationSurge: true,
+        });
+        expect(surgeRes.correlationSurgeAlert).toBe(true);
+        expect(surgeRes.rollingInterAssetCorrelationAvg).toBeGreaterThan(0.60);
+
+        expect(PHASE35_DYNAMIC_RISK_PARITY_FRAMEWORK.releaseDate).toBe('2026-09-22');
     });
 });
