@@ -5460,8 +5460,480 @@ export const PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK = {
     },
 };
 
+// ============================================================
+// PHASE 16: 三组对照减仓-等待-重入执行框架
+// Three-Arm Reduce-Wait-Reentry Execution Framework
+// ============================================================
 
+/** 六项重入资格门控 */
+export interface ReentryGates {
+    information: boolean;  // 信息效度
+    trend: boolean;        // 趋势/RS
+    fear: boolean;         // 市场恐慌门控
+    concentration: boolean;// 集中度
+    cooldown: boolean;     // 冷却期
+    stop_plan: boolean;    // 止损计划
+}
 
+/** 单根 OHLC bar（最多20根） */
+export interface EpisodeBar {
+    session: string;   // 'YYYY-MM-DD'
+    open_at: string;   // ISO8601 带时区
+    close_at: string;  // ISO8601 带时区
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    corporate_action: false; // 公司行动必须显式为 false，否则拒绝
+}
+
+/** 每根 bar 收盘后产生的决定 */
+export interface SessionDecision {
+    recorded_at: string;   // 收盘后、下一开盘前
+    inherited_exit: boolean; // 共同强制退出信号
+    evidence_id: string;   // 凭证 ID，不能为空
+    next_stops: {
+        hold: number | null;        // 持有组止损更新（收盘生成，下日有效）
+        exit_reentry: number | null;// 重入组止损更新
+    };
+    buy?: {
+        gates: ReentryGates;
+        max_shares: number;     // 基线批准最大股数
+        max_price: number;      // 基线批准最高买价
+        stop_price?: number;    // 可选挂单止损
+        exit_execution_mode: 'completed_close_next_open' | 'resting_stop';
+    };
+}
+
+/** 减仓触发事件 */
+export interface ReduceEpisodeInput {
+    symbol: string;
+    shares: number;          // 正整数
+    trigger_close: string;   // 触发收盘时间 ISO8601
+    registered_at: string;   // 登记时间 ISO8601（触发后、首日开盘前）
+    trigger_evidence: string;// 凭证说明，非空
+    trigger_kind: 'discretionary_reduce_review'; // 仅接受自主减仓复核
+    has_resting_stop: boolean;
+    initial_stop?: number;   // has_resting_stop=true 时必填
+}
+
+/** 单次成交记录 */
+export interface PaperFill {
+    arm: 'hold' | 'exit_cash' | 'exit_reentry';
+    side: 'buy' | 'sell';
+    session: string;
+    shares: number;
+    reason: string;
+    raw_price: number;
+}
+
+/** 单时间窗口标记 */
+export interface HorizonMark {
+    horizon: 1 | 5 | 20;
+    session: string;
+    values: { hold: number; exit_cash: number; exit_reentry: number };
+    reentry_vs_hold: number;
+    reentry_vs_cash: number;
+}
+
+/** 单组账户状态 */
+export interface ArmState {
+    shares: number;
+    cash: number;
+    stop: number | null;
+}
+
+/** Phase 16 三组对照主函数输出 */
+export interface ThreeArmEpisodeResult {
+    classification: 'paper_episode_requires_audited_input_provenance';
+    decision_grade: false;
+    forward_admission_enabled: false;
+    version: 'reentry-execution-v0.2-ts';
+    stop_mode: 'frozen_v9_entry_day_skip' | 'entry_day_protection_stress';
+    slippage: 0.001 | 0.002;
+    initial_lot_value: number;
+    reentered: boolean;
+    paper_fills: PaperFill[];
+    marks: HorizonMark[];
+    final_arms: { hold: ArmState; exit_cash: ArmState; exit_reentry: ArmState };
+    mature_20: boolean;
+    executable_orders: never[]; // 始终为空；不接入券商
+    validation_errors: string[];
+}
+
+const PHASE16_GATES_KEYS = ['information', 'trend', 'fear', 'concentration', 'cooldown', 'stop_plan'] as const;
+
+function p16Positive(v: unknown): v is number {
+    return typeof v === 'number' && isFinite(v) && v > 0;
+}
+
+function p16ParseISO(s: string): Date {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) throw new Error(`invalid ISO8601: ${s}`);
+    // must carry timezone offset (not bare local time)
+    if (!s.match(/Z|[+-]\d{2}:\d{2}$/)) throw new Error(`timezone required in: ${s}`);
+    return d;
+}
+
+/**
+ * evaluateThreeArmReentryEpisode
+ *
+ * Phase 16 核心：三组对照减仓-等待-重入。
+ * - 持有组 (hold): 保持原股数，持续接受共同退出与止损
+ * - 现金组 (exit_cash): 首日开盘全减，现金不再投资
+ * - 重入组 (exit_reentry): 首日开盘全减，满足六项资格时最多买回一次
+ *
+ * 严格复现研究原型约定：
+ * 1. 仅接受 trigger_kind='discretionary_reduce_review'
+ * 2. 收盘生成止损更新最早下日有效，禁止下调移动止损
+ * 3. 买入滑点超 max_price 则不成交；整股向下；自有现金，不补外部资金
+ * 4. frozen_v9 模式下新买入当日跳过止损
+ * 5. 观察窗口固定 1/5/20 日
+ *
+ * @param episode 触发事件
+ * @param bars 按时间顺序 OHLC bars（最多 20 根）
+ * @param decisions 每 session 收盘决定 Map
+ * @param expectedSessions 期望 session 序列（用于完整性校验）
+ * @param slippage 滑点，仅允许 0.001（基准）或 0.002（压力测试）
+ * @param stopMode 止损约定
+ */
+export function evaluateThreeArmReentryEpisode(
+    episode: ReduceEpisodeInput,
+    bars: EpisodeBar[],
+    decisions: Record<string, SessionDecision>,
+    expectedSessions: string[],
+    slippage: 0.001 | 0.002 = 0.001,
+    stopMode: 'frozen_v9_entry_day_skip' | 'entry_day_protection_stress' = 'frozen_v9_entry_day_skip'
+): ThreeArmEpisodeResult {
+    const errors: string[] = [];
+
+    // ── 参数校验 ────────────────────────────────────────────────
+    if (episode.trigger_kind !== 'discretionary_reduce_review') {
+        errors.push('trigger_kind must be discretionary_reduce_review; mandatory exits not eligible');
+    }
+    if (typeof episode.shares !== 'number' || !Number.isInteger(episode.shares) || episode.shares <= 0) {
+        errors.push('shares must be a positive integer');
+    }
+    if (!episode.symbol || !episode.trigger_evidence) {
+        errors.push('symbol and trigger_evidence required');
+    }
+    if (typeof episode.has_resting_stop !== 'boolean') {
+        errors.push('has_resting_stop must be explicit boolean');
+    }
+    if (episode.has_resting_stop) {
+        if (!p16Positive(episode.initial_stop)) errors.push('initial_stop required when has_resting_stop=true');
+    } else {
+        if (episode.initial_stop !== undefined) errors.push('initial_stop must be absent when has_resting_stop=false');
+    }
+
+    // bar 序列校验
+    if (!bars || bars.length === 0 || bars.length > 20) {
+        errors.push('bars must contain 1–20 entries');
+    }
+    const barSessions = bars.map(b => b.session);
+    if (JSON.stringify(barSessions) !== JSON.stringify(expectedSessions)) {
+        errors.push('bars sessions do not match expectedSessions');
+    }
+    if (new Set(expectedSessions).size !== expectedSessions.length) {
+        errors.push('duplicate session in expectedSessions');
+    }
+
+    // 时序校验
+    try {
+        const triggerTime = p16ParseISO(episode.trigger_close);
+        const registeredTime = p16ParseISO(episode.registered_at);
+        if (registeredTime <= triggerTime) errors.push('registered_at must be after trigger_close');
+        if (bars.length > 0) {
+            const firstOpen = p16ParseISO(bars[0].open_at);
+            if (registeredTime >= firstOpen) errors.push('registered_at must be before first bar open_at');
+        }
+    } catch (e: unknown) {
+        errors.push(`timestamp parse error: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // OHLC 几何校验
+    for (const b of bars) {
+        if (!p16Positive(b.open) || !p16Positive(b.high) || !p16Positive(b.low) || !p16Positive(b.close)) {
+            errors.push(`bar ${b.session}: all OHLC prices must be positive`);
+        } else if (b.low > Math.min(b.open, b.close) || b.high < Math.max(b.open, b.close)) {
+            errors.push(`bar ${b.session}: invalid OHLC geometry (low > min(O,C) or high < max(O,C))`);
+        }
+        if (b.corporate_action !== false) {
+            errors.push(`bar ${b.session}: corporate_action must be false; episodes with corp actions unsupported`);
+        }
+    }
+
+    // bar 时序单调
+    try {
+        let lastClose: Date | null = null;
+        for (const b of bars) {
+            const o = p16ParseISO(b.open_at), c = p16ParseISO(b.close_at);
+            if (o >= c) errors.push(`bar ${b.session}: open_at must precede close_at`);
+            if (lastClose !== null && o <= lastClose) errors.push(`bar ${b.session}: bars not strictly chronological`);
+            lastClose = c;
+        }
+    } catch (e: unknown) {
+        errors.push(`bar timestamp error: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // 决定完整性
+    if (Object.keys(decisions).sort().join(',') !== [...expectedSessions].sort().join(',')) {
+        errors.push('decisions must cover exactly every expectedSession; missing is not false');
+    }
+    for (const b of bars) {
+        const d = decisions[b.session];
+        if (!d) continue;
+        if (typeof d.inherited_exit !== 'boolean') errors.push(`${b.session}: inherited_exit must be boolean`);
+        if (!d.evidence_id) errors.push(`${b.session}: evidence_id required`);
+        if (!d.next_stops || !('hold' in d.next_stops) || !('exit_reentry' in d.next_stops)) {
+            errors.push(`${b.session}: next_stops must have 'hold' and 'exit_reentry' keys`);
+        } else {
+            for (const [k, v] of Object.entries(d.next_stops)) {
+                if (v !== null && !p16Positive(v)) errors.push(`${b.session}: next_stops.${k} must be positive or null`);
+            }
+        }
+        if (d.buy !== undefined) {
+            const buy = d.buy;
+            if (!buy.gates || PHASE16_GATES_KEYS.some(k => typeof buy.gates[k] !== 'boolean')) {
+                errors.push(`${b.session}: buy.gates must have all 6 gates as explicit booleans`);
+            }
+            if (!Number.isInteger(buy.max_shares) || buy.max_shares < 0) errors.push(`${b.session}: buy.max_shares must be non-negative integer`);
+            if (!p16Positive(buy.max_price)) errors.push(`${b.session}: buy.max_price must be positive`);
+            if (!['completed_close_next_open', 'resting_stop'].includes(buy.exit_execution_mode)) {
+                errors.push(`${b.session}: unsupported exit_execution_mode`);
+            }
+            if (buy.exit_execution_mode === 'resting_stop' && !p16Positive(buy.stop_price)) {
+                errors.push(`${b.session}: resting_stop mode requires stop_price`);
+            }
+        }
+    }
+
+    // 如有校验错误，提前返回空结果
+    if (errors.length > 0) {
+        return {
+            classification: 'paper_episode_requires_audited_input_provenance',
+            decision_grade: false,
+            forward_admission_enabled: false,
+            version: 'reentry-execution-v0.2-ts',
+            stop_mode: stopMode,
+            slippage,
+            initial_lot_value: 0,
+            reentered: false,
+            paper_fills: [],
+            marks: [],
+            final_arms: {
+                hold: { shares: 0, cash: 0, stop: null },
+                exit_cash: { shares: 0, cash: 0, stop: null },
+                exit_reentry: { shares: 0, cash: 0, stop: null },
+            },
+            mature_20: false,
+            executable_orders: [],
+            validation_errors: errors,
+        };
+    }
+
+    // ── 模拟执行 ─────────────────────────────────────────────────
+    const qty = episode.shares;
+    const initStop = episode.has_resting_stop ? (episode.initial_stop ?? null) : null;
+
+    const arms: { hold: ArmState; exit_cash: ArmState; exit_reentry: ArmState } = {
+        hold: { shares: qty, cash: 0, stop: initStop },
+        exit_cash: { shares: qty, cash: 0, stop: initStop },
+        exit_reentry: { shares: qty, cash: 0, stop: initStop },
+    };
+
+    const paperFills: PaperFill[] = [];
+    const marks: HorizonMark[] = [];
+    let reentered = false;
+    const initialLotValue = qty * bars[0].open;
+
+    function sell(armName: keyof typeof arms, bar: EpisodeBar, reason: string, rawPrice?: number) {
+        const arm = arms[armName];
+        if (arm.shares <= 0) return;
+        const price = rawPrice ?? bar.open;
+        const proceeds = arm.shares * price * (1 - slippage) - 1;
+        if (proceeds <= 0) {
+            errors.push(`arm ${armName} session ${bar.session}: lot uneconomic after sale cost`);
+            return;
+        }
+        paperFills.push({
+            arm: armName, side: 'sell', session: bar.session,
+            shares: arm.shares, reason, raw_price: price,
+        });
+        arm.cash += proceeds;
+        arm.shares = 0;
+        arm.stop = null;
+    }
+
+    for (let i = 0; i < bars.length; i++) {
+        const bar = bars[i];
+        let boughtToday = false;
+
+        // 首日：退出现金组与重入组
+        if (i === 0) {
+            sell('exit_cash', bar, 'registered_reduce_review');
+            sell('exit_reentry', bar, 'registered_reduce_review');
+        } else {
+            const prevDecision = decisions[bars[i - 1].session];
+
+            // 共同强制退出优先于重入
+            if (prevDecision.inherited_exit) {
+                (Object.keys(arms) as Array<keyof typeof arms>).forEach(name => sell(name, bar, 'common_inherited_exit'));
+            } else if (!reentered && prevDecision.buy !== undefined) {
+                // 尝试重入
+                const proposal = prevDecision.buy!;
+                const arm = arms.exit_reentry;
+                const fillPrice = bar.open * (1 + slippage);
+                const allGatesPass = PHASE16_GATES_KEYS.every(k => proposal.gates[k] === true);
+                if (allGatesPass && fillPrice <= proposal.max_price) {
+                    const affordable = Math.max(0, Math.floor((arm.cash - 1) / fillPrice));
+                    const amount = Math.min(qty, proposal.max_shares, affordable);
+                    if (amount > 0) {
+                        arm.cash -= amount * fillPrice + 1;
+                        arm.shares = amount;
+                        arm.stop = proposal.exit_execution_mode === 'resting_stop'
+                            ? (proposal.stop_price ?? null)
+                            : null;
+                        reentered = true;
+                        boughtToday = true;
+                        paperFills.push({
+                            arm: 'exit_reentry', side: 'buy', session: bar.session,
+                            shares: amount, reason: 'prior_close_baseline_eligible',
+                            raw_price: bar.open,
+                        });
+                    }
+                }
+            }
+        }
+
+        // 盘中止损检查
+        (Object.keys(arms) as Array<keyof typeof arms>).forEach(armName => {
+            const arm = arms[armName];
+            const skip = armName === 'exit_reentry' && boughtToday && stopMode === 'frozen_v9_entry_day_skip';
+            if (arm.shares > 0 && arm.stop !== null && !skip && bar.low < arm.stop) {
+                const stopExecPrice = Math.min(bar.open, arm.stop);
+                sell(armName, bar, 'intraday_stop', stopExecPrice);
+            }
+        });
+
+        // 收盘止损更新（仅在下一日生效；不能下调移动止损）
+        const curDecision = decisions[bar.session];
+        const stopUpdates: Record<string, number | null> = {
+            hold: curDecision.next_stops.hold,
+            exit_reentry: curDecision.next_stops.exit_reentry,
+        };
+        for (const [armName, nextStop] of Object.entries(stopUpdates)) {
+            const arm = arms[armName as keyof typeof arms];
+            if (arm.shares > 0 && nextStop !== null) {
+                if (arm.stop !== null && nextStop < arm.stop) {
+                    errors.push(`${bar.session} ${armName}: trailing stop may not be loosened (${nextStop} < ${arm.stop})`);
+                } else {
+                    arm.stop = nextStop;
+                }
+            }
+        }
+
+        // 标记 1/5/20 日
+        const horizon = i + 1;
+        if (horizon === 1 || horizon === 5 || horizon === 20) {
+            const vals = {
+                hold: arms.hold.cash + arms.hold.shares * bar.close,
+                exit_cash: arms.exit_cash.cash + arms.exit_cash.shares * bar.close,
+                exit_reentry: arms.exit_reentry.cash + arms.exit_reentry.shares * bar.close,
+            };
+            marks.push({
+                horizon: horizon as 1 | 5 | 20,
+                session: bar.session,
+                values: vals,
+                reentry_vs_hold: vals.exit_reentry - vals.hold,
+                reentry_vs_cash: vals.exit_reentry - vals.exit_cash,
+            });
+        }
+
+        // 内部一致性断言
+        for (const arm of Object.values(arms)) {
+            if (arm.cash < -0.001 || arm.shares < 0 || arm.shares > qty) {
+                errors.push(`arm state invariant violated at session ${bar.session}`);
+            }
+        }
+    }
+
+    return {
+        classification: 'paper_episode_requires_audited_input_provenance',
+        decision_grade: false,
+        forward_admission_enabled: false,
+        version: 'reentry-execution-v0.2-ts',
+        stop_mode: stopMode,
+        slippage,
+        initial_lot_value: initialLotValue,
+        reentered,
+        paper_fills: paperFills,
+        marks,
+        final_arms: arms,
+        mature_20: bars.length === 20,
+        executable_orders: [],
+        validation_errors: errors,
+    };
+}
+
+// ── 辅助：单臂单日快速止损校验 ─────────────────────────────────────
+export interface IntradayStopCheckInput {
+    armName: 'hold' | 'exit_cash' | 'exit_reentry';
+    shares: number;
+    stopPrice: number | null;
+    bar: Pick<EpisodeBar, 'session' | 'open' | 'low'>;
+    isEntryDay: boolean;
+    stopMode: 'frozen_v9_entry_day_skip' | 'entry_day_protection_stress';
+    slippage: 0.001 | 0.002;
+}
+
+export interface IntradayStopCheckResult {
+    triggered: boolean;
+    execPrice: number | null;
+    reason: string;
+}
+
+/**
+ * evaluateIntradayStopCheck
+ *
+ * 独立校验单臂单 bar 的盘中止损是否触发。
+ * 用于 UI 中实时演示止损执行逻辑，不涉及完整账户状态。
+ */
+export function evaluateIntradayStopCheck(input: IntradayStopCheckInput): IntradayStopCheckResult {
+    const { armName, shares, stopPrice, bar, isEntryDay, stopMode, slippage } = input;
+    if (shares <= 0 || stopPrice === null) {
+        return { triggered: false, execPrice: null, reason: 'no position or no stop' };
+    }
+    const skip = armName === 'exit_reentry' && isEntryDay && stopMode === 'frozen_v9_entry_day_skip';
+    if (skip) {
+        return { triggered: false, execPrice: null, reason: `frozen_v9 skips stop on entry day for ${armName}` };
+    }
+    if (bar.low < stopPrice) {
+        const rawExec = Math.min(bar.open, stopPrice);
+        const netExec = rawExec * (1 - slippage);
+        return { triggered: true, execPrice: netExec, reason: `low ${bar.low} < stop ${stopPrice}; exec at ${rawExec} net ${netExec.toFixed(4)}` };
+    }
+    return { triggered: false, execPrice: null, reason: `low ${bar.low} >= stop ${stopPrice}; no trigger` };
+}
+
+export const PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 16 三组对照减仓-等待-重入执行框架（盘中止损、整股约束、20日观察期）',
+    caseStudies: {
+        basicReentryCase: {
+            scenario: '2026-09-20 标的 GLW 自主复核减仓，3日后资格门控全部通过，第4日开盘买回',
+            solution: '重入组以自有现金整股买回，frozen_v9 模式下买入日跳过盘中止损；1/5/20日标记对比持有组与现金组净额差异，全程无杠杆、无外部现金注入。',
+        },
+        entryDayStressCase: {
+            scenario: '压力测试：买入日当日日内价格跌破止损',
+            solution: 'entry_day_protection_stress 模式下买入日仍执行止损，观察执行假设对净结果的敏感性；两种模式均须报告，不得挑选有利结果。',
+        },
+        gapDownCase: {
+            scenario: '开盘跳空低于止损价',
+            solution: '执行价取 min(open, stop_price) 而非 stop_price，额外扣卖出滑点；正确区分"跳空缺口止损"与"日内正常触及止损"的成交价差异。',
+        },
+    },
+};
 
 
 

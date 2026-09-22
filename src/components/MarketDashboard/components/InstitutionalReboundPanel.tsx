@@ -74,6 +74,13 @@ import {
     type CandidateReentryInput,
     type MarginalRiskDiagnosticInput,
     type DollarOrderExecutionInput,
+    evaluateThreeArmReentryEpisode,
+    evaluateIntradayStopCheck,
+    PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type ReduceEpisodeInput,
+    type EpisodeBar,
+    type SessionDecision,
+    type IntradayStopCheckInput,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -114,7 +121,8 @@ type SubTabType =
     | 'rules'
     | 'trades'
     | 'v9'
-    | 'hedgefunds';
+    | 'hedgefunds'
+    | 'three-arm-reentry';
 
 export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps> = ({
     colorScheme = 'cn',
@@ -345,6 +353,58 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     const sixGatesResult = evaluateSixGatesReentry(sixGatesInput);
     const marginalRiskResult = evaluateMarginalRiskContribution(marginalRiskInput);
     const orderExecutionResult = evaluateDollarDiscreteLotExecution(orderExecutionInput);
+
+    // Phase 16: 三组对照减仓-等待-重入
+    const [threeArmEpisode, setThreeArmEpisode] = useState<ReduceEpisodeInput>({
+        symbol: 'GLW',
+        shares: 4,
+        trigger_close: '2026-09-19T20:00:00+00:00',
+        registered_at: '2026-09-19T21:00:00+00:00',
+        trigger_evidence: 'weekly RS review triggered discretionary reduce evaluation',
+        trigger_kind: 'discretionary_reduce_review',
+        has_resting_stop: false,
+    });
+    const [threeArmStopMode, setThreeArmStopMode] = useState<'frozen_v9_entry_day_skip' | 'entry_day_protection_stress'>('frozen_v9_entry_day_skip');
+    const [threeArmSlippage, setThreeArmSlippage] = useState<0.001 | 0.002>(0.001);
+
+    // Preset bars + decisions for Phase 16 demo
+    const p16DemoBars: EpisodeBar[] = [
+        { session: '2026-09-22', open_at: '2026-09-22T13:30:00+00:00', close_at: '2026-09-22T20:00:00+00:00', open: 100, high: 105, low: 99, close: 103, corporate_action: false },
+        { session: '2026-09-23', open_at: '2026-09-23T13:30:00+00:00', close_at: '2026-09-23T20:00:00+00:00', open: 103, high: 107, low: 102, close: 106, corporate_action: false },
+        { session: '2026-09-24', open_at: '2026-09-24T13:30:00+00:00', close_at: '2026-09-24T20:00:00+00:00', open: 100, high: 104, low: 99, close: 102, corporate_action: false },
+        { session: '2026-09-25', open_at: '2026-09-25T13:30:00+00:00', close_at: '2026-09-25T20:00:00+00:00', open: 102, high: 106, low: 101, close: 105, corporate_action: false },
+        { session: '2026-09-26', open_at: '2026-09-26T13:30:00+00:00', close_at: '2026-09-26T20:00:00+00:00', open: 105, high: 108, low: 104, close: 107, corporate_action: false },
+    ];
+    const p16DemoSessions = p16DemoBars.map(b => b.session);
+    const p16DemoDecisions: Record<string, SessionDecision> = {
+        '2026-09-22': { recorded_at: '2026-09-22T20:30:00+00:00', inherited_exit: false, evidence_id: 'ev-0922', next_stops: { hold: null, exit_reentry: null } },
+        '2026-09-23': {
+            recorded_at: '2026-09-23T20:30:00+00:00', inherited_exit: false, evidence_id: 'ev-0923',
+            next_stops: { hold: null, exit_reentry: null },
+            buy: {
+                gates: { information: true, trend: true, fear: true, concentration: true, cooldown: true, stop_plan: true },
+                max_shares: 5, max_price: 101.5, exit_execution_mode: 'completed_close_next_open',
+            },
+        },
+        '2026-09-24': { recorded_at: '2026-09-24T20:30:00+00:00', inherited_exit: false, evidence_id: 'ev-0924', next_stops: { hold: 98.0, exit_reentry: 97.5 } },
+        '2026-09-25': { recorded_at: '2026-09-25T20:30:00+00:00', inherited_exit: false, evidence_id: 'ev-0925', next_stops: { hold: 100.0, exit_reentry: 99.5 } },
+        '2026-09-26': { recorded_at: '2026-09-26T20:30:00+00:00', inherited_exit: false, evidence_id: 'ev-0926', next_stops: { hold: null, exit_reentry: null } },
+    };
+    const threeArmResult = evaluateThreeArmReentryEpisode(
+        threeArmEpisode, p16DemoBars, p16DemoDecisions, p16DemoSessions, threeArmSlippage, threeArmStopMode
+    );
+
+    // Phase 16 盘中止损校验器
+    const [intradayCheckInput, setIntradayCheckInput] = useState<IntradayStopCheckInput>({
+        armName: 'hold',
+        shares: 4,
+        stopPrice: 98.0,
+        bar: { session: '2026-09-25', open: 100.0, low: 97.5 },
+        isEntryDay: false,
+        stopMode: 'frozen_v9_entry_day_skip',
+        slippage: 0.001,
+    });
+    const intradayCheckResult = evaluateIntradayStopCheck(intradayCheckInput);
 
     // 六维实战决策自检器交互表单状态
     const [checklistInput, setChecklistInput] = useState<TradeChecklistInput>({
@@ -591,6 +651,12 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('six-gates-reentry')}
                 >
                     🛡️ 统一六门控与风险方差 (Phase 15)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'three-arm-reentry' ? 'active' : ''}`}
+                    onClick={() => setSubTab('three-arm-reentry')}
+                >
+                    ⚖️ 三组对照减仓重入框架 (Phase 16)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -4948,6 +5014,216 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                 </div>
             )}
 
+
+            {/* 视图：三组对照减仓-等待-重入执行框架 Phase 16 */}
+            {subTab === 'three-arm-reentry' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-top-row">
+                            <span className="six-gates-phase-label">Phase 16</span>
+                            <span className="six-gates-title">⚖️ 三组对照减仓-等待-重入执行框架</span>
+                            <span className="six-gates-asof">{PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK.name}</span>
+                        </div>
+                        <div className="six-gates-subtitle">
+                            持有组 · 现金组 · 重入组并行对照 — 固定 1/5/20 日观察期 · 盘中止损 · 整股约束 · 自有现金
+                        </div>
+                    </div>
+
+                    {/* Card 1: 触发事件配置 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📋</span>
+                            <span className="gates-card-title">减仓触发事件配置</span>
+                        </div>
+                        <div className="gates-preset-row">
+                            <button className="gates-preset-btn" onClick={() => setThreeArmEpisode({ symbol: 'GLW', shares: 4, trigger_close: '2026-09-19T20:00:00+00:00', registered_at: '2026-09-19T21:00:00+00:00', trigger_evidence: 'weekly RS review triggered discretionary reduce evaluation', trigger_kind: 'discretionary_reduce_review', has_resting_stop: false })}>
+                                Preset: GLW 无止损
+                            </button>
+                            <button className="gates-preset-btn" onClick={() => setThreeArmEpisode({ symbol: 'MRVL', shares: 6, trigger_close: '2026-09-19T20:00:00+00:00', registered_at: '2026-09-19T21:00:00+00:00', trigger_evidence: 'MRVL RS deterioration discretionary reduce review', trigger_kind: 'discretionary_reduce_review', has_resting_stop: true, initial_stop: 89.5 })}>
+                                Preset: MRVL 带止损
+                            </button>
+                        </div>
+                        <div className="gates-form-grid">
+                            <div className="gates-form-row">
+                                <label>标的</label>
+                                <input type="text" value={threeArmEpisode.symbol} onChange={e => setThreeArmEpisode({ ...threeArmEpisode, symbol: e.target.value.toUpperCase() })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>股数</label>
+                                <input type="number" min="1" step="1" value={threeArmEpisode.shares} onChange={e => setThreeArmEpisode({ ...threeArmEpisode, shares: parseInt(e.target.value) || 1 })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>止损模式</label>
+                                <select value={threeArmStopMode} onChange={e => setThreeArmStopMode(e.target.value as typeof threeArmStopMode)}>
+                                    <option value="frozen_v9_entry_day_skip">frozen_v9（买入日跳过止损）</option>
+                                    <option value="entry_day_protection_stress">压力测试（买入日也执行止损）</option>
+                                </select>
+                            </div>
+                            <div className="gates-form-row">
+                                <label>滑点</label>
+                                <select value={threeArmSlippage} onChange={e => setThreeArmSlippage(parseFloat(e.target.value) as 0.001 | 0.002)}>
+                                    <option value={0.001}>10bp（基准）</option>
+                                    <option value={0.002}>20bp（压力测试）</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* 校验错误 */}
+                        {threeArmResult.validation_errors.length > 0 && (
+                            <div className="gates-error-panel">
+                                <strong>⚠️ 校验错误：</strong>
+                                {threeArmResult.validation_errors.map((err, i) => (
+                                    <div key={i} className="gates-error-item">· {err}</div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Card 2: 三组对照结果 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📊</span>
+                            <span className="gates-card-title">三组对照模拟结果（预设 5 日场景）</span>
+                            <span className={`gates-badge ${threeArmResult.reentered ? 'badge-pass' : 'badge-neutral'}`}>
+                                {threeArmResult.reentered ? '✅ 重入成交' : '⏸ 未重入'}
+                            </span>
+                        </div>
+                        <div className="gates-meta-row">
+                            <span>版本: {threeArmResult.version}</span>
+                            <span>止损约定: {threeArmResult.stop_mode}</span>
+                            <span>滑点: {(threeArmResult.slippage * 10000).toFixed(0)}bp</span>
+                            <span>初始市值: ${threeArmResult.initial_lot_value.toFixed(2)}</span>
+                            <span>20日成熟: {threeArmResult.mature_20 ? '✅' : '⏳'}</span>
+                        </div>
+
+                        {/* 1/5/20 日标记表 */}
+                        {threeArmResult.marks.length > 0 && (
+                            <table className="gates-variance-table">
+                                <thead>
+                                    <tr>
+                                        <th>观察窗口</th><th>Session</th>
+                                        <th>持有组</th><th>现金组</th><th>重入组</th>
+                                        <th>重入 vs 持有</th><th>重入 vs 现金</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {threeArmResult.marks.map(m => (
+                                        <tr key={m.horizon}>
+                                            <td>第 {m.horizon} 日</td>
+                                            <td>{m.session}</td>
+                                            <td>${m.values.hold.toFixed(2)}</td>
+                                            <td>${m.values.exit_cash.toFixed(2)}</td>
+                                            <td>${m.values.exit_reentry.toFixed(2)}</td>
+                                            <td className={m.reentry_vs_hold >= 0 ? 'val-positive' : 'val-negative'}>{m.reentry_vs_hold >= 0 ? '+' : ''}{m.reentry_vs_hold.toFixed(2)}</td>
+                                            <td className={m.reentry_vs_cash >= 0 ? 'val-positive' : 'val-negative'}>{m.reentry_vs_cash >= 0 ? '+' : ''}{m.reentry_vs_cash.toFixed(2)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+
+                        {/* 期末账户状态 */}
+                        <div className="gates-scenario-grid">
+                            {(['hold', 'exit_cash', 'exit_reentry'] as const).map(armName => {
+                                const arm = threeArmResult.final_arms[armName];
+                                return (
+                                    <div key={armName} className="gates-scenario-card">
+                                        <div className="scenario-name">{armName === 'hold' ? '持有组' : armName === 'exit_cash' ? '现金组' : '重入组'}</div>
+                                        <div className="scenario-metric">股数: <strong>{arm.shares}</strong></div>
+                                        <div className="scenario-metric">现金: <strong>${arm.cash.toFixed(2)}</strong></div>
+                                        <div className="scenario-metric">止损: <strong>{arm.stop !== null ? `$${arm.stop.toFixed(2)}` : '—'}</strong></div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* 成交记录 */}
+                        {threeArmResult.paper_fills.length > 0 && (
+                            <div className="gates-unfilled-ledger">
+                                <div className="ledger-header">📝 成交记录（{threeArmResult.paper_fills.length} 笔）</div>
+                                {threeArmResult.paper_fills.map((fill, i) => (
+                                    <div key={i} className={`ledger-item ${fill.side === 'buy' ? 'ledger-buy' : 'ledger-sell'}`}>
+                                        <span>[{fill.session}]</span>
+                                        <span>{fill.side === 'buy' ? '买入' : '卖出'}</span>
+                                        <span>{fill.arm}</span>
+                                        <span>{fill.shares} 股 @ ${fill.raw_price.toFixed(2)}</span>
+                                        <span className="ledger-reason">{fill.reason}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Card 3: 盘中止损单次校验器 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🛡️</span>
+                            <span className="gates-card-title">盘中止损单次校验器</span>
+                            <span className={`gates-badge ${intradayCheckResult.triggered ? 'badge-fail' : 'badge-pass'}`}>
+                                {intradayCheckResult.triggered ? '🔴 触发' : '🟢 未触发'}
+                            </span>
+                        </div>
+                        <div className="gates-form-grid">
+                            <div className="gates-form-row">
+                                <label>账户组</label>
+                                <select value={intradayCheckInput.armName} onChange={e => setIntradayCheckInput({ ...intradayCheckInput, armName: e.target.value as IntradayStopCheckInput['armName'] })}>
+                                    <option value="hold">持有组 (hold)</option>
+                                    <option value="exit_cash">现金组 (exit_cash)</option>
+                                    <option value="exit_reentry">重入组 (exit_reentry)</option>
+                                </select>
+                            </div>
+                            <div className="gates-form-row">
+                                <label>持仓股数</label>
+                                <input type="number" min="0" step="1" value={intradayCheckInput.shares} onChange={e => setIntradayCheckInput({ ...intradayCheckInput, shares: parseInt(e.target.value) || 0 })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>止损价 ($)</label>
+                                <input type="number" min="0" step="0.01" value={intradayCheckInput.stopPrice ?? ''} onChange={e => setIntradayCheckInput({ ...intradayCheckInput, stopPrice: parseFloat(e.target.value) || null })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>开盘价 ($)</label>
+                                <input type="number" min="0" step="0.01" value={intradayCheckInput.bar.open} onChange={e => setIntradayCheckInput({ ...intradayCheckInput, bar: { ...intradayCheckInput.bar, open: parseFloat(e.target.value) || 0 } })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>日内最低价 ($)</label>
+                                <input type="number" min="0" step="0.01" value={intradayCheckInput.bar.low} onChange={e => setIntradayCheckInput({ ...intradayCheckInput, bar: { ...intradayCheckInput.bar, low: parseFloat(e.target.value) || 0 } })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>是否买入当日</label>
+                                <select value={intradayCheckInput.isEntryDay ? 'true' : 'false'} onChange={e => setIntradayCheckInput({ ...intradayCheckInput, isEntryDay: e.target.value === 'true' })}>
+                                    <option value="false">否（非买入日）</option>
+                                    <option value="true">是（买入当日）</option>
+                                </select>
+                            </div>
+                            <div className="gates-form-row">
+                                <label>止损约定</label>
+                                <select value={intradayCheckInput.stopMode} onChange={e => setIntradayCheckInput({ ...intradayCheckInput, stopMode: e.target.value as IntradayStopCheckInput['stopMode'] })}>
+                                    <option value="frozen_v9_entry_day_skip">frozen_v9（买入日跳过）</option>
+                                    <option value="entry_day_protection_stress">压力测试（不跳过）</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="gates-result-panel">
+                            <div className="gates-result-row">
+                                <span>触发状态：</span>
+                                <strong className={intradayCheckResult.triggered ? 'val-negative' : 'val-positive'}>
+                                    {intradayCheckResult.triggered ? '⚡ 止损触发' : '✅ 未触发'}
+                                </strong>
+                            </div>
+                            {intradayCheckResult.triggered && intradayCheckResult.execPrice !== null && (
+                                <div className="gates-result-row">
+                                    <span>净执行价：</span>
+                                    <strong>${intradayCheckResult.execPrice.toFixed(4)}</strong>
+                                </div>
+                            )}
+                            <div className="gates-result-row">
+                                <span>说明：</span>
+                                <span className="gates-result-reason">{intradayCheckResult.reason}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 视图：舆论情绪拥挤度反指雷达 */}
             {subTab === 'crowding-radar' && (

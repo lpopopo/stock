@@ -55,6 +55,10 @@ import {
     evaluateMarginalRiskContribution,
     evaluateDollarDiscreteLotExecution,
     PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateThreeArmReentryEpisode,
+    evaluateIntradayStopCheck,
+    PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type SessionDecision,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -1838,8 +1842,214 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
     });
 });
 
+// ============================================================
+// Phase 16 Tests: 三组对照减仓-等待-重入执行框架
+// ============================================================
 
+// Helper: build a minimal valid bar
+function makeBar(session: string, dateStr: string, open: number, high: number, low: number, close: number) {
+    return {
+        session,
+        open_at: `${dateStr}T13:30:00+00:00`,
+        close_at: `${dateStr}T20:00:00+00:00`,
+        open, high, low, close,
+        corporate_action: false as const,
+    };
+}
 
+// Helper: build a minimal valid decision (no buy, no inherited exit)
+function makeDecision(session: string, dateStr: string) {
+    return {
+        recorded_at: `${dateStr}T20:30:00+00:00`,
+        inherited_exit: false,
+        evidence_id: `ev-${session}`,
+        next_stops: { hold: null, exit_reentry: null },
+    };
+}
+
+describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
+    it('Test 49: 基本三组对照 — 无止损无重入，持有组正确持股至期末', () => {
+        // 3-bar episode: hold group keeps shares, exit groups sell day 1
+        const episode = {
+            symbol: 'GLW',
+            shares: 4,
+            trigger_close: '2026-09-19T20:00:00+00:00',
+            registered_at: '2026-09-19T21:00:00+00:00',
+            trigger_evidence: 'weekly RS review triggered discretionary reduce evaluation',
+            trigger_kind: 'discretionary_reduce_review' as const,
+            has_resting_stop: false,
+        };
+
+        const bars = [
+            makeBar('2026-09-22', '2026-09-22', 100, 105, 99, 103),
+            makeBar('2026-09-23', '2026-09-23', 103, 107, 102, 106),
+            makeBar('2026-09-24', '2026-09-24', 106, 110, 105, 109),
+        ];
+        const sessions = ['2026-09-22', '2026-09-23', '2026-09-24'];
+        const decisions: Record<string, ReturnType<typeof makeDecision>> = {};
+        sessions.forEach((s) => { decisions[s] = makeDecision(s, s); });
+
+        const result = evaluateThreeArmReentryEpisode(episode, bars, decisions, sessions);
+
+        expect(result.validation_errors).toHaveLength(0);
+        expect(result.decision_grade).toBe(false);
+        expect(result.forward_admission_enabled).toBe(false);
+        expect(result.reentered).toBe(false);
+
+        // Hold group: 4 shares, 0 cash throughout
+        expect(result.final_arms.hold.shares).toBe(4);
+        expect(result.final_arms.hold.cash).toBeCloseTo(0, 2);
+
+        // Exit groups sold day 1 at open=100, 0.1% slippage, -$1 commission
+        // proceeds = 4 * 100 * 0.999 - 1 = 398.6
+        expect(result.final_arms.exit_cash.shares).toBe(0);
+        expect(result.final_arms.exit_cash.cash).toBeCloseTo(398.6, 1);
+
+        // Day 1 mark (horizon=1, session=2026-09-22)
+        const mark1 = result.marks.find(m => m.horizon === 1);
+        expect(mark1).toBeDefined();
+        expect(mark1!.values.hold).toBeCloseTo(4 * 103, 1);   // 4 shares * close=103
+        expect(mark1!.values.exit_cash).toBeCloseTo(398.6, 1); // cash only
+        expect(mark1!.values.exit_reentry).toBeCloseTo(398.6, 1);
+
+        // Paper fills: day 1 two sells (exit_cash + exit_reentry)
+        const sells = result.paper_fills.filter(f => f.side === 'sell');
+        expect(sells).toHaveLength(2);
+        expect(sells.every(f => f.session === '2026-09-22')).toBe(true);
+    });
+
+    it('Test 50: 重入组六项资格全票通过 — 第3日正确买回，整股约束与现金校验', () => {
+        const episode = {
+            symbol: 'MRVL',
+            shares: 4,
+            trigger_close: '2026-09-19T20:00:00+00:00',
+            registered_at: '2026-09-19T21:00:00+00:00',
+            trigger_evidence: 'MRVL weekly RS drop, discretionary reduce review initiated',
+            trigger_kind: 'discretionary_reduce_review' as const,
+            has_resting_stop: false,
+        };
+
+        const bars = [
+            makeBar('2026-09-22', '2026-09-22', 100, 105, 99, 103),
+            makeBar('2026-09-23', '2026-09-23', 103, 107, 102, 105),
+            makeBar('2026-09-24', '2026-09-24', 100, 104, 99, 102),
+            makeBar('2026-09-25', '2026-09-25', 102, 106, 101, 105),
+        ];
+        const sessions = ['2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25'];
+
+        // Day 2 close (2026-09-23) produces a buy proposal with all gates passing
+        const decisions: Record<string, SessionDecision> = {
+            '2026-09-22': {
+                recorded_at: '2026-09-22T20:30:00+00:00',
+                inherited_exit: false,
+                evidence_id: 'ev-0922',
+                next_stops: { hold: null, exit_reentry: null },
+            },
+            '2026-09-23': {
+                recorded_at: '2026-09-23T20:30:00+00:00',
+                inherited_exit: false,
+                evidence_id: 'ev-0923',
+                next_stops: { hold: null, exit_reentry: null },
+                buy: {
+                    gates: {
+                        information: true, trend: true, fear: true,
+                        concentration: true, cooldown: true, stop_plan: true,
+                    },
+                    max_shares: 5,
+                    max_price: 101.2, // open day3=100, fill=100*1.001=100.1 <= 101.2 → fills
+                    exit_execution_mode: 'completed_close_next_open',
+                },
+            },
+            '2026-09-24': makeDecision('2026-09-24', '2026-09-24'),
+            '2026-09-25': makeDecision('2026-09-25', '2026-09-25'),
+        };
+
+        // cash from initial sell: 4 * 100 * 0.999 - 1 = 398.6
+        // buy day3: fillPrice = 100 * 1.001 = 100.1
+        // affordable = floor((398.6 - 1) / 100.1) = floor(397.6/100.1) = floor(3.97) = 3
+        // amount = min(4, 5, 3) = 3
+        const result = evaluateThreeArmReentryEpisode(episode, bars, decisions, sessions);
+
+        expect(result.validation_errors).toHaveLength(0);
+        expect(result.reentered).toBe(true);
+
+        const buys = result.paper_fills.filter(f => f.side === 'buy');
+        expect(buys).toHaveLength(1);
+        expect(buys[0].shares).toBe(3);
+        expect(buys[0].session).toBe('2026-09-24');
+
+        // exit_reentry: 3 shares bought, remaining cash = 398.6 - 3*100.1 - 1 = 97.3
+        expect(result.final_arms.exit_reentry.shares).toBe(3);
+        expect(result.final_arms.exit_reentry.cash).toBeCloseTo(97.3, 1);
+
+        // exit_cash: still just cash, no shares
+        expect(result.final_arms.exit_cash.shares).toBe(0);
+
+        // hold: still 4 shares
+        expect(result.final_arms.hold.shares).toBe(4);
+    });
+
+    it('Test 51: 盘中止损触发 — frozen_v9跳过买入日 vs entry_day_protection_stress执行止损', () => {
+        // evaluateIntradayStopCheck helper function
+        // Case A: frozen_v9 — entry day for exit_reentry arm → skip
+        const skipResult = evaluateIntradayStopCheck({
+            armName: 'exit_reentry',
+            shares: 3,
+            stopPrice: 98.0,
+            bar: { session: '2026-09-24', open: 99.5, low: 97.0 },
+            isEntryDay: true,
+            stopMode: 'frozen_v9_entry_day_skip',
+            slippage: 0.001,
+        });
+        expect(skipResult.triggered).toBe(false);
+        expect(skipResult.reason).toContain('frozen_v9 skips stop on entry day');
+
+        // Case B: entry_day_protection_stress — same scenario → triggers
+        const stressResult = evaluateIntradayStopCheck({
+            armName: 'exit_reentry',
+            shares: 3,
+            stopPrice: 98.0,
+            bar: { session: '2026-09-24', open: 99.5, low: 97.0 },
+            isEntryDay: true,
+            stopMode: 'entry_day_protection_stress',
+            slippage: 0.001,
+        });
+        expect(stressResult.triggered).toBe(true);
+        // execPrice = min(99.5, 98.0) * (1 - 0.001) = 98.0 * 0.999 = 97.902
+        expect(stressResult.execPrice).toBeCloseTo(97.902, 3);
+
+        // Case C: gap-down below stop — exec at open (not stop)
+        const gapDownResult = evaluateIntradayStopCheck({
+            armName: 'hold',
+            shares: 4,
+            stopPrice: 100.0,
+            bar: { session: '2026-09-25', open: 97.0, low: 96.5 },  // open < stop → gap down
+            isEntryDay: false,
+            stopMode: 'frozen_v9_entry_day_skip',
+            slippage: 0.001,
+        });
+        expect(gapDownResult.triggered).toBe(true);
+        // rawExec = min(97.0, 100.0) = 97.0; net = 97.0 * 0.999 = 96.903
+        expect(gapDownResult.execPrice).toBeCloseTo(96.903, 3);
+
+        // Case D: low exactly equals stop — NOT triggered (strict less-than convention)
+        const atStopResult = evaluateIntradayStopCheck({
+            armName: 'hold',
+            shares: 4,
+            stopPrice: 98.0,
+            bar: { session: '2026-09-25', open: 100.0, low: 98.0 },
+            isEntryDay: false,
+            stopMode: 'frozen_v9_entry_day_skip',
+            slippage: 0.001,
+        });
+        expect(atStopResult.triggered).toBe(false);
+
+        // Phase 16 framework metadata
+        expect(PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('三组对照');
+        expect(PHASE16_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.gapDownCase.solution).toContain('min(open, stop_price)');
+    });
+});
 
 
 
