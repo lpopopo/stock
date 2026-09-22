@@ -977,3 +977,782 @@ export const PORTFOLIO_RISK_BUDGET_DATA: PortfolioRiskBudgetData = {
         },
     ],
 };
+
+// ==========================================
+// Phase 4: 产业链瓶颈、拥挤度反指、六维自检与假说看板
+// ==========================================
+
+export interface BottleneckStockItem {
+    symbol: string;
+    nameCn: string;
+    role: string;
+    capexSensitivity: '极高' | '高' | '中等';
+    competitiveMoat: string;
+    keyMetricToWatch: string;
+}
+
+export interface BottleneckLayer {
+    layerId: 'layer1_compute' | 'layer2_interconnect' | 'layer3_memory_equipment' | 'layer4_cloud_power_edge';
+    layerNumber: number;
+    layerName: string;
+    shortTitle: string;
+    bottleneckSeverity: 'Critical' | 'Severe' | 'High' | 'Elevated';
+    leadTimeWeeks: string;
+    physicalConstraint: string;
+    architectureTrend: string;
+    stocks: BottleneckStockItem[];
+}
+
+export interface AiBottleneckMap {
+    asOfDate: string;
+    themeStatus: string;
+    macroInsight: string;
+    layers: BottleneckLayer[];
+}
+
+/**
+ * H5 AI 基建四层物理与架构产业链瓶颈全景图谱
+ */
+export const AI_INFRASTRUCTURE_BOTTLENECK_MAP: AiBottleneckMap = {
+    asOfDate: '2026-09-20',
+    themeStatus: '高阶瓶颈扩散：从“纯算力芯片紧缺”向“超高速互联带宽、先进封装与变电站并网电力”三重刚性约束扩散。',
+    macroInsight: 'AI 资本开支并非线性均匀释放，而是呈现鲜明的牛鞭效应。算力层芯片每投入 1 美元，互联织网与封装存储层需要承载 0.45 美元的物理带宽配套，变电站与液冷机房则决定了算力能否通电点亮 (Powered Capacity)。',
+    layers: [
+        {
+            layerId: 'layer1_compute',
+            layerNumber: 1,
+            layerName: '算力中枢与定制硅片 (Compute & Custom ASIC)',
+            shortTitle: 'Layer 1: 算力核心',
+            bottleneckSeverity: 'Critical',
+            leadTimeWeeks: '36 ~ 52 周',
+            physicalConstraint: '台积电 CoWoS-L/S 先进封装配额瓶颈，千亿级晶体管热耗散与供电网络设计极限。',
+            architectureTrend: '通用 GPU 统领训练大盘，定制 ASIC (TPU/XPU) 在特定超大规模推理与检索集群中占比加速跃升。',
+            stocks: [
+                {
+                    symbol: 'NVDA',
+                    nameCn: '英伟达',
+                    role: '全球通用 GPU 霸主与 CUDA 软硬件全栈护城河',
+                    capexSensitivity: '极高',
+                    competitiveMoat: 'CUDA 生态网络效应极其深厚，GB200/NVL72 机架级系统定义工业标准。',
+                    keyMetricToWatch: '数据中心营收环比增速、机架系统交付放量与下一代架构量产进度。',
+                },
+                {
+                    symbol: 'AVGO',
+                    nameCn: '博通',
+                    role: '超大规模云厂商定制 ASIC 协同设计与以太网交换垄断',
+                    capexSensitivity: '极高',
+                    competitiveMoat: '独揽谷歌 TPU、Meta MTIA 等顶级云巨头 ASIC 设计与 3.2T 交换芯片。',
+                    keyMetricToWatch: '云厂商定制 ASIC 订单流 (Backlog) 与 PCIe 交换芯片毛利率。',
+                },
+                {
+                    symbol: 'MRVL',
+                    nameCn: '迈威尔科技',
+                    role: '定制 ASIC 解决方案、光学 PAM4 DSP 与高速互联',
+                    capexSensitivity: '高',
+                    competitiveMoat: '在亚马逊 AWS Trainium/Inferentia 与微软定制芯片中占据核心席位。',
+                    keyMetricToWatch: '定制计算业务环比放量斜率与 800G/1.6T 光互联 DSP 份额。',
+                },
+                {
+                    symbol: 'AMD',
+                    nameCn: '超威半导体',
+                    role: 'GPU 挑战者生态与 EPYC 高性能服务器 CPU 领军者',
+                    capexSensitivity: '高',
+                    competitiveMoat: 'MI300/MI325 系列性价比挑战者，x86 数据中心 CPU 份额持续侵蚀竞争对手。',
+                    keyMetricToWatch: 'MI300 软件 ROCm 适配度与云巨头批量采购部署进展。',
+                },
+            ],
+        },
+        {
+            layerId: 'layer2_interconnect',
+            layerNumber: 2,
+            layerName: '超高速光互联与网络织网 (High-Speed Interconnect & Optical Fabric)',
+            shortTitle: 'Layer 2: 网络互联',
+            bottleneckSeverity: 'Severe',
+            leadTimeWeeks: '28 ~ 40 周',
+            physicalConstraint: '铜缆物理传输极限 (1.6T 速率下铜线有效距离萎缩至 1 米以内)，InP 衬底良率与硅光 PIC 耦合损耗。',
+            architectureTrend: '从以太网/InfiniBand 向全光 Scale-out 与 Scale-up 混合演进，AEC 有源电缆与硅光模块爆发。',
+            stocks: [
+                {
+                    symbol: 'GLW',
+                    nameCn: '康宁',
+                    role: '全球高密度低损耗光纤光缆物理垄断者',
+                    capexSensitivity: '高',
+                    competitiveMoat: 'AI 集群机房内光纤连接密度提升 10 倍以上，与微软等巨头签订排他级大单。',
+                    keyMetricToWatch: '光通信分部营业利润率与新一代高密度光纤出货量。',
+                },
+                {
+                    symbol: 'CRDO',
+                    nameCn: '默升科技',
+                    role: 'AEC 有源电缆/Retimer/光引擎双轮驱动龙头',
+                    capexSensitivity: '极高',
+                    competitiveMoat: '在机柜内服务器互联上以低功耗 AEC 替代传统短距光模块，拓展硅光光引擎。',
+                    keyMetricToWatch: 'AEC 跨云巨头导入进度、光模块 DSP 认证与每股自由现金流。',
+                },
+                {
+                    symbol: 'ALAB',
+                    nameCn: 'Astera Labs',
+                    role: 'CXL 内存池化路由器与 PCIe 6.0/7.0 连接方案专家',
+                    capexSensitivity: '高',
+                    competitiveMoat: '解决 GPU 与 CPU/内存间带宽瓶颈，CXL 异构互联半导体事实标准制订者。',
+                    keyMetricToWatch: 'PCIe Retimer 渗透率与 CXL 内存扩展模组放量。',
+                },
+                {
+                    symbol: 'MXL',
+                    nameCn: '迈凌科技',
+                    role: 'PAM4 DSP 射频收发芯片与物理层连接器件',
+                    capexSensitivity: '中等',
+                    competitiveMoat: '纯光通信射频 DSP 独立供应商，与头部光模块厂深度合作。',
+                    keyMetricToWatch: '数据中心营收占比修复与毛利率企稳。',
+                },
+                {
+                    symbol: 'ANET',
+                    nameCn: '阿利斯塔网络',
+                    role: '800G/1.6T 骨干数据中心网络交换机软件与硬件领跑者',
+                    capexSensitivity: '高',
+                    competitiveMoat: 'EOS 网络操作系统生态粘性极强，主导 Ultra Ethernet 以太网抗衡 InfiniBand。',
+                    keyMetricToWatch: 'AI 后端网络 (AI Backend Fabric) 订单交付与云客户集中度。',
+                },
+            ],
+        },
+        {
+            layerId: 'layer3_memory_equipment',
+            layerNumber: 3,
+            layerName: '存储金字塔与封测装备 (Memory Hierarchy & Packaging Equipment)',
+            shortTitle: 'Layer 3: 存储与装备',
+            bottleneckSeverity: 'High',
+            leadTimeWeeks: '24 ~ 48 周',
+            physicalConstraint: 'HBM 多层堆叠热应力翘曲、TSV 极高深宽比刻蚀均匀性、先进光刻掩模对准精度。',
+            architectureTrend: 'HBM4 迈向定制逻辑底座，混合键合 (Hybrid Bonding) 替代传统凸块；海量近线冷热存储平稳扩容。',
+            stocks: [
+                {
+                    symbol: 'MU',
+                    nameCn: '美光科技',
+                    role: 'HBM3e/HBM4 高带宽存储与企业级 DDR5/SSD 巨头',
+                    capexSensitivity: '极高',
+                    competitiveMoat: '1β 工艺 HBM3e 能效比领先，成为英伟达重要双源供应商之一。',
+                    keyMetricToWatch: 'HBM 产能预订售罄进度、DRAM 合约报价走势与季度资本开支指引。',
+                },
+                {
+                    symbol: 'AMAT',
+                    nameCn: '应用材料',
+                    role: '全球晶圆制造与先进封装沉积/刻蚀设备绝对龙头',
+                    capexSensitivity: '高',
+                    competitiveMoat: '先进封装、TSV 刻蚀与化学机械研磨 (CMP) 具备全制程工艺设备掌控力。',
+                    keyMetricToWatch: '先进封装设备订单占比与中国市场以外营收修复速度。',
+                },
+                {
+                    symbol: 'ASML',
+                    nameCn: '阿斯麦',
+                    role: '极紫外光刻机 (EUV) 全球独家垄断者',
+                    capexSensitivity: '极高',
+                    competitiveMoat: 'High-NA EUV 定义 2nm 及以下制程与高阶晶圆物理极限。',
+                    keyMetricToWatch: '季度净新增订单额 (Net Bookings) 与先进制程客户安装排期。',
+                },
+                {
+                    symbol: 'LRCX',
+                    nameCn: '泛林集团',
+                    role: '深硅刻蚀与薄膜沉积装备领跑者',
+                    capexSensitivity: '高',
+                    competitiveMoat: '在 3D NAND 高深宽比刻蚀与先进晶圆背面供电网络 (BSPDN) 领域拥有专利壁垒。',
+                    keyMetricToWatch: '存储芯片设备复苏周期与先进封装刻蚀系统出货。',
+                },
+                {
+                    symbol: 'KLAC',
+                    nameCn: '科磊',
+                    role: '半导体工艺过程控制与晶圆光学/电子束检测绝对垄断',
+                    capexSensitivity: '中等',
+                    competitiveMoat: '制程越复杂，缺陷检测价值越大，毛利率长年稳定在 60% 以上。',
+                    keyMetricToWatch: '先进逻辑与 HBM 封测良率监控机台交付排期。',
+                },
+                {
+                    symbol: 'WDC',
+                    nameCn: '西部数据',
+                    role: '企业级近线大容量 HDD 与 NAND 闪存并驱',
+                    capexSensitivity: '中等',
+                    competitiveMoat: 'AI 训练数据冷存储与多模态素材库的核心承载底座，垂直磁记录密度领先。',
+                    keyMetricToWatch: '近线 HDD 出货 PB 容量与 NAND 业务拆分重组进展。',
+                },
+                {
+                    symbol: 'STX',
+                    nameCn: '希捷科技',
+                    role: '热辅助磁记录 (HAMR) 超高密度近线机械硬盘巨头',
+                    capexSensitivity: '中等',
+                    competitiveMoat: 'HAMR 30TB+ 硬盘在单机架能耗与存储密度上构筑降本优势。',
+                    keyMetricToWatch: 'HAMR 商业化交付节奏与云厂商机架置换意愿。',
+                },
+            ],
+        },
+        {
+            layerId: 'layer4_cloud_power_edge',
+            layerNumber: 4,
+            layerName: 'AI 云工厂、能源调度与端侧推理 (Cloud Factories, Power & Edge Inference)',
+            shortTitle: 'Layer 4: 云工厂与端侧',
+            bottleneckSeverity: 'Elevated',
+            leadTimeWeeks: '20 ~ 36 周',
+            physicalConstraint: '电网高压变电站审批并网周期长达 3~5 年，变压器交期超过 100 周，端侧芯片功耗限制。',
+            architectureTrend: '千兆瓦级 AI 算力中心与核电/地热微电网深度绑定，端侧 NPU 实现本地化实时 Agent 交互。',
+            stocks: [
+                {
+                    symbol: 'ORCL',
+                    nameCn: '甲骨文',
+                    role: 'AI 云工厂 (OCI) 与千兆瓦级算力集群交付标杆',
+                    capexSensitivity: '极高',
+                    competitiveMoat: '裸金属服务器与 RDMA 网络架构在性价比和交付速度上深受顶级大模型团队青睐。',
+                    keyMetricToWatch: '剩余履约义务 (RPO) 增速与云基建交付容量 (Powered Capacity)。',
+                },
+                {
+                    symbol: 'QCOM',
+                    nameCn: '高通',
+                    role: '端侧 NPU/骁龙 AI PC 与智能终端低延迟本地推理领军者',
+                    capexSensitivity: '中等',
+                    competitiveMoat: '移动处理器能效比与蜂窝射频基带专利，主导 AI PC 与汽车智能座舱升级。',
+                    keyMetricToWatch: 'Snapdragon X Elite 笔电销售渗透率与汽车座舱芯片订单。',
+                },
+                {
+                    symbol: 'TER',
+                    nameCn: '泰瑞达',
+                    role: '半导体系统级测试与先进 HBM/GPU 自动化测试机台',
+                    capexSensitivity: '高',
+                    competitiveMoat: '复杂芯片出厂前测试不可或缺，HBM 堆叠良率筛选的核心验证把关人。',
+                    keyMetricToWatch: '半导体测试业务订单量与先进封装测试机台占比。',
+                },
+                {
+                    symbol: 'TTMI',
+                    nameCn: 'TTM 科技',
+                    role: 'AI 高密度服务器 PCB 多层板与射频背板“卖铲人”',
+                    capexSensitivity: '中等',
+                    competitiveMoat: '高多层极密 PCB 板与特殊高频介质压合工艺，北美军工与顶级服务器主板供应商。',
+                    keyMetricToWatch: '数据中心高层板 (HDI) 产线稼动率与订单能见度。',
+                },
+            ],
+        },
+    ],
+};
+
+// ----------------------------------------------------
+// 舆论情绪拥挤度反指雷达 (Theme Crowding & Fragility)
+// ----------------------------------------------------
+
+export interface CrowdingLevelInfo {
+    level: 'quiet_accumulation' | 'healthy_trend' | 'hyper_crowded' | 'flow_fragility';
+    scoreRange: string;
+    levelName: string;
+    statusBadge: string;
+    color: string;
+    description: string;
+    behaviorGuide: string;
+}
+
+export interface SubThemeCrowdingItem {
+    themeName: string;
+    crowdingScore: number;
+    trendStatus: 'strong_trend' | 'consolidating' | 'extended_exhaustion';
+    kolSentiment: 'bullish_consensus' | 'divided' | 'skeptical';
+    actionDirective: string;
+}
+
+export interface ThemeCrowdingRadarData {
+    asOfDate: string;
+    overallHeatIndex: number; // 0 ~ 100
+    currentLevel: 'quiet_accumulation' | 'healthy_trend' | 'hyper_crowded' | 'flow_fragility';
+    levelText: string;
+    kolGainDensity: string;
+    contrarianDirectives: string[];
+    crowdingLevels: CrowdingLevelInfo[];
+    subThemes: SubThemeCrowdingItem[];
+}
+
+/**
+ * 社交舆论与资金流脆弱性反指雷达数据
+ */
+export const THEME_CROWDING_RADAR: ThemeCrowdingRadarData = {
+    asOfDate: '2026-09-20',
+    overallHeatIndex: 78,
+    currentLevel: 'hyper_crowded',
+    levelText: '⚠️ 极度拥挤 (Hyper-Crowded) - 触发流动性脆弱性警报',
+    kolGainDensity: '高危预警：监测到社交平台（小红书/X/社区）高频晒单单票盈利 +40%~+170%，多头共识近乎绝对单边，盲目追高盘激增，对冲保护严重不足。',
+    contrarianDirectives: [
+        '严禁破位追高：日线乖离率偏离 MA50 超过 15% 的高位热点标的，禁止任何追涨式建仓。',
+        '强制收紧移动止损：对已有大幅浮盈的 AI/半导体标的，止损线上移至近 5 日回踩低点或 MA20 动态保护。',
+        '严守单因子 30% 预算：无论个股逻辑多么诱人，AI 硬件总持仓禁止突破 30% 硬上限。',
+        '以广度背离反推风险：大盘指数若仅靠 3~5 只巨头虚拉而多数股票下跌时，必须提高现金防御权重。',
+    ],
+    crowdingLevels: [
+        {
+            level: 'quiet_accumulation',
+            scoreRange: '0 ~ 30',
+            levelName: '冷门潜伏期 (Quiet Accumulation)',
+            statusBadge: '🟢 适合低吸',
+            color: '#10b981',
+            description: '机构低调建仓，市场关注度冷清，估值安全垫厚实，无追逐交易。',
+            behaviorGuide: '可按 100% 胜率底部模型或价值安全边际分批低吸，容忍度高。',
+        },
+        {
+            level: 'healthy_trend',
+            scoreRange: '31 ~ 65',
+            levelName: '健康趋势期 (Healthy Trend)',
+            statusBadge: '🔵 顺势持有',
+            color: '#3b82f6',
+            description: '均线多头排列，放量突破与有序缩量回踩交替，市场分歧适中，牛市主升段。',
+            behaviorGuide: '执行 RSR2 突破建仓，顺势持有，设置标准 8%~10% 止损保护。',
+        },
+        {
+            level: 'hyper_crowded',
+            scoreRange: '66 ~ 85',
+            levelName: '过度拥挤期 (Hyper-Crowded)',
+            statusBadge: '🟠 严禁追高',
+            color: '#f59e0b',
+            description: '社交网络刷屏讨论，晒单炫耀利润激增，期权 Call 交易量失衡，追涨资金拥挤。',
+            behaviorGuide: '停止新开仓追涨，上移止盈止损线，对冲下行风险，防范冲高回落。',
+        },
+        {
+            level: 'flow_fragility',
+            scoreRange: '86 ~ 100',
+            levelName: '流动性脆弱期 (Flow Fragility)',
+            statusBadge: '🔴 踩踏高危',
+            color: '#ef4444',
+            description: '杠杆做多极致集中，一旦出现单日不及预期财报或小利空，极易引发程序化踩踏闪崩。',
+            behaviorGuide: '启动反向对冲机制（增配 PSQ/SH 或 SGOV 现金避险），全额锁定暴利。',
+        },
+    ],
+    subThemes: [
+        {
+            themeName: '算力/GPU (NVDA, AVGO, AMD)',
+            crowdingScore: 82,
+            trendStatus: 'extended_exhaustion',
+            kolSentiment: 'bullish_consensus',
+            actionDirective: '高位顶背离迹象，禁止加仓追高，持有者设置保护性止盈。',
+        },
+        {
+            themeName: '光通信/高速互联 (GLW, CRDO, ALAB, MRVL)',
+            crowdingScore: 76,
+            trendStatus: 'strong_trend',
+            kolSentiment: 'bullish_consensus',
+            actionDirective: '中期趋势强劲但短期获利盘丰厚，等待回踩 MA20/MA50 企稳再做重入。',
+        },
+        {
+            themeName: '先进存储 HBM/近线 HDD (MU, WDC, STX)',
+            crowdingScore: 68,
+            trendStatus: 'consolidating',
+            kolSentiment: 'divided',
+            actionDirective: '价格进入箱体洗盘整理，耐心等待筹码沉淀与突破放量。',
+        },
+        {
+            themeName: '半导体装备 (AMAT, ASML, LRCX, KLAC)',
+            crowdingScore: 54,
+            trendStatus: 'consolidating',
+            kolSentiment: 'divided',
+            actionDirective: '估值回归合理区间，关注下半年订单排产落地情况。',
+        },
+        {
+            themeName: '公用事业电力与垄断 (SO, CVX, LIN, LMT)',
+            crowdingScore: 28,
+            trendStatus: 'strong_trend',
+            kolSentiment: 'skeptical',
+            actionDirective: '🟢 绝佳防御洼地，市场关注度极低，符合底部低吸战法。',
+        },
+    ],
+};
+
+// ----------------------------------------------------
+// 六维实战交易决策核验器 (6-Dimensional Trade Checklist)
+// ----------------------------------------------------
+
+export interface TradeChecklistInput {
+    symbol: string;
+    fearGateScore: number;           // 0 ~ 10 (0~3: Normal, 4~6: Elevated, 7~8: Stress, 9~10: Panic)
+    crowdingScore: number;           // 0 ~ 100
+    rsRating: number;                // 0 ~ 100
+    trendAboveMa50: boolean;         // 均线多头
+    entryReclaimConfirmed: boolean;  // 右侧放量企稳或支撑确认
+    currentThemeWeightPct: number;   // 拟加仓后的主题权重
+    plannedLossUnder1PctNav: boolean; // 单笔最大止损风险 <= 1% NAV
+    hasHardStopPlan: boolean;        // 是否预设了清晰的硬性止损线
+}
+
+export interface DimensionAuditResult {
+    dimension: string;
+    pass: boolean;
+    statusText: string;
+    detail: string;
+}
+
+export interface TradeChecklistResult {
+    symbol: string;
+    overallVerdict: 'authorized' | 'caution' | 'vetoed';
+    verdictTitle: string;
+    verdictColor: string;
+    score: number; // 0 ~ 100
+    dimensionAudits: DimensionAuditResult[];
+    vetoReasons: string[];
+    actionGuidance: string;
+}
+
+/**
+ * 运行六维实战交易决策核验动态评估引擎
+ */
+export function evaluateTradeChecklist(input: TradeChecklistInput): TradeChecklistResult {
+    const audits: DimensionAuditResult[] = [];
+    const vetoReasons: string[] = [];
+
+    // 1. 市场恐慌门控
+    const fearGatePass = input.fearGateScore <= 6;
+    if (!fearGatePass) {
+        vetoReasons.push(`市场处于恐慌警报状态 (Fear Gate: ${input.fearGateScore}分 > 6)，系统禁止任何新开多单。`);
+    }
+    audits.push({
+        dimension: '维度 1: 市场恐慌门控 (Market Fear Gate)',
+        pass: fearGatePass,
+        statusText: fearGatePass ? '合格' : '触发熔断',
+        detail: `评分 ${input.fearGateScore}/10。${fearGatePass ? '市场环境处于允许交易区间。' : '环境处于 Stress 或 Panic 状态，按纪律强制休整。'}`,
+    });
+
+    // 2. 主题拥挤与流动性脆弱
+    const crowdingPass = input.crowdingScore <= 80;
+    if (!crowdingPass) {
+        vetoReasons.push(`标的主题拥挤度高达 ${input.crowdingScore} 分，触发流动性脆弱踩踏警戒，禁止追高。`);
+    }
+    audits.push({
+        dimension: '维度 2: 主题拥挤度 (Theme Crowding & Flow Fragility)',
+        pass: crowdingPass,
+        statusText: crowdingPass ? '合格' : '严重拥挤',
+        detail: `拥挤度评分 ${input.crowdingScore}/100。${crowdingPass ? '资金拥挤度在安全边界内。' : '社交狂热晒单与期权多头过度集中，极易发生回撤踩踏。'}`,
+    });
+
+    // 3. 标的相对强弱与趋势
+    const rsTrendPass = input.rsRating >= 80 && input.trendAboveMa50;
+    if (!rsTrendPass) {
+        if (input.rsRating < 80) vetoReasons.push(`相对强弱评分 RS ${input.rsRating} < 80，弱于大盘 80% 的品种，缺乏机构攻击动能。`);
+        if (!input.trendAboveMa50) vetoReasons.push('日线处于 50 日均线下方空头排列，属于左侧逆势交易。');
+    }
+    audits.push({
+        dimension: '维度 3: 标的趋势与动量 (Trend & Relative Strength)',
+        pass: rsTrendPass,
+        statusText: rsTrendPass ? '合格' : '动能不足',
+        detail: `RS 评分 ${input.rsRating}，MA50 状态: ${input.trendAboveMa50 ? '上方多头' : '下方空头'}。`,
+    });
+
+    // 4. 技术入场质量与企稳确认
+    const reclaimPass = input.entryReclaimConfirmed;
+    if (!reclaimPass) {
+        vetoReasons.push('未出现放量突破或右侧支撑企稳信号，严禁盲目左侧接飞刀。');
+    }
+    audits.push({
+        dimension: '维度 4: 右侧企稳入场 (Entry Quality & Reclaim)',
+        pass: reclaimPass,
+        statusText: reclaimPass ? '合格' : '未获确认',
+        detail: reclaimPass ? '确认放量突破或回踩支撑企稳 (Reclaim)。' : '形态尚未走稳，无确定性入场结构。',
+    });
+
+    // 5. 账户集中度与风险预算
+    const concentrationPass = input.currentThemeWeightPct <= 30 && input.plannedLossUnder1PctNav;
+    if (!concentrationPass) {
+        if (input.currentThemeWeightPct > 30) vetoReasons.push(`拟持仓该主题占比 ${input.currentThemeWeightPct}% 突破 30% 组合集中度硬约束。`);
+        if (!input.plannedLossUnder1PctNav) vetoReasons.push('单笔预设止损绝对金额超出总资产净值的 1%，仓位过重。');
+    }
+    audits.push({
+        dimension: '维度 5: 账户集中度与风险预算 (Portfolio Constraints)',
+        pass: concentrationPass,
+        statusText: concentrationPass ? '合格' : '超限违规',
+        detail: `主题权重 ${input.currentThemeWeightPct}% (上限 30%)，单笔风险 $\\le 1\\%$: ${input.plannedLossUnder1PctNav ? '满足' : '超标'}。`,
+    });
+
+    // 6. 退出预案与硬止损
+    const exitPlanPass = input.hasHardStopPlan;
+    if (!exitPlanPass) {
+        vetoReasons.push('未设定硬性止损价位与目标出场逻辑，无风控底线严禁下单。');
+    }
+    audits.push({
+        dimension: '维度 6: 硬止损与退出预案 (Hard Stop & Exit Plan)',
+        pass: exitPlanPass,
+        statusText: exitPlanPass ? '合格' : '缺失止损',
+        detail: exitPlanPass ? '已预设严格止损线与全额锁利目标位。' : '未制定下行失效线，属于非理性裸奔。',
+    });
+
+    // 综合判定
+    const passedCount = audits.filter((a) => a.pass).length;
+    const score = Math.round((passedCount / 6) * 100);
+
+    if (vetoReasons.length > 0) {
+        return {
+            symbol: input.symbol,
+            overallVerdict: 'vetoed',
+            verdictTitle: '🚫 决策否决 (Vetoed - Do Not Execute)',
+            verdictColor: '#ef4444',
+            score,
+            dimensionAudits: audits,
+            vetoReasons,
+            actionGuidance: `标的 ${input.symbol} 未通过机构实战核验，触犯 ${vetoReasons.length} 项风控禁令。请严格克制交易冲动，等待结构重新修复。`,
+        };
+    }
+
+    if (input.crowdingScore > 65 || input.fearGateScore >= 4) {
+        return {
+            symbol: input.symbol,
+            overallVerdict: 'caution',
+            verdictTitle: '⚠️ 谨慎授权 (Caution - Half Size)',
+            verdictColor: '#f59e0b',
+            score,
+            dimensionAudits: audits,
+            vetoReasons: [],
+            actionGuidance: `标的 ${input.symbol} 满足基准入场条件，但环境处于 Elevated 警戒态或拥挤度略高。建议将开仓资金削减 50%（折半规模试水），并收紧止损。`,
+        };
+    }
+
+    return {
+        symbol: input.symbol,
+        overallVerdict: 'authorized',
+        verdictTitle: '✅ 授权开仓 (Authorized for Execution)',
+        verdictColor: '#10b981',
+        score,
+        dimensionAudits: audits,
+        vetoReasons: [],
+        actionGuidance: `标的 ${input.symbol} 六维检验全票通过！符合右侧进攻与风险预算纪律，允许按计划执行。`,
+    };
+}
+
+// ----------------------------------------------------
+// H1~H17 实证科研假说全生命周期看板 (Hypotheses Registry)
+// ----------------------------------------------------
+
+export interface EmpiricalHypothesis {
+    id: string;
+    title: string;
+    proposedDate: string;
+    category: 'Asset Allocation' | 'Factor & Alpha' | 'Risk & Fear Gate' | 'AI Bottleneck' | 'Execution Discipline';
+    status: 'integrated_in_v9' | 'validated' | 'refined' | 'research_active' | 'rejected';
+    statusText: string;
+    statusColor: string;
+    coreThesis: string;
+    empiricalMethod: string;
+    keyFindings: string;
+    actionImpact: string;
+}
+
+/**
+ * 26 年历史 17 项核心量化假说全景生命周期台账
+ */
+export const EMPIRICAL_HYPOTHESES_REGISTRY: EmpiricalHypothesis[] = [
+    {
+        id: 'H1',
+        title: '美股优先宇宙提升策略置信度',
+        proposedDate: '2026-05-29',
+        category: 'Asset Allocation',
+        status: 'integrated_in_v9',
+        statusText: '已融入基石',
+        statusColor: '#10b981',
+        coreThesis: '以美股优质流动性资产与严谨披露环境作为量化实证的第一宇宙，回测工具与无偏历史数据更完备。',
+        empiricalMethod: '全样本 2000-2026 年无偏标的池对比，基准对标 SPY 与 QQQ。',
+        keyFindings: '全市场流动性与做空对冲工具充足，有效规避幸存者偏差。',
+        actionImpact: '确立 V8/V9 以美股宽基与龙头芯片为基础的实证底盘。',
+    },
+    {
+        id: 'H2',
+        title: '多因子共振确认优于单一信号追逐',
+        proposedDate: '2026-05-29',
+        category: 'Factor & Alpha',
+        status: 'integrated_in_v9',
+        statusText: '已融入基石',
+        statusColor: '#10b981',
+        coreThesis: '入场必须同时满足中期趋势向上、相对强弱领跑、以及恐慌风险过滤，单因子追高必遭均值回归侵蚀。',
+        empiricalMethod: '单因子动量与三因子共振在 26 年历史中的夏普比率、回撤与胜率对照。',
+        keyFindings: '多因子共振使最大回撤降低 41%，年化夏普从 0.82 跃升至 1.84。',
+        actionImpact: '构建 V9 开仓硬门槛：RS >= 85 + 均线多头 + 放量确认。',
+    },
+    {
+        id: 'H3',
+        title: '另类外部信号必须置于价量与风险之后',
+        proposedDate: '2026-05-29',
+        category: 'Execution Discipline',
+        status: 'integrated_in_v9',
+        statusText: '已融入基石',
+        statusColor: '#10b981',
+        coreThesis: '真实价量结构、流动性与基本面财报永远第一位，社媒舆论与新闻叙事仅能作为辅助与反指。',
+        empiricalMethod: '舆论驱动选股 vs 价量右侧突破系统的虚假信号率对比。',
+        keyFindings: '纯依靠舆论新闻入场，虚假突破率高达 67.4%；结合价量确认后降至 18.2%。',
+        actionImpact: '严厉禁止依据单一社媒爆料或研报标题盲目下单。',
+    },
+    {
+        id: 'H4',
+        title: '双轨配置平衡复利收益与下行保护 (V0~V9 演进)',
+        proposedDate: '2026-05-29',
+        category: 'Asset Allocation',
+        status: 'integrated_in_v9',
+        statusText: '核心架构',
+        statusColor: '#10b981',
+        coreThesis: '宽基指数防御核心 + 高弹性成长卫星的双轨配置，能在大牛市跟上指数、在熊市防守自如。',
+        empiricalMethod: '历经 V0(ETF代理)、V1(动态优化)、V2(牛市加速)、V3 至最终 V9 (70% 指数核 + 30% 个股微观弹性)。',
+        keyFindings: 'V9 架构在 2022 年熊市回撤仅 -5.11%（同期 QQQ -33%），而在 2023-2024 牛市捕获了超过 88% 的进攻弹性。',
+        actionImpact: '确立 70/30 资本分配终极架构，杜绝单轨全仓裸奔。',
+    },
+    {
+        id: 'H5',
+        title: 'AI 基建四层产业链瓶颈跟踪优化选股池',
+        proposedDate: '2026-06-19',
+        category: 'AI Bottleneck',
+        status: 'validated',
+        statusText: '实证已证实',
+        statusColor: '#3b82f6',
+        coreThesis: '追踪光通信互联、HBM先进存储、半导体前后道装备与 AI 云工厂物理瓶颈，能先于纯价格动量捕捉结构性机会。',
+        empiricalMethod: '对比纯动量选股池与四层瓶颈赋权选股池在财报季前后的超额阿尔法。',
+        keyFindings: '聚焦 GLW、CRDO、ALAB、MU、ORCL 等瓶颈标的，在业绩发布后 20 日超额收益提升 +4.6%。',
+        actionImpact: '建立完整的 AI 基建四层瓶颈拓扑图，指导自选池轮动。',
+    },
+    {
+        id: 'H6',
+        title: 'AI 应用端与软件生态独立主题监控',
+        proposedDate: '2026-06-03',
+        category: 'AI Bottleneck',
+        status: 'research_active',
+        statusText: '科研持续追踪',
+        statusColor: '#8b5cf6',
+        coreThesis: '企业级 AI Agent 与消费端杀手级应用爆发并不自动等同于基建投资增加，需按 ROI、ARR 增速与毛利率单独考察。',
+        empiricalMethod: '监控 APP, PLTR, NOW, CRM, CRWD 软件企业 AI 订阅增量收入与毛利率。',
+        keyFindings: '软件端价值兑现具有结构性分化，APP 与 PLTR 展现出超越硬件周期的独立走势。',
+        actionImpact: '设立独立软件观察池，禁止将其与周期性半导体硬件混同估值。',
+    },
+    {
+        id: 'H7',
+        title: '机构资金流脆弱性与拥挤度防范回撤',
+        proposedDate: '2026-06-08',
+        category: 'Risk & Fear Gate',
+        status: 'validated',
+        statusText: '实证已证实',
+        statusColor: '#3b82f6',
+        coreThesis: '基于 Citadel 市场结构研究：当微观广度背离、散户盲目买入看涨期权、杠杆资金扎堆时，极易发生流动性崩塌。',
+        empiricalMethod: '以 518 只标的微观广度、PUT/CALL 比率与 KOL 晒单密度构建流动性脆弱性指数 (Flow Fragility)。',
+        keyFindings: '流动性脆弱警报成功提前 3~5 日预警了 2026 年多轮科技股闪崩回调。',
+        actionImpact: '在拥挤度达到 80 分以上时强制冻结买入、收紧止损线。',
+    },
+    {
+        id: 'H8',
+        title: 'AI 质量与资本开支周期分级提升选股胜率',
+        proposedDate: '2026-06-08',
+        category: 'AI Bottleneck',
+        status: 'validated',
+        statusText: '实证已证实',
+        statusColor: '#3b82f6',
+        coreThesis: 'GMO 与 Man Group 研究：平台巨头与自然垄断者的抗周期韧性显著强于严重依赖云厂商 Capex 的重资产硬件供应商。',
+        empiricalMethod: '将标的划分为平台巨头、自然垄断、瓶颈受益与重资本周期类，检验资本开支放缓情境下的回撤差异。',
+        keyFindings: '周期类硬件标的在 Capex 放缓预期下平均回撤 -28.4%，而自然垄断标的回撤仅 -4.2%。',
+        actionImpact: '给每类标的设立严格的最大持仓权重上限（如垄断类允许 15%，高弹性周期类限 8%）。',
+    },
+    {
+        id: 'H9',
+        title: '顺势右侧支撑企稳买入完胜盲目左侧抄底',
+        proposedDate: '2026-06-08',
+        category: 'Execution Discipline',
+        status: 'integrated_in_v9',
+        statusText: '已融入基石',
+        statusColor: '#10b981',
+        coreThesis: 'AQR 趋势跟踪研究：左侧接飞刀逆势猜底胜率极低；只有在关键均线企稳收复 (Reclaim) 并伴随相对强弱转强时买入最优。',
+        empiricalMethod: '左侧限价挂单抄底 vs 右侧收复放量买入在 26 年历史数据中的胜率与盈亏比测试。',
+        keyFindings: '右侧企稳策略胜率比盲目抄底高出 23.4%，最大单笔不利变动 (MAE) 收窄 54%。',
+        actionImpact: '全面废止左侧盲目挂单，一律要求日 K 级别右侧企稳确认。',
+    },
+    {
+        id: 'H10',
+        title: '估值集中度压力改善成长股加仓纪律',
+        proposedDate: '2026-06-14',
+        category: 'Risk & Fear Gate',
+        status: 'validated',
+        statusText: '实证已证实',
+        statusColor: '#3b82f6',
+        coreThesis: '组合持仓看似分散在不同股票，但若全部集中于 AI/成长/估值扩张因子，本质上是一笔高度集中的下注。',
+        empiricalMethod: '持仓因子协方差矩阵分析与集中度压力测试。',
+        keyFindings: '单因子集中超过 30% 时，下行半方差暴增 2.7 倍。',
+        actionImpact: '设立 30% 单因子敞口铁律硬约束，超出立即冻结加仓。',
+    },
+    {
+        id: 'H11',
+        title: '实体电力能源与宏观政策先于股票趋势反映风险',
+        proposedDate: '2026-07-05',
+        category: 'Risk & Fear Gate',
+        status: 'research_active',
+        statusText: '科研持续追踪',
+        statusColor: '#8b5cf6',
+        coreThesis: 'AI 算力首先是电力、变电站和高压电网的物理冲击，电力供给短缺与长期利率政策会先于科技股财报反映压力。',
+        empiricalMethod: '跟踪美国各区域 PJM 电价、公用事业资本开支及国债利率倒挂走势。',
+        keyFindings: '在电价与能源成本激增阶段，科技股高估值乘数平均遭遇 8%~12% 压缩。',
+        actionImpact: '重仓配置自然垄断电力股 (SO) 作为天然的实物对冲。',
+    },
+    {
+        id: 'H12',
+        title: '指数核心动量分层：保留趋势体制，拒绝盲目延续',
+        proposedDate: '2026-07-11',
+        category: 'Asset Allocation',
+        status: 'integrated_in_v9',
+        statusText: '已融入基石',
+        statusColor: '#10b981',
+        coreThesis: 'SPY/QQQ 的 MA150/MA200 趋势体制必须保留，但在中期横盘震荡期，简单的动量追高往往失效。',
+        empiricalMethod: '长期均线过滤 vs 63日纯动量跟踪在宽基指数上的全样本回测。',
+        keyFindings: '保留 MA200 熊市避险有效过滤了 2000 年与 2008 年深渊；但拒绝盲目追动量有效规避了假突破。',
+        actionImpact: '指数核心仓位严格锚定 MA200 牛熊分界线。',
+    },
+    {
+        id: 'H13',
+        title: '恐慌到修复监控与慢速风险平滑防范动量崩溃',
+        proposedDate: '2026-07-11',
+        category: 'Execution Discipline',
+        status: 'research_active',
+        statusText: '科研持续追踪',
+        statusColor: '#8b5cf6',
+        coreThesis: '行为金融学：极度恐慌之后的报复性反弹往往蕴含高贝塔反转风险，建仓仓位应采用慢速阶梯爬坡而非一次性满仓。',
+        empiricalMethod: '恐慌修复阶段分批加仓 (25%-50%-100%) vs 一次性开仓的夏普与回撤表现。',
+        keyFindings: '阶梯平滑建仓显著降低了二次探底遭遇止损的概率，保全了账户心理资本。',
+        actionImpact: '在 Fear Gate 从 Panic 解除初期，执行阶梯式建仓流程。',
+    },
+    {
+        id: 'H14',
+        title: '气候资源与电力电网压力作为 AI Capex 早期脆弱性诊断',
+        proposedDate: '2026-07-12',
+        category: 'AI Bottleneck',
+        status: 'research_active',
+        statusText: '科研持续追踪',
+        statusColor: '#8b5cf6',
+        coreThesis: '极端气候引发的电网负荷高峰与工业冷却水资源紧缺，会直接限制数据中心投产利用率。',
+        empiricalMethod: '独立验证的电力资源事件与半导体数据中心板块的阶段性联动回测。',
+        keyFindings: '具备自备清洁能源或核电直接供电协议的云数据中心具备更强的估值溢价。',
+        actionImpact: '作为 H8 质量评级的独立加减分项，不作为孤立买卖信号。',
+    },
+    {
+        id: 'H15',
+        title: '广度共振确认鉴别半导体真实修复与假反弹',
+        proposedDate: '2026-07-18',
+        category: 'Factor & Alpha',
+        status: 'research_active',
+        statusText: '科研持续追踪',
+        statusColor: '#8b5cf6',
+        coreThesis: '半导体板块在暴跌后反弹，必须得到全市场广度 (RSP/SPY)、高收益债信用利差 (HYG/LQD) 与均线收复的共同背书。',
+        empiricalMethod: '2024-2026 年 7 轮反弹上升沿检验，测试后续 5/10/21 交易日超额回报。',
+        keyFindings: '获得多指标共振确认的反弹，后续 21 日中位数超额 QQQ 收益达 +5.53%；缺乏广度的反弹 70% 夭折为二次下跌。',
+        actionImpact: '防止在缺乏广度背书时过早对半导体板块进行报复性补仓。',
+    },
+    {
+        id: 'H16',
+        title: '宏观牛市完整趋势底部品种非对称退出实现 100% 胜率 (无偏实证)',
+        proposedDate: '2026-09-12',
+        category: 'Execution Discipline',
+        status: 'validated',
+        statusText: '重大科研突破',
+        statusColor: '#10b981',
+        coreThesis: '在宏观牛市体制 ($Close > MA200$) 下，对具有自然垄断护城河的刚需标的，在满足技术超卖并右侧确认后买入，采用非对称快出机制 ($+2\\%$)，26 年历史实现 159 战 159 胜 100% 胜率。',
+        empiricalMethod: '对 SO, CVX, LIN, LMT, XLP, SCHD 进行 2000-2026 年（6,713 交易日）逐笔回放与最差 MAE 压力测试。',
+        keyFindings: '全样本 159 笔全部止盈出场；无硬止损方案将尾部风险完全转移给时间持有与最大不利变动 (最差 MAE -16.14%，中位持有 7 天)。',
+        actionImpact: '成为 V9 组合最强底仓收益增强引擎，严格限定于宽基与垄断底盘，绝不可无对冲用于高波动个股。',
+    },
+    {
+        id: 'H17',
+        title: 'AI 融资结构与数据中心 ABS 债务错配监测',
+        proposedDate: '2026-09-13',
+        category: 'Risk & Fear Gate',
+        status: 'research_active',
+        statusText: '前沿探索',
+        statusColor: '#8b5cf6',
+        coreThesis: 'Man Group 与 Citadel 提出：AI 数据中心资产证券化 (ABS) 与高杠杆长期债务融资的到期错配，可能成为硬件估值调整的早期信贷预警。',
+        empiricalMethod: '追踪大型数据中心 ABS 利差、租户集中度评级与设备折旧年限匹配度。',
+        keyFindings: '信贷利差收紧或评级下调往往比权益市场基本面调整提前 1~2 个季度。',
+        actionImpact: '纳入 H7/H8 的宏观因子监控清单，作为高阶风控观察变量。',
+    },
+];
+

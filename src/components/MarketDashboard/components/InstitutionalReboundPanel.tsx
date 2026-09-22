@@ -14,7 +14,13 @@ import {
     RSR2_MOMENTUM_SCREENER,
     REENTRY_EXECUTION_ENGINE,
     PORTFOLIO_RISK_BUDGET_DATA,
+    AI_INFRASTRUCTURE_BOTTLENECK_MAP,
+    THEME_CROWDING_RADAR,
+    evaluateTradeChecklist,
+    EMPIRICAL_HYPOTHESES_REGISTRY,
     type BottomReboundStock,
+    type TradeChecklistInput,
+    type TradeChecklistResult,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -26,6 +32,10 @@ type SubTabType =
     | 'live-shadow'
     | 'fear-matrix'
     | 'breadth'
+    | 'ai-bottleneck'
+    | 'crowding-radar'
+    | 'trade-checklist'
+    | 'hypotheses'
     | 'rsr-momentum'
     | 'reentry'
     | 'risk-budget'
@@ -40,6 +50,23 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
 }) => {
     const [subTab, setSubTab] = useState<SubTabType>('stocks');
     const [selectedEpoch, setSelectedEpoch] = useState<'all' | '2000-2007' | '2008-2016' | '2017-2026'>('all');
+    const [hypoCategoryFilter, setHypoCategoryFilter] = useState<string>('all');
+    const [hypoStatusFilter, setHypoStatusFilter] = useState<string>('all');
+
+    // 六维实战决策自检器交互表单状态
+    const [checklistInput, setChecklistInput] = useState<TradeChecklistInput>({
+        symbol: 'NVDA',
+        fearGateScore: 5,
+        crowdingScore: 82,
+        rsRating: 92,
+        trendAboveMa50: true,
+        entryReclaimConfirmed: true,
+        currentThemeWeightPct: 24.5,
+        plannedLossUnder1PctNav: true,
+        hasHardStopPlan: true,
+    });
+
+    const checklistResult: TradeChecklistResult = evaluateTradeChecklist(checklistInput);
 
     const summary = BOTTOM_REBOUND_100WIN_SUMMARY;
     const stocks = BOTTOM_REBOUND_UNIVERSE;
@@ -142,6 +169,30 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('breadth')}
                 >
                     📡 518 标的微观广度背离雷达
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'ai-bottleneck' ? 'active' : ''}`}
+                    onClick={() => setSubTab('ai-bottleneck')}
+                >
+                    🌐 AI 基建四层产业链瓶颈
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
+                    onClick={() => setSubTab('crowding-radar')}
+                >
+                    👥 舆论情绪拥挤度反指
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'trade-checklist' ? 'active' : ''}`}
+                    onClick={() => setSubTab('trade-checklist')}
+                >
+                    ✅ 六维实战交易核验器
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'hypotheses' ? 'active' : ''}`}
+                    onClick={() => setSubTab('hypotheses')}
+                >
+                    🧬 H1~H17 实证科研假说
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'rsr-momentum' ? 'active' : ''}`}
@@ -504,6 +555,483 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                 </div>
                             ))}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：AI 基建四层产业链瓶颈雷达 */}
+            {subTab === 'ai-bottleneck' && (
+                <div className="rebound-bottleneck-view">
+                    <div className="bottleneck-macro-banner">
+                        <div className="macro-head">
+                            <span className="macro-icon">🌐</span>
+                            <div>
+                                <h4>AI 基建四层物理与架构产业链瓶颈全景图谱 (H5 实证体系)</h4>
+                                <span className="as-of-date">数据基准日：{AI_INFRASTRUCTURE_BOTTLENECK_MAP.asOfDate} · 涵盖 20 只全球硬核物理瓶颈标的</span>
+                            </div>
+                        </div>
+                        <div className="macro-status-text">
+                            <strong>当前瓶颈特征：</strong>{AI_INFRASTRUCTURE_BOTTLENECK_MAP.themeStatus}
+                        </div>
+                        <div className="macro-insight-box">
+                            <strong>💡 资本开支牛鞭效应洞察：</strong>{AI_INFRASTRUCTURE_BOTTLENECK_MAP.macroInsight}
+                        </div>
+                    </div>
+
+                    <div className="bottleneck-layers-stack">
+                        {AI_INFRASTRUCTURE_BOTTLENECK_MAP.layers.map((layer) => (
+                            <div key={layer.layerId} className={`bottleneck-layer-card severity-${layer.bottleneckSeverity.toLowerCase()}`}>
+                                <div className="layer-header-row">
+                                    <div className="layer-title-wrap">
+                                        <span className="layer-num-badge">L{layer.layerNumber}</span>
+                                        <div>
+                                            <h4 className="layer-name">{layer.layerName}</h4>
+                                            <span className="layer-subtitle">{layer.shortTitle}</span>
+                                        </div>
+                                    </div>
+                                    <div className="layer-badge-group">
+                                        <span className={`severity-badge severity-${layer.bottleneckSeverity.toLowerCase()}`}>
+                                            紧缺级别: {layer.bottleneckSeverity}
+                                        </span>
+                                        <span className="leadtime-badge font-mono">
+                                            排产周期: {layer.leadTimeWeeks}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="layer-constraints-grid">
+                                    <div className="constraint-box">
+                                        <span className="lbl">⚙️ 物理/制造瓶颈约束：</span>
+                                        <p className="val">{layer.physicalConstraint}</p>
+                                    </div>
+                                    <div className="trend-box">
+                                        <span className="lbl">📈 架构演进与技术路线：</span>
+                                        <p className="val">{layer.architectureTrend}</p>
+                                    </div>
+                                </div>
+
+                                <div className="layer-stocks-section">
+                                    <h5 className="stocks-section-title">核心掌控力标的池 ({layer.stocks.length} 只)</h5>
+                                    <div className="layer-stocks-grid">
+                                        {layer.stocks.map((stk) => (
+                                            <div key={stk.symbol} className="bottleneck-stock-card">
+                                                <div className="stk-top">
+                                                    <div>
+                                                        <span className="stk-sym font-mono font-bold">{stk.symbol}</span>
+                                                        <span className="stk-name">{stk.nameCn}</span>
+                                                    </div>
+                                                    <span className={`capex-tag capex-${stk.capexSensitivity}`}>
+                                                        Capex敏感度: {stk.capexSensitivity}
+                                                    </span>
+                                                </div>
+                                                <div className="stk-role">
+                                                    <strong>产业链定位：</strong>{stk.role}
+                                                </div>
+                                                <div className="stk-moat">
+                                                    <strong>护城河壁垒：</strong>{stk.competitiveMoat}
+                                                </div>
+                                                <div className="stk-metric">
+                                                    <strong>核心跟踪指标：</strong><code>{stk.keyMetricToWatch}</code>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：舆论情绪拥挤度反指雷达 */}
+            {subTab === 'crowding-radar' && (
+                <div className="rebound-crowding-view">
+                    <div className="crowding-header-card">
+                        <div className="crowding-top-row">
+                            <div className="crowding-title-wrap">
+                                <span className="crowding-icon">👥</span>
+                                <div>
+                                    <h4>社交媒体与机构资金流拥挤度反指雷达 (H7 & Citadel 框架)</h4>
+                                    <span className="as-of-date">监测周期：2026-09-20 · 对标小红书/X/社群KOL晒单与期权资金流</span>
+                                </div>
+                            </div>
+                            <div className="heat-dial-box">
+                                <span className="lbl">全网综合狂热指数</span>
+                                <div className="dial-val-row font-mono">
+                                    <span className="dial-num text-red">{THEME_CROWDING_RADAR.overallHeatIndex}</span>
+                                    <span className="dial-max">/ 100</span>
+                                </div>
+                                <span className="level-badge level-hyper">{THEME_CROWDING_RADAR.levelText}</span>
+                            </div>
+                        </div>
+
+                        <div className="crowding-warning-alert">
+                            <span className="alert-icon">⚠️</span>
+                            <div>
+                                <strong>KOL/散户晒单狂热度：</strong>
+                                <span>{THEME_CROWDING_RADAR.kolGainDensity}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 四大约束反向操作铁律 */}
+                    <div className="contrarian-directives-card">
+                        <h4 className="card-heading">🛡️ 拥挤高危期的四大反向风控铁律 (Contrarian Directives)</h4>
+                        <div className="directives-list">
+                            {THEME_CROWDING_RADAR.contrarianDirectives.map((d, i) => (
+                                <div key={i} className="directive-item">
+                                    <span className="d-idx font-mono font-bold">0{i + 1}</span>
+                                    <p className="d-text">{d}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 四级拥挤度评分阶梯对照 */}
+                    <div className="crowding-ladder-card">
+                        <h4 className="card-heading">📊 四级拥挤度分级阶梯与实战应对方案</h4>
+                        <div className="ladder-grid">
+                            {THEME_CROWDING_RADAR.crowdingLevels.map((lvl) => {
+                                const isActive = lvl.level === THEME_CROWDING_RADAR.currentLevel;
+                                return (
+                                    <div key={lvl.level} className={`ladder-box ${isActive ? 'active-ladder' : ''}`}>
+                                        <div className="ladder-head">
+                                            <span className="ladder-range font-mono">{lvl.scoreRange} 分</span>
+                                            <span className="ladder-pill" style={{ color: lvl.color }}>{lvl.statusBadge}</span>
+                                        </div>
+                                        <h5 className="ladder-title">{lvl.levelName}</h5>
+                                        <p className="ladder-desc">{lvl.description}</p>
+                                        <div className="ladder-action">
+                                            <strong>操作指南：</strong>{lvl.behaviorGuide}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* 五大细分子赛道拥挤度对比 */}
+                    <div className="subthemes-crowding-card">
+                        <h4 className="card-heading">🎯 5 大细分科技赛道拥挤度与操作指令</h4>
+                        <div className="subthemes-table-wrap">
+                            <table className="subthemes-table font-mono">
+                                <thead>
+                                    <tr>
+                                        <th>细分主题赛道</th>
+                                        <th>拥挤度得分</th>
+                                        <th>趋势结构</th>
+                                        <th>KOL多空共识</th>
+                                        <th>针对性操作指引</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {THEME_CROWDING_RADAR.subThemes.map((st, i) => (
+                                        <tr key={i}>
+                                            <td className="st-name font-bold">{st.themeName}</td>
+                                            <td>
+                                                <div className="score-bar-wrap">
+                                                    <span className={`score-txt font-bold ${st.crowdingScore >= 75 ? 'text-red' : st.crowdingScore >= 60 ? 'text-gold' : 'text-green'}`}>
+                                                        {st.crowdingScore}
+                                                    </span>
+                                                    <div className="score-bg-bar">
+                                                        <div
+                                                            className="score-fill-bar"
+                                                            style={{
+                                                                width: `${st.crowdingScore}%`,
+                                                                backgroundColor: st.crowdingScore >= 75 ? '#ef4444' : st.crowdingScore >= 60 ? '#f59e0b' : '#10b981',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className={`trend-pill trend-${st.trendStatus}`}>
+                                                    {st.trendStatus === 'strong_trend' ? '强势多头' : st.trendStatus === 'extended_exhaustion' ? '高位竭尽' : '箱体整理'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`sentiment-pill sent-${st.kolSentiment}`}>
+                                                    {st.kolSentiment === 'bullish_consensus' ? '单边极度看多' : st.kolSentiment === 'skeptical' ? '普遍冷清质疑' : '多空分歧适中'}
+                                                </span>
+                                            </td>
+                                            <td className="directive-cell">{st.actionDirective}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：六维实战交易决策核验器 */}
+            {subTab === 'trade-checklist' && (
+                <div className="rebound-checklist-view">
+                    <div className="checklist-hero-banner">
+                        <div className="hero-left">
+                            <span className="checklist-icon">✅</span>
+                            <div>
+                                <h4>六维实战交易决策动态核验器 (6-Dimensional Decision Engine)</h4>
+                                <p>开仓前的最后一道防线：将恐慌门控、情绪拥挤、趋势动量、右侧结构、风险预算与退出纪律进行刚性机器核验，杜绝情绪化冲动交易。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="checklist-interactive-layout">
+                        {/* 左侧：输入控制台 */}
+                        <div className="checklist-input-card">
+                            <h4 className="card-title">⚙️ 拟开仓标的与条件输入控制台</h4>
+                            <div className="form-group">
+                                <label>拟操作股票代码 (Ticker)</label>
+                                <input
+                                    type="text"
+                                    className="dark-input font-mono"
+                                    value={checklistInput.symbol}
+                                    onChange={(e) => setChecklistInput({ ...checklistInput, symbol: e.target.value.toUpperCase() })}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>
+                                    Fear Gate 恐慌门控得分 (0~10)
+                                    <span className="val-preview font-mono text-gold">{checklistInput.fearGateScore} 分</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="10"
+                                    step="1"
+                                    className="dark-range"
+                                    value={checklistInput.fearGateScore}
+                                    onChange={(e) => setChecklistInput({ ...checklistInput, fearGateScore: Number(e.target.value) })}
+                                />
+                                <div className="range-hints">
+                                    <span>0~3 正常</span>
+                                    <span>4~6 警戒</span>
+                                    <span>7~8 压力</span>
+                                    <span>9~10 恐慌</span>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label>
+                                    主题拥挤度评分 (0~100)
+                                    <span className="val-preview font-mono text-cyan">{checklistInput.crowdingScore} 分</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    className="dark-range"
+                                    value={checklistInput.crowdingScore}
+                                    onChange={(e) => setChecklistInput({ ...checklistInput, crowdingScore: Number(e.target.value) })}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>
+                                    相对强弱评分 RS Rating (0~100)
+                                    <span className="val-preview font-mono text-gold">{checklistInput.rsRating} 分</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    className="dark-range"
+                                    value={checklistInput.rsRating}
+                                    onChange={(e) => setChecklistInput({ ...checklistInput, rsRating: Number(e.target.value) })}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>拟加仓后该主题总仓位占比 (%)</label>
+                                <input
+                                    type="number"
+                                    className="dark-input font-mono"
+                                    min="0"
+                                    max="100"
+                                    step="0.5"
+                                    value={checklistInput.currentThemeWeightPct}
+                                    onChange={(e) => setChecklistInput({ ...checklistInput, currentThemeWeightPct: Number(e.target.value) })}
+                                />
+                                <span className="field-tip">单因子主题硬上限为 30% NAV</span>
+                            </div>
+
+                            <div className="checkboxes-stack">
+                                <label className="custom-checkbox-row">
+                                    <input
+                                        type="checkbox"
+                                        checked={checklistInput.trendAboveMa50}
+                                        onChange={(e) => setChecklistInput({ ...checklistInput, trendAboveMa50: e.target.checked })}
+                                    />
+                                    <span>日线处于 50 日均线上方 (中期顺势)</span>
+                                </label>
+
+                                <label className="custom-checkbox-row">
+                                    <input
+                                        type="checkbox"
+                                        checked={checklistInput.entryReclaimConfirmed}
+                                        onChange={(e) => setChecklistInput({ ...checklistInput, entryReclaimConfirmed: e.target.checked })}
+                                    />
+                                    <span>具备放量突破或回踩企稳确认 (Reclaim)</span>
+                                </label>
+
+                                <label className="custom-checkbox-row">
+                                    <input
+                                        type="checkbox"
+                                        checked={checklistInput.plannedLossUnder1PctNav}
+                                        onChange={(e) => setChecklistInput({ ...checklistInput, plannedLossUnder1PctNav: e.target.checked })}
+                                    />
+                                    <span>单笔预设止损风险 $\le$ 账户总净值的 1%</span>
+                                </label>
+
+                                <label className="custom-checkbox-row">
+                                    <input
+                                        type="checkbox"
+                                        checked={checklistInput.hasHardStopPlan}
+                                        onChange={(e) => setChecklistInput({ ...checklistInput, hasHardStopPlan: e.target.checked })}
+                                    />
+                                    <span>已预设清晰的硬性止损位与退出预案</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* 右侧：核验结果与机器裁定 */}
+                        <div className="checklist-result-card">
+                            <div className="result-verdict-banner" style={{ borderColor: checklistResult.verdictColor }}>
+                                <div className="verdict-head">
+                                    <span className="verdict-title font-bold" style={{ color: checklistResult.verdictColor }}>
+                                        {checklistResult.verdictTitle}
+                                    </span>
+                                    <span className="verdict-score-badge font-mono" style={{ backgroundColor: checklistResult.verdictColor }}>
+                                        合规得分: {checklistResult.score}%
+                                    </span>
+                                </div>
+                                <p className="verdict-guidance">{checklistResult.actionGuidance}</p>
+                            </div>
+
+                            {/* 若存在否决原因，突出显示 */}
+                            {checklistResult.vetoReasons.length > 0 && (
+                                <div className="veto-alert-box">
+                                    <h5 className="veto-box-title">❌ 触发 {checklistResult.vetoReasons.length} 项机器否决禁令：</h5>
+                                    <ul className="veto-reasons-list">
+                                        {checklistResult.vetoReasons.map((r, i) => (
+                                            <li key={i}>{r}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {/* 六维逐项审核细则 */}
+                            <div className="audits-list-section">
+                                <h5 className="section-title">六维逐项独立审计细则</h5>
+                                <div className="audits-grid">
+                                    {checklistResult.dimensionAudits.map((a, i) => (
+                                        <div key={i} className={`audit-item-box ${a.pass ? 'pass-box' : 'fail-box'}`}>
+                                            <div className="audit-item-head">
+                                                <span className="dim-name">{a.dimension}</span>
+                                                <span className={`status-pill ${a.pass ? 'pass-pill' : 'fail-pill'}`}>
+                                                    {a.statusText}
+                                                </span>
+                                            </div>
+                                            <p className="dim-detail">{a.detail}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：H1~H17 实证科研假说看板 */}
+            {subTab === 'hypotheses' && (
+                <div className="rebound-hypotheses-view">
+                    <div className="hypotheses-hero-banner">
+                        <div className="hero-left">
+                            <span className="hypo-icon">🧬</span>
+                            <div>
+                                <h4>26 年量化实证科研假说生命周期全景 (H1~H17 Hypotheses Registry)</h4>
+                                <p>严守 AI-Memory 科学无偏准则：所有假说均经 2000–2026 年（6,713 交易日）全样本逐笔检验，绝不隐瞒负面结论，拒绝过度拟合与未来函数。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 筛选过滤工具条 */}
+                    <div className="hypo-filter-bar">
+                        <div className="filter-group">
+                            <span className="filter-label">研究领域：</span>
+                            {['all', 'Asset Allocation', 'Factor & Alpha', 'Risk & Fear Gate', 'AI Bottleneck', 'Execution Discipline'].map((cat) => (
+                                <button
+                                    key={cat}
+                                    className={`filter-btn ${hypoCategoryFilter === cat ? 'active' : ''}`}
+                                    onClick={() => setHypoCategoryFilter(cat)}
+                                >
+                                    {cat === 'all' ? '全部领域 (17)' : cat}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="filter-group">
+                            <span className="filter-label">生命周期状态：</span>
+                            {['all', 'integrated_in_v9', 'validated', 'research_active'].map((st) => (
+                                <button
+                                    key={st}
+                                    className={`filter-btn ${hypoStatusFilter === st ? 'active' : ''}`}
+                                    onClick={() => setHypoStatusFilter(st)}
+                                >
+                                    {st === 'all' ? '全部状态' : st === 'integrated_in_v9' ? '已融入基石' : st === 'validated' ? '实证证实' : '科研追踪'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 假说卡片瀑布流 */}
+                    <div className="hypotheses-cards-grid">
+                        {EMPIRICAL_HYPOTHESES_REGISTRY
+                            .filter((h) => hypoCategoryFilter === 'all' || h.category === hypoCategoryFilter)
+                            .filter((h) => hypoStatusFilter === 'all' || h.status === hypoStatusFilter)
+                            .map((h) => (
+                                <div key={h.id} className="hypothesis-card">
+                                    <div className="hypo-card-header">
+                                        <div className="hypo-id-wrap">
+                                            <span className="hypo-id-badge font-mono font-bold">{h.id}</span>
+                                            <div>
+                                                <h4 className="hypo-title">{h.title}</h4>
+                                                <span className="hypo-date font-mono">提出日期: {h.proposedDate}</span>
+                                            </div>
+                                        </div>
+                                        <div className="hypo-tags-group">
+                                            <span className="category-pill">{h.category}</span>
+                                            <span className="status-pill" style={{ backgroundColor: `${h.statusColor}22`, color: h.statusColor, border: `1px solid ${h.statusColor}` }}>
+                                                {h.statusText}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="hypo-section-block">
+                                        <span className="block-title">💡 核心科学论断：</span>
+                                        <p className="block-content">{h.coreThesis}</p>
+                                    </div>
+
+                                    <div className="hypo-section-block">
+                                        <span className="block-title">🔬 实证检验方法：</span>
+                                        <p className="block-content font-mono">{h.empiricalMethod}</p>
+                                    </div>
+
+                                    <div className="hypo-findings-box">
+                                        <span className="block-title">📊 26 年历史实证结论：</span>
+                                        <p className="block-content">{h.keyFindings}</p>
+                                    </div>
+
+                                    <div className="hypo-impact-box">
+                                        <span className="block-title">🚀 生产策略实战落地：</span>
+                                        <p className="block-content">{h.actionImpact}</p>
+                                    </div>
+                                </div>
+                            ))}
                     </div>
                 </div>
             )}
