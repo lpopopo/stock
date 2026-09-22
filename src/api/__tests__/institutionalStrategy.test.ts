@@ -8,6 +8,10 @@ import {
     FEAR_GATE_LEVELS,
     INSTITUTIONAL_RESEARCH_FEED,
     evaluateReboundSignal,
+    V9_LIVE_FORWARD_PORTFOLIO,
+    FEAR_GATE_DYNAMIC_MATRIX,
+    MARKET_BREADTH_DIVERGENCE_DATA,
+    PREREGISTERED_MECHANISMS,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -105,6 +109,71 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
             expect(r.title.length).toBeGreaterThan(0);
             expect(r.formula.length).toBeGreaterThan(0);
             expect(r.detail.length).toBeGreaterThan(0);
+        });
+    });
+
+    it('8. should verify V9 live forward shadow portfolio data and weight conservation', () => {
+        expect(V9_LIVE_FORWARD_PORTFOLIO.totalNav).toBeGreaterThan(5000);
+        expect(V9_LIVE_FORWARD_PORTFOLIO.cashAmount).toBeGreaterThan(3000);
+        expect(V9_LIVE_FORWARD_PORTFOLIO.cashWeightPct + V9_LIVE_FORWARD_PORTFOLIO.stockWeightPct).toBeCloseTo(100.0, 1);
+        expect(V9_LIVE_FORWARD_PORTFOLIO.holdings.length).toBe(4);
+
+        const holdingSymbols = V9_LIVE_FORWARD_PORTFOLIO.holdings.map(h => h.symbol);
+        expect(holdingSymbols).toContain('MRVL');
+        expect(holdingSymbols).toContain('MXL');
+        expect(holdingSymbols).toContain('QCOM');
+        expect(holdingSymbols).toContain('GLW');
+
+        V9_LIVE_FORWARD_PORTFOLIO.holdings.forEach(h => {
+            expect(h.shares).toBeGreaterThan(0);
+            expect(h.currentPrice).toBeGreaterThan(0);
+            expect(h.marketValue).toBeCloseTo(h.shares * h.currentPrice, 1);
+            expect(h.navWeightPct).toBeGreaterThan(0);
+        });
+    });
+
+    it('9. should verify Fear Gate dynamic multi-factor matrix and regime', () => {
+        expect(FEAR_GATE_DYNAMIC_MATRIX.totalScore).toBe(5);
+        expect(FEAR_GATE_DYNAMIC_MATRIX.maxScore).toBe(10);
+        expect(FEAR_GATE_DYNAMIC_MATRIX.regimeLevel).toBe('elevated');
+        expect(FEAR_GATE_DYNAMIC_MATRIX.termStructureRatio).toBeCloseTo(0.812, 3);
+        expect(FEAR_GATE_DYNAMIC_MATRIX.factors.length).toBe(4);
+
+        const sumFactorScores = FEAR_GATE_DYNAMIC_MATRIX.factors.reduce((acc, cur) => acc + cur.score, 0);
+        expect(sumFactorScores).toBe(FEAR_GATE_DYNAMIC_MATRIX.totalScore);
+    });
+
+    it('10. should verify 518-stock market breadth divergence metrics', () => {
+        expect(MARKET_BREADTH_DIVERGENCE_DATA.universeSize).toBe(518);
+        expect(MARKET_BREADTH_DIVERGENCE_DATA.aboveMa20Pct).toBeLessThan(25.0);
+        expect(MARKET_BREADTH_DIVERGENCE_DATA.aboveMa50Pct).toBeLessThan(35.0);
+
+        const totalStocks =
+            MARKET_BREADTH_DIVERGENCE_DATA.gainersCount +
+            MARKET_BREADTH_DIVERGENCE_DATA.losersCount +
+            MARKET_BREADTH_DIVERGENCE_DATA.unchangedCount;
+        expect(totalStocks).toBe(518);
+
+        expect(MARKET_BREADTH_DIVERGENCE_DATA.inverseEtfHedgeGuide.length).toBe(2);
+        const inverseSymbols = MARKET_BREADTH_DIVERGENCE_DATA.inverseEtfHedgeGuide.map(g => g.symbol);
+        expect(inverseSymbols).toContain('PSQ');
+        expect(inverseSymbols).toContain('SH');
+    });
+
+    it('11. should verify 3 preregistered orthogonal research mechanisms', () => {
+        expect(PREREGISTERED_MECHANISMS.length).toBe(3);
+        const mechIds = PREREGISTERED_MECHANISMS.map(m => m.id);
+        expect(mechIds).toContain('mech-1-factor-hedge');
+        expect(mechIds).toContain('mech-2-cash-yield');
+        expect(mechIds).toContain('mech-3-capex-bullwhip');
+
+        PREREGISTERED_MECHANISMS.forEach(m => {
+            expect(m.title.length).toBeGreaterThan(5);
+            expect(m.economicLogic.length).toBeGreaterThan(20);
+            expect(m.solvesProblem.length).toBeGreaterThan(15);
+            expect(m.portfolioApplication.length).toBeGreaterThan(15);
+            expect(m.failureRisk.length).toBeGreaterThan(15);
+            expect(m.evidenceRequirement.length).toBeGreaterThan(15);
         });
     });
 });

@@ -4849,3 +4849,731 @@
   color: #fff8e1;
 }
 
+/* ============================================================================
+   Phase 2 进阶深度协同样式：实盘前瞻追踪、风控矩阵、518广度雷达与三大机制
+   ============================================================================ */
+
+/* 1. 实盘前瞻追踪视图 */
+.rebound-shadow-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.shadow-account-header-card {
+  background: linear-gradient(135deg, rgba(20, 24, 38, 0.95), rgba(12, 16, 26, 0.95));
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.shadow-head-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.shadow-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shadow-tag-pill {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.shadow-title-group h4 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+.shadow-title-group .as-of-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.shadow-nav-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.shadow-nav-stat .lbl {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.shadow-nav-stat .val {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.shadow-nav-stat .pnl {
+  font-size: 0.85rem;
+}
+
+.shadow-allocation-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.alloc-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.alloc-dual-bar {
+  height: 12px;
+  border-radius: 6px;
+  display: flex;
+  overflow: hidden;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.alloc-dual-bar .bar-cash {
+  background: linear-gradient(90deg, #00b4d8, #48cae4);
+  transition: width 0.3s ease;
+}
+
+.alloc-dual-bar .bar-stock {
+  background: linear-gradient(90deg, #ffb703, #fb8500);
+  transition: width 0.3s ease;
+}
+
+.shadow-action-callout {
+  background: rgba(0, 229, 255, 0.05);
+  border-left: 4px solid #00e5ff;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.shadow-action-callout .callout-badge {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: #00e5ff;
+}
+
+.shadow-action-callout p {
+  margin: 0;
+}
+
+.shadow-holdings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.shadow-holding-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.shadow-holding-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+.shadow-holding-card .holding-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.shadow-holding-card .holding-sym {
+  font-size: 1.15rem;
+  color: #00e5ff;
+  display: block;
+}
+
+.shadow-holding-card .holding-name {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.shadow-holding-card .holding-shares {
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.shadow-holding-card .holding-factor-tag {
+  font-size: 0.72rem;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 4px;
+  padding: 4px 8px;
+  align-self: flex-start;
+}
+
+.shadow-holding-card .holding-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.shadow-holding-card .metric-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shadow-holding-card .metric-cell .lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.shadow-holding-card .metric-cell .val {
+  font-size: 0.85rem;
+}
+
+.shadow-holding-card .holding-audit-note {
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 8px;
+}
+
+/* 2. Fear Gate 动态多因子风控矩阵 */
+.rebound-fear-matrix-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fear-matrix-banner-card {
+  background: linear-gradient(135deg, rgba(26, 20, 36, 0.95), rgba(16, 12, 26, 0.95));
+  border: 1px solid rgba(255, 112, 67, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.matrix-banner-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.matrix-banner-top h4 {
+  margin: 6px 0 2px;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+.matrix-banner-top .as-of-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.fear-total-score-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.fear-total-score-box .lbl {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.fear-total-score-box .score-val-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.fear-total-score-box .score-curr {
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.fear-total-score-box .score-divider,
+.fear-total-score-box .score-max {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.fear-matrix-regime-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.fear-matrix-regime-pill.status-elevated {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.35);
+}
+
+.vix-term-structure-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.term-stat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.term-stat-box .lbl {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.term-stat-box .val {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.term-stat-box .sub {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.matrix-guideline-box {
+  background: rgba(255, 152, 0, 0.06);
+  border-left: 4px solid #ff9800;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 14px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #ffe0b2;
+}
+
+.matrix-guideline-box strong {
+  color: #ffa726;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.matrix-guideline-box p {
+  margin: 0;
+}
+
+.fear-factors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.fear-factor-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fear-factor-card.status-warning {
+  border-color: rgba(255, 152, 0, 0.3);
+}
+
+.fear-factor-card.status-safe {
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.fear-factor-card .factor-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fear-factor-card .factor-name {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.fear-factor-card .factor-score-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.fear-factor-card.status-safe .factor-score-badge {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.fear-factor-card .factor-metric-row,
+.fear-factor-card .factor-threshold-row {
+  display: flex;
+  gap: 6px;
+  font-size: 0.76rem;
+}
+
+.fear-factor-card .factor-metric-row .lbl,
+.fear-factor-card .factor-threshold-row .lbl {
+  color: var(--text-muted);
+}
+
+.fear-factor-card .factor-desc {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 8px;
+}
+
+/* 3. 518 标的微观广度背离雷达 */
+.rebound-breadth-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.breadth-divergence-banner {
+  background: linear-gradient(135deg, rgba(40, 16, 20, 0.95), rgba(24, 12, 14, 0.95));
+  border: 1px solid rgba(255, 82, 82, 0.4);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.breadth-divergence-banner .breadth-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.breadth-divergence-banner .divergence-icon {
+  font-size: 1.8rem;
+}
+
+.breadth-divergence-banner h4 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #ff5252;
+}
+
+.breadth-divergence-banner .as-of-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.breadth-divergence-banner .divergence-text-callout {
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 4px solid #ff5252;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #ffebee;
+}
+
+.breadth-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.breadth-kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.breadth-kpi-card.danger-card {
+  border-color: rgba(255, 82, 82, 0.35);
+  background: linear-gradient(180deg, rgba(255, 82, 82, 0.05), var(--bg-card));
+}
+
+.breadth-kpi-card.warning-card {
+  border-color: rgba(255, 183, 77, 0.35);
+}
+
+.breadth-kpi-card .lbl {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.breadth-kpi-card .val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.breadth-kpi-card .val {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.breadth-kpi-card .sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.breadth-kpi-card .desc {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.breadth-hedging-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.breadth-hedging-section h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.hedging-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.hedge-guide-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hedge-guide-card .hedge-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hedge-guide-card .sym {
+  font-size: 1.1rem;
+  color: #ff9800;
+}
+
+.hedge-guide-card .name {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.hedge-guide-card .budget-tag {
+  font-size: 0.7rem;
+  background: rgba(255, 152, 0, 0.15);
+  color: #ffb74d;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.hedge-guide-card .hedge-target-row,
+.hedge-guide-card .hedge-trigger-row {
+  font-size: 0.74rem;
+  display: flex;
+  gap: 4px;
+}
+
+.hedge-guide-card .lbl {
+  color: var(--text-muted);
+}
+
+.hedge-guide-card .hedge-caution {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  color: #ffb74d;
+  line-height: 1.4;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  padding-top: 6px;
+}
+
+/* 4. 三大独立前瞻对冲机制 */
+.rebound-mechanisms-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mechanisms-intro-card {
+  background: linear-gradient(135deg, rgba(16, 26, 36, 0.95), rgba(12, 18, 26, 0.95));
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mechanisms-intro-card .intro-badge {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(0, 229, 255, 0.15);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+}
+
+.mechanisms-intro-card h4 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+.mechanisms-intro-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.mechanisms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mechanism-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.mechanism-card:hover {
+  border-color: rgba(0, 229, 255, 0.35);
+}
+
+.mechanism-card .mech-head .mech-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+
+.mechanism-card .mech-head .mech-title-en {
+  font-size: 0.75rem;
+  color: #00e5ff;
+  margin-top: 2px;
+  display: block;
+}
+
+.mechanism-card .mech-body-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.mechanism-card .mech-box {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.mechanism-card .mech-box strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.mechanism-card .logic-box strong { color: #80d8ff; }
+.mechanism-card .solve-box strong { color: #b9f6ca; }
+.mechanism-card .app-box strong { color: #ffd180; }
+.mechanism-card .risk-box strong { color: #ff8a80; }
+
+.mechanism-card .mech-box p {
+  margin: 0;
+}
+
+.mechanism-card .mech-evidence-footer {
+  background: rgba(255, 215, 0, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #ffd700;
+}
+
+.mechanism-card .mech-evidence-footer strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.mechanism-card .mech-evidence-footer p {
+  margin: 0;
+  color: #fff8e1;
+}
+

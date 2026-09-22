@@ -378,3 +378,289 @@ export function evaluateReboundSignal(
         signalReason,
     };
 }
+
+/**
+ * ============================================================================
+ * Phase 2 进阶深度协同：实盘前瞻账户、动态风控矩阵、518标的微观广度与前瞻机制
+ * ============================================================================
+ */
+
+export interface LiveHolding {
+    symbol: string;
+    companyName: string;
+    shares: number;
+    currentPrice: number;
+    marketValue: number;
+    weeklyReturnPct: number;
+    weeklyGainLossUsd: number;
+    navWeightPct: number;
+    ma20: number;
+    ma50: number;
+    factorGroup: string;
+    statusNote: string;
+}
+
+export interface V9LiveForwardPortfolio {
+    asOfDate: string;
+    totalNav: number;
+    cashAmount: number;
+    cashWeightPct: number;
+    stockAmount: number;
+    stockWeightPct: number;
+    weeklyNavReturnPct: number;
+    weeklyPnlUsd: number;
+    canonicalStatus: string;
+    riskActionNote: string;
+    holdings: LiveHolding[];
+}
+
+/**
+ * AI-Memory 真实前瞻运行账户实盘切片 (2026-09-18 审计核验)
+ */
+export const V9_LIVE_FORWARD_PORTFOLIO: V9LiveForwardPortfolio = {
+    asOfDate: '2026-09-18',
+    totalNav: 5875.91,
+    cashAmount: 3756.49,
+    cashWeightPct: 63.93,
+    stockAmount: 2119.42,
+    stockWeightPct: 36.07,
+    weeklyNavReturnPct: 0.53,
+    weeklyPnlUsd: 30.86,
+    canonicalStatus: 'Elevated 5 (现金充裕，单因子敞口防守)',
+    riskActionNote: '四只持仓均从属于同一 AI-Capex/半导体光通信因子。股票占比 36.07% 略超 V9 统一 30% 上限（主要由 MRVL 上涨增值驱动 16.63%），受现金底线严格保护，不启动机械追涨。',
+    holdings: [
+        {
+            symbol: 'MRVL',
+            companyName: '迈威尔科技 (Marvell Technology)',
+            shares: 4,
+            currentPrice: 244.25,
+            marketValue: 977.00,
+            weeklyReturnPct: 3.45,
+            weeklyGainLossUsd: 32.60,
+            navWeightPct: 16.63,
+            ma20: 238.10,
+            ma50: 226.50,
+            factorGroup: 'AI ASIC & DSP 光电互联',
+            statusNote: '多头趋势稳固，收盘高于 MA20/MA50。权重偏高需控制集中度，保持利润锁定观察。',
+        },
+        {
+            symbol: 'MXL',
+            companyName: '麦斯威科技 (MaxLinear)',
+            shares: 6,
+            currentPrice: 81.12,
+            marketValue: 486.72,
+            weeklyReturnPct: 8.78,
+            weeklyGainLossUsd: 39.30,
+            navWeightPct: 8.28,
+            ma20: 76.50,
+            ma50: 71.43,
+            factorGroup: '高速光模块 PAM4 驱动芯片',
+            statusNote: '收盘强劲站上 MA50，周涨 +8.78%，受组合单因子预算上限约束，保持持股不动。',
+        },
+        {
+            symbol: 'QCOM',
+            companyName: '高通公司 (Qualcomm)',
+            shares: 2,
+            currentPrice: 177.72,
+            marketValue: 355.44,
+            weeklyReturnPct: -2.34,
+            weeklyGainLossUsd: -8.50,
+            navWeightPct: 6.05,
+            ma20: 174.20,
+            ma50: 169.80,
+            factorGroup: '端侧 AI 算力与无线射频',
+            statusNote: '短期小幅回踩，但坚守 MA20 与 MA50 支撑上方，估值具备现金流安全垫。',
+        },
+        {
+            symbol: 'GLW',
+            companyName: '康宁公司 (Corning Inc)',
+            shares: 2,
+            currentPrice: 150.13,
+            marketValue: 300.26,
+            weeklyReturnPct: -9.78,
+            weeklyGainLossUsd: -32.54,
+            navWeightPct: 5.11,
+            ma20: 151.45,
+            ma50: 154.99,
+            factorGroup: 'AI 数据中心高密度光纤物理垄断',
+            statusNote: '跌破 MA20 短期均线，优先启动长线论据与风险预算复核，不机械套用短线止损。',
+        },
+    ],
+};
+
+export interface FearGateFactor {
+    name: string;
+    score: number;
+    maxScore: number;
+    currentValue: string;
+    benchmarkThreshold: string;
+    description: string;
+    status: 'safe' | 'warning' | 'danger';
+}
+
+export interface FearGateDynamicMatrix {
+    asOfDate: string;
+    totalScore: number;
+    maxScore: number;
+    regimeLevel: 'normal' | 'elevated' | 'crisis';
+    regimeLabel: string;
+    vixValue: number;
+    vix3mValue: number;
+    termStructureRatio: number;
+    actionGuideline: string;
+    factors: FearGateFactor[];
+}
+
+/**
+ * Fear Gate 四因子动态量化评分矩阵
+ */
+export const FEAR_GATE_DYNAMIC_MATRIX: FearGateDynamicMatrix = {
+    asOfDate: '2026-09-18',
+    totalScore: 5,
+    maxScore: 10,
+    regimeLevel: 'elevated',
+    regimeLabel: 'Elevated (5分/10分) - 结构性分化警惕',
+    vixValue: 14.81,
+    vix3mValue: 18.24,
+    termStructureRatio: 0.812,
+    actionGuideline: '当前评分 5 分处于警戒态（非极端恐慌）：波动率期限结构未见倒挂（0.812 处于平稳区），但半导体回撤与市场广度羸弱造成压力。操作指导：指数核心持仓保持观察，新个股 Alpha 额度从 30% 严格压缩至 5% 或 0%，绝不追高。',
+    factors: [
+        {
+            name: '半导体核心回撤 (SMH Drawdown)',
+            score: 3,
+            maxScore: 4,
+            currentValue: '-8.2% 距月度高点',
+            benchmarkThreshold: '回撤 > 6% 记 3分',
+            description: 'SMH 虽收复 MA50，但月度回撤未完全修复，构成系统性风险打分主要来源。',
+            status: 'warning',
+        },
+        {
+            name: '小盘股相对弱势 (IWM / SPY)',
+            score: 1,
+            maxScore: 2,
+            currentValue: 'IWM 周跌 -1.66% vs SPY -0.34%',
+            benchmarkThreshold: 'IWM 相对跑输 > 1.0% 记 1分',
+            description: '资金向权重巨头避险抱团，小盘成长流动性受挤压，市场广度受阻。',
+            status: 'warning',
+        },
+        {
+            name: '等权相对弱势 (RSP / SPY)',
+            score: 1,
+            maxScore: 2,
+            currentValue: 'RSP 周跌 -1.20% vs SPY -0.34%',
+            benchmarkThreshold: '等权指数相对跑输记 1分',
+            description: '标普 500 等权指数显著弱于市值加权指数，印证大盘呈少数巨头“指数假涨”失真。',
+            status: 'warning',
+        },
+        {
+            name: '波动率期限结构 (VIX / VIX3M)',
+            score: 0,
+            maxScore: 2,
+            currentValue: '0.812 (VIX 14.81 / VIX3M 18.24)',
+            benchmarkThreshold: '倒挂比 > 1.0 记 2分 (倒挂恐慌)',
+            description: '远期波动率高于近期，期限结构维持典型 Contango 结构，无流动性挤兑熔断风险。',
+            status: 'safe',
+        },
+    ],
+};
+
+export interface MarketBreadthScanResult {
+    scanDate: string;
+    universeSize: number;
+    aboveMa20Count: number;
+    aboveMa20Pct: number;
+    aboveMa50Count: number;
+    aboveMa50Pct: number;
+    gainersCount: number;
+    losersCount: number;
+    unchangedCount: number;
+    medianWeeklyReturnPct: number;
+    divergenceAlert: string;
+    inverseEtfHedgeGuide: {
+        symbol: string;
+        name: string;
+        targetIndex: string;
+        triggerCondition: string;
+        riskBudgetPct: number;
+    }[];
+}
+
+/**
+ * 518 只美股核心成分股微观广度扫描与结构性背离预警
+ */
+export const MARKET_BREADTH_DIVERGENCE_DATA: MarketBreadthScanResult = {
+    scanDate: '2026-09-18',
+    universeSize: 518,
+    aboveMa20Count: 101,
+    aboveMa20Pct: 19.5,
+    aboveMa50Count: 144,
+    aboveMa50Pct: 27.8,
+    gainersCount: 137,
+    losersCount: 380,
+    unchangedCount: 1,
+    medianWeeklyReturnPct: -1.55,
+    divergenceAlert: '🚨 严重结构性背离预警：QQQ 周涨 +0.92%，但全市场 518 只成分股中仅 19.5% 站上 MA20、仅 27.8% 站上 MA50，下跌股票达 380 家（占 73.4%），中位数亏损 -1.55%！此为典型“巨头托市、个股失血”的虚假繁荣，盲目追涨极易遭遇流动性假突破。',
+    inverseEtfHedgeGuide: [
+        {
+            symbol: 'PSQ',
+            name: '纳斯达克100反向 -1x ETF',
+            targetIndex: 'QQQ / 纳斯达克 100',
+            triggerCondition: 'QQQ 跌破 710.61 且回抽无法收复，同时处于开盘 VWAP 下方。',
+            riskBudgetPct: 5.0,
+        },
+        {
+            symbol: 'SH',
+            name: '标普500反向 -1x ETF',
+            targetIndex: 'SPY / 标普 500',
+            triggerCondition: 'SPY 跌破 758.25 且回抽确认失败，盈亏比大于 2:1 时小额对冲。',
+            riskBudgetPct: 5.0,
+        },
+    ],
+};
+
+export interface PreregisteredMechanism {
+    id: string;
+    title: string;
+    titleEn: string;
+    economicLogic: string;
+    solvesProblem: string;
+    portfolioApplication: string;
+    failureRisk: string;
+    evidenceRequirement: string;
+}
+
+/**
+ * AI-Memory 外部量化独立前瞻研究三大机制
+ */
+export const PREREGISTERED_MECHANISMS: PreregisteredMechanism[] = [
+    {
+        id: 'mech-1-factor-hedge',
+        title: '机制 1：跨资产相对价值与因子对冲',
+        titleEn: 'Cross-Sectional Relative-Value & Factor Hedging',
+        economicLogic: '长周期现金流白马（QCOM、GLW）拥有深厚的资产负债表与回购托底；而高贝塔周期股（MRVL、MXL）极易遭受云厂商库存周期的剧烈反噬。当微观资金脆弱度上升时，通过多现金流、空周期贝塔（或以 SMH/QQQ 作为对冲腿），锁定纯粹 Alpha。',
+        solvesProblem: '解决组合在半导体库存消化周期时的大幅回撤，避免不得不完全斩仓卖出优质底仓。',
+        portfolioApplication: '在保留 GLW/QCOM 高现金流资产的同时，针对 MRVL/MXL 的周期敞口配置 -1x 纳指反向或借券对冲。',
+        failureRisk: '融券借券成本高企（尤其 MXL 借券费率）、零售资金逼空轧空风险、以及系统性流动性危机下的全资产相关性收敛归一。',
+        evidenceRequirement: '需验证至少 6 个月两轮完整芯片周期的点时借券可用性、多空双边账户保证金占用与实盘转折表现。',
+    },
+    {
+        id: 'mech-2-cash-yield',
+        title: '机制 2：现金质押系统性收益与下行缓冲',
+        titleEn: 'Cash-Collateralized Systematic Yield & SGOV Ladder',
+        economicLogic: 'V9 正式架构常态保持 30%~65% 的巨额防御性现金，在单边大牛市中面临显著的“现金拖累（Cash Drag）”。通过短期国债阶梯（SGOV / 隔夜逆回购）锁定 4.0%~4.5% 无风险利差，并在 GLW/QCOM 关键长期支撑位出售 Cash-Secured Puts（收取隐含波动率偏度溢价）。',
+        solvesProblem: '化被动防御为主动生息。震荡市现金吃利息垫厚净值，暴跌市权利金折降低位买入成本。',
+        portfolioApplication: '将当前 63.93% 的闲置现金（$3,756.49）接入自动化国债阶梯，年化增厚净值约 +2.6%~+2.9% 稳定超额收益。',
+        failureRisk: '黑天鹅断崖式缺口跳空跌破行权价导致被迫承接超额股份、中小型芯片股（MXL）期权买卖价差过宽与流动性枯竭。',
+        evidenceRequirement: '采集 GLW/QCOM/MRVL 30-45天 DTE 期权链实证买卖价差与开仓流动性，前瞻记录 60 个交易日隐含 vs 实际波动率。',
+    },
+    {
+        id: 'mech-3-capex-bullwhip',
+        title: '机制 3：超大规模云厂商 Capex 传导时滞',
+        titleEn: 'Hyperscaler Capex Lead-Lag Transmission (Bullwhip Effect)',
+        economicLogic: '组件芯片供应商（GLW, MXL, MRVL）是经典的“供应链牛鞭效应”终端承受者。微观产业证据表明：四大云厂商（MSFT, GOOGL, AMZN, META）的财报资本开支指引（AI Cloud Capex）通常领先元件级供应商的订单排产与营收确认 4 至 12 周。',
+        solvesProblem: '抛弃滞后的单股价格动量形态，建立以客户真实 Capex 订单为前瞻信号的基本面驱动择时。',
+        portfolioApplication: '云巨头上修 Capex 指引时才授权加仓光通信与芯片仓位；一旦云巨头出现 Capex 减速或库存消化信号，先于财报 4 周前移仓避险。',
+        failureRisk: '云厂商 Capex 结构性漂移（转向自研 ASIC、电力能源基建或数据中心地产，而非商用芯片）；市场另类数据可能提前透支预期。',
+        evidenceRequirement: '收集过去 8 个季度四大云巨头 Capex 财报点时指引与对应 12 周内 MRVL/MXL/GLW 订单业绩变动的一致性检验。',
+    },
+];
