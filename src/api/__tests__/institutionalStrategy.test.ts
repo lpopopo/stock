@@ -33,6 +33,12 @@ import {
     ECONOMIC_FEE_GATE_PROTOCOL,
     POSITION_RECLASSIFICATION_INVARIANCE,
     V8_V9_UNIFIED_OPERATING_MODEL,
+    DEFAULT_PROFIT_TRAILING_TIERS,
+    calculateTieredTrailingStop,
+    evaluateTreasuryFedMacroMonitor,
+    evaluateEarningsCooldownRule,
+    evaluateAntiAveragingDownRule,
+    PHASE11_TACTICAL_ENHANCEMENTS,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -816,7 +822,326 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         // 验证标准仲裁步序流
         expect(V8_V9_UNIFIED_OPERATING_MODEL.arbitrationFlowchartSummary.length).toBe(6);
     });
+
+    it('33. should accurately calculate tiered trailing stops and enforce irreversible ratchet invariant', () => {
+        expect(DEFAULT_PROFIT_TRAILING_TIERS.length).toBe(4);
+        const entryPrice = 100.0;
+        const currentStopPrice = 92.0; // 初始 -8% 止损位
+
+        // 1. 浮盈 +10%，未达 Tier 1 (+15%) 门槛，维持原止损位 $92
+        const res1 = calculateTieredTrailingStop({
+            symbol: 'GLW',
+            entryPrice,
+            highestPriceSinceEntry: 110.0,
+            currentPrice: 110.0,
+            currentStopPrice,
+        });
+        expect(res1.activeTier).toBeNull();
+        expect(res1.newStopPrice).toBe(92.0);
+        expect(res1.isRatchetAdvanced).toBe(false);
+        expect(res1.ratchetProtectionLocked).toBe(false);
+
+        // 2. 浮盈触及 +18%，越过 Tier 1 (+15% 门槛)，止盈位提升至成本 +8% ($108)
+        const res2 = calculateTieredTrailingStop({
+            symbol: 'GLW',
+            entryPrice,
+            highestPriceSinceEntry: 118.0,
+            currentPrice: 118.0,
+            currentStopPrice,
+        });
+        expect(res2.activeTier).not.toBeNull();
+        expect(res2.activeTier?.tierIndex).toBe(1);
+        expect(res2.newStopPrice).toBe(108.0);
+        expect(res2.isRatchetAdvanced).toBe(true);
+        expect(res2.ratchetProtectionLocked).toBe(true);
+        expect(res2.lockFloorProfitPct).toBe(8.0);
+
+        // 3. 棘轮核心测试：股价随后大幅回踩至 $105，新止盈止损价绝对不可下移，仍必须保持 $108
+        const res3 = calculateTieredTrailingStop({
+            symbol: 'GLW',
+            entryPrice,
+            highestPriceSinceEntry: 118.0, // 历史最高依然是 118
+            currentPrice: 105.0,
+            currentStopPrice: 108.0, // 已经提拉至 108
+        });
+        expect(res3.newStopPrice).toBe(108.0);
+        expect(res3.newStopPrice).toBeGreaterThanOrEqual(108.0);
+
+        // 4. 浮盈继续扩大至 +28%，激活 Tier 2 (+25% 门槛)，止损提拉至 $115 (+15%)
+        const res4 = calculateTieredTrailingStop({
+            symbol: 'MRVL',
+            entryPrice,
+            highestPriceSinceEntry: 128.0,
+            currentPrice: 128.0,
+            currentStopPrice: 108.0,
+        });
+        expect(res4.activeTier?.tierIndex).toBe(2);
+        expect(res4.newStopPrice).toBe(115.0);
+        expect(res4.lockFloorProfitPct).toBe(15.0);
+
+        // 5. 浮盈达到 +45%，激活 Tier 3 (+40% 门槛)，止损提拉至 $125 (+25%)
+        const res5 = calculateTieredTrailingStop({
+            symbol: 'NVDA',
+            entryPrice,
+            highestPriceSinceEntry: 145.0,
+            currentPrice: 145.0,
+            currentStopPrice: 115.0,
+        });
+        expect(res5.activeTier?.tierIndex).toBe(3);
+        expect(res5.newStopPrice).toBe(125.0);
+        expect(res5.lockFloorProfitPct).toBe(25.0);
+
+        // 6. 浮盈达到 +65%，激活 Tier 4 (+60% 门槛)，且 MA20 为 $152 (> 成本+45% 即 $145)
+        const res6 = calculateTieredTrailingStop({
+            symbol: 'NVDA',
+            entryPrice,
+            highestPriceSinceEntry: 165.0,
+            currentPrice: 162.0,
+            currentStopPrice: 125.0,
+            ma20Price: 152.0,
+        });
+        expect(res6.activeTier?.tierIndex).toBe(4);
+        expect(res6.newStopPrice).toBe(152.0); // 挂钩 MA20 取较高者
+        expect(res6.isRatchetAdvanced).toBe(true);
+    });
+
+    it('34. should evaluate Treasury and Fed macro valuation pressure across Normal, Restrictive and Stress regimes', () => {
+        // 1. Normal 常态基准测试
+        const normalResult = evaluateTreasuryFedMacroMonitor({
+            asOfDate: '2026-05-15',
+            nominal2y: 3.80,
+            nominal10y: 4.10,
+            nominal30y: 4.35,
+            real10y: 1.85,
+            breakeven10y: 2.25,
+            nominal10y_5d_change_bp: 4.0,
+            real10y_5d_change_bp: 2.0,
+            curve10s2s_bp: 30.0,
+            priorCurve10s2s_bp: 28.0,
+            fedTargetRangePct: [3.50, 3.75],
+            fedHikeDissentCount: 0,
+            fedTighteningContingency: false,
+        });
+        expect(normalResult.state).toBe('normal');
+        expect(normalResult.highDurationNewRiskMultiplier).toBe(1.0);
+        expect(normalResult.requiresPriceConfirmation).toBe(false);
+
+        // 2. Restrictive 约束测试 (对应 2026-08-21 真实美债审计：10Y名义 4.74%，实际 2.40%，联储有加息异议)
+        const restrictiveResult = evaluateTreasuryFedMacroMonitor({
+            asOfDate: '2026-08-21',
+            nominal2y: 4.24,
+            nominal10y: 4.74, // >= 4.50
+            nominal30y: 5.27,
+            real10y: 2.40, // >= 2.25
+            breakeven10y: 2.34,
+            nominal10y_5d_change_bp: 6.0,
+            real10y_5d_change_bp: -1.0,
+            curve10s2s_bp: 50.0,
+            priorCurve10s2s_bp: 48.0,
+            fedTargetRangePct: [3.50, 3.75],
+            fedHikeDissentCount: 3, // 有加息异议
+            fedTighteningContingency: true,
+        });
+        expect(restrictiveResult.state).toBe('restrictive');
+        expect(restrictiveResult.structuralScore).toBe(3);
+        expect(restrictiveResult.highDurationNewRiskMultiplier).toBe(0.5);
+        expect(restrictiveResult.requiresPriceConfirmation).toBe(true);
+
+        // 3. Stress 压力警报测试 (10s2s 熊陡走阔 15bp 且 5日实际利率上行 18bp，脉冲分 >= 2)
+        const stressResult = evaluateTreasuryFedMacroMonitor({
+            asOfDate: '2026-09-10',
+            nominal2y: 4.20,
+            nominal10y: 4.60,
+            nominal30y: 5.10,
+            real10y: 2.50,
+            breakeven10y: 2.10,
+            nominal10y_5d_change_bp: 25.0, // >= 20bp
+            real10y_5d_change_bp: 18.0, // >= 15bp
+            curve10s2s_bp: 40.0,
+            priorCurve10s2s_bp: 25.0, // 走阔 15bp (熊陡)
+            fedTargetRangePct: [3.50, 3.75],
+            fedHikeDissentCount: 1,
+            fedTighteningContingency: true,
+        });
+        expect(stressResult.state).toBe('stress');
+        expect(stressResult.bearSteepeningDetected).toBe(true);
+        expect(stressResult.impulseScore).toBeGreaterThanOrEqual(2);
+        expect(stressResult.highDurationNewRiskMultiplier).toBe(0.0);
+
+        // 4. Fed 政策数据失效测试
+        const staleResult = evaluateTreasuryFedMacroMonitor({
+            asOfDate: '2026-09-20',
+            nominal2y: 4.0,
+            nominal10y: 4.2,
+            nominal30y: 4.5,
+            real10y: 1.9,
+            breakeven10y: 2.3,
+            nominal10y_5d_change_bp: 0,
+            real10y_5d_change_bp: 0,
+            curve10s2s_bp: 20,
+            fedTargetRangePct: [3.50, 3.75],
+            fedHikeDissentCount: 0,
+            fedTighteningContingency: false,
+            fedPolicyStale: true,
+        });
+        expect(staleResult.state).toBe('unavailable');
+        expect(staleResult.highDurationNewRiskMultiplier).toBe(0.5);
+    });
+
+    it('35. should enforce Earnings T+2 Cooldown rule and validate microstructural entry gates', () => {
+        // 1. T+0 事件当日暴涨 +10.2% -> 强制物理冻结买入
+        const t0Result = evaluateEarningsCooldownRule({
+            symbol: 'MU',
+            eventDayDate: '2026-06-25',
+            currentDate: '2026-06-25',
+            daysElapsedSinceEvent: 0,
+            eventDayGainPct: 10.2,
+            eventDayVolume: 50_000_000,
+            currentDayVolume: 50_000_000,
+            currentDayHighPrice: 1160,
+            currentDayLowPrice: 1050,
+            currentClosePrice: 1150,
+            eventDayOpenPrice: 1050,
+            eventDayClosePrice: 1150,
+            ma5Price: 1080,
+        });
+        expect(t0Result.action).toBe('FROZEN_COOLDOWN');
+        expect(t0Result.isFrozen).toBe(true);
+
+        // 2. T+1 次日 -> 依然处于冷静期，禁止 FOMO 追高
+        const t1Result = evaluateEarningsCooldownRule({
+            symbol: 'MU',
+            eventDayDate: '2026-06-25',
+            currentDate: '2026-06-26',
+            daysElapsedSinceEvent: 1,
+            eventDayGainPct: 10.2,
+            eventDayVolume: 50_000_000,
+            currentDayVolume: 42_000_000,
+            currentDayHighPrice: 1165,
+            currentDayLowPrice: 1110,
+            currentClosePrice: 1120,
+            eventDayOpenPrice: 1050,
+            eventDayClosePrice: 1150,
+            ma5Price: 1090,
+        });
+        expect(t1Result.action).toBe('FROZEN_COOLDOWN');
+        expect(t1Result.isFrozen).toBe(true);
+
+        // 3. T+2 日微观结构合格：振幅 2.8% (<=3.5%)，缩量至 40% (<=50%)，收在 MA5 与长阳实体中轴 $1100 之上
+        const t2Qualified = evaluateEarningsCooldownRule({
+            symbol: 'MU',
+            eventDayDate: '2026-06-25',
+            currentDate: '2026-06-27',
+            daysElapsedSinceEvent: 2,
+            eventDayGainPct: 10.2,
+            eventDayVolume: 50_000_000,
+            currentDayVolume: 20_000_000, // 40% 缩量
+            currentDayHighPrice: 1140,
+            currentDayLowPrice: 1110, // 振幅 (1140-1110)/1110 = 2.70%
+            currentClosePrice: 1135,
+            eventDayOpenPrice: 1050,
+            eventDayClosePrice: 1150, // 中轴 1100
+            ma5Price: 1115,
+        });
+        expect(t2Qualified.action).toBe('QUALIFIED_CAN_ENTER');
+        expect(t2Qualified.isFrozen).toBe(false);
+        expect(t2Qualified.checks.amplitudeWithin3Point5Pct).toBe(true);
+        expect(t2Qualified.checks.volumeCompressedUnder50Pct).toBe(true);
+        expect(t2Qualified.checks.closeAboveMa5).toBe(true);
+
+        // 4. T+2 日微观结构不合格：振幅 5.5% (>3.5%) 或收盘跌破大阳线中轴
+        const t2Disqualified = evaluateEarningsCooldownRule({
+            symbol: 'MU',
+            eventDayDate: '2026-06-25',
+            currentDate: '2026-06-27',
+            daysElapsedSinceEvent: 2,
+            eventDayGainPct: 10.2,
+            eventDayVolume: 50_000_000,
+            currentDayVolume: 35_000_000, // 70% 未缩量
+            currentDayHighPrice: 1150,
+            currentDayLowPrice: 1080, // 破位中轴
+            currentClosePrice: 1090,
+            eventDayOpenPrice: 1050,
+            eventDayClosePrice: 1150,
+            ma5Price: 1115,
+        });
+        expect(t2Disqualified.action).toBe('DISQUALIFIED_FAILED_CRITERIA');
+        expect(t2Disqualified.isFrozen).toBe(true);
+
+        // 5. 普通小涨幅标的 (+5.0% < +8.0%)，不触发财报极端大阳线冷却
+        const regularGain = evaluateEarningsCooldownRule({
+            symbol: 'AAPL',
+            eventDayDate: '2026-07-01',
+            currentDate: '2026-07-01',
+            daysElapsedSinceEvent: 0,
+            eventDayGainPct: 5.0,
+            eventDayVolume: 10_000_000,
+            currentDayVolume: 10_000_000,
+            currentDayHighPrice: 200,
+            currentDayLowPrice: 195,
+            currentClosePrice: 198,
+            eventDayOpenPrice: 190,
+            eventDayClosePrice: 198,
+            ma5Price: 192,
+        });
+        expect(regularGain.action).toBe('QUALIFIED_CAN_ENTER');
+        expect(regularGain.isFrozen).toBe(false);
+    });
+
+    it('36. should strictly prohibit averaging down on broken moving averages and enforce 2-day reclaim gate', () => {
+        // 1. 均线破位标的 (如 2026-08-21 MXL 破位 MA20，现价 66.61，MA20 78.00)
+        const brokenResult = evaluateAntiAveragingDownRule({
+            symbol: 'MXL',
+            currentPrice: 66.61,
+            ma5: 70.50,
+            ma10: 74.00,
+            ma20: 78.00,
+            consecutiveDaysAboveKeyMAs: 0,
+            isVolumeReclaimed: false,
+        });
+        expect(brokenResult.action).toBe('AVERAGING_PROHIBITED');
+        expect(brokenResult.isBrokenTrend).toBe(true);
+        expect(brokenResult.canAddPosition).toBe(false);
+        expect(brokenResult.brokenMAs).toContain('MA5');
+        expect(brokenResult.brokenMAs).toContain('MA10');
+        expect(brokenResult.brokenMAs).toContain('MA20');
+
+        // 2. 标的初次反弹收复 MA20，但仅企稳 1 天且未放量 -> 依然禁止加仓
+        const unconfirmedResult = evaluateAntiAveragingDownRule({
+            symbol: 'MXL',
+            currentPrice: 79.50,
+            ma5: 75.00,
+            ma10: 76.00,
+            ma20: 78.00,
+            consecutiveDaysAboveKeyMAs: 1, // 仅 1 天
+            isVolumeReclaimed: false,
+        });
+        expect(unconfirmedResult.action).toBe('AVERAGING_PROHIBITED');
+        expect(unconfirmedResult.canAddPosition).toBe(false);
+        expect(unconfirmedResult.isReclaimConfirmed).toBe(false);
+
+        // 3. 标的放量收复并连续 2 天企稳全部关键均线 -> 安全解锁加仓
+        const confirmedResult = evaluateAntiAveragingDownRule({
+            symbol: 'MRVL',
+            currentPrice: 237.04,
+            ma5: 228.00,
+            ma10: 225.00,
+            ma20: 220.00,
+            consecutiveDaysAboveKeyMAs: 3, // >= 2 天
+            isVolumeReclaimed: true,
+        });
+        expect(confirmedResult.action).toBe('SAFE_ADD_PERMITTED');
+        expect(confirmedResult.canAddPosition).toBe(true);
+        expect(confirmedResult.isBrokenTrend).toBe(false);
+        expect(confirmedResult.isReclaimConfirmed).toBe(true);
+
+        // 验证 Phase 11 案例对照表完整性
+        expect(PHASE11_TACTICAL_ENHANCEMENTS.caseStudies.trailingStopCase.symbol).toBe('GLW');
+        expect(PHASE11_TACTICAL_ENHANCEMENTS.caseStudies.earningsCooldownCase.symbol).toBe('MU');
+        expect(PHASE11_TACTICAL_ENHANCEMENTS.caseStudies.antiAveragingCase.symbol).toBe('MXL');
+    });
 });
+
 
 
 

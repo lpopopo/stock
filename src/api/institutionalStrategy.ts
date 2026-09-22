@@ -3273,6 +3273,558 @@ export const POSITION_RECLASSIFICATION_INVARIANCE: ReclassificationInvarianceDat
     ],
 };
 
+// ============================================================================
+// Phase 11: 进阶实战优化与微观宏观双重硬风控 (Advanced Tactical & Macro Hard Guards)
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// 1. 阶梯式动态移动止盈棘轮协议 (Tiered Profit-Trailing Stops - Ratchet Lock)
+// ----------------------------------------------------------------------------
+
+export interface TrailingStopTier {
+    tierIndex: number;
+    profitThresholdPct: number; // 触发浮盈门槛 (如 15%, 25%, 40%, 60%)
+    lockedFloorProfitPct: number; // 刚性锁定的保底利润地板 (如 8%, 15%, 25%, 45%)
+    trackingMechanism: string; // 追踪机制说明
+    directive: string;
+}
+
+export interface TrailingStopCalculationInput {
+    symbol: string;
+    entryPrice: number;
+    highestPriceSinceEntry: number;
+    currentPrice: number;
+    currentStopPrice: number; // 当前生效的止损/止盈价格
+    ma20Price?: number;
+}
+
+export interface TrailingStopCalculationResult {
+    symbol: string;
+    entryPrice: number;
+    currentPrice: number;
+    highestPriceSinceEntry: number;
+    currentProfitPct: number;
+    maxFloatingProfitPct: number;
+    activeTier: TrailingStopTier | null;
+    calculatedFloorPrice: number;
+    newStopPrice: number;
+    isRatchetAdvanced: boolean; // 是否触发止盈线单向向上提拉
+    ratchetProtectionLocked: boolean; // 是否已进入刚性锁利状态
+    lockFloorProfitPct: number; // 当前锁定的保底纯利润百分比
+    statusMessage: string;
+}
+
+export const DEFAULT_PROFIT_TRAILING_TIERS: TrailingStopTier[] = [
+    {
+        tierIndex: 1,
+        profitThresholdPct: 15.0,
+        lockedFloorProfitPct: 8.0,
+        trackingMechanism: '保底锁定成本+8%',
+        directive: '浮盈触及 +15%，立即将止损线提拉至成本价 +8%，脱离盈亏平衡线并刚性锁定 8% 纯利润。',
+    },
+    {
+        tierIndex: 2,
+        profitThresholdPct: 25.0,
+        lockedFloorProfitPct: 15.0,
+        trackingMechanism: '保底锁定成本+15%',
+        directive: '浮盈触及 +25%，止损线提拉至成本价 +15%，将第一波主升浪大半利润固化进账户底盘。',
+    },
+    {
+        tierIndex: 3,
+        profitThresholdPct: 40.0,
+        lockedFloorProfitPct: 25.0,
+        trackingMechanism: '保底锁定成本+25%',
+        directive: '浮盈触及 +40%，止损线提拉至成本价 +25%，杜绝中期均值回归侵蚀高额收益。',
+    },
+    {
+        tierIndex: 4,
+        profitThresholdPct: 60.0,
+        lockedFloorProfitPct: 45.0,
+        trackingMechanism: 'MA20 或成本+45% 双轨动态护航',
+        directive: '浮盈触及 +60%，止损线至少锁定 +45% 或挂钩日线 MA20（取两者孰高），让主升浪充分奔跑。',
+    },
+];
+
+/**
+ * 计算阶梯式动态移动止盈止损线 (单向棘轮机制：只能单向向上提拉，绝对禁止下移)
+ */
+export function calculateTieredTrailingStop(
+    input: TrailingStopCalculationInput,
+    tiers: TrailingStopTier[] = DEFAULT_PROFIT_TRAILING_TIERS
+): TrailingStopCalculationResult {
+    const { symbol, entryPrice, highestPriceSinceEntry, currentPrice, currentStopPrice, ma20Price } = input;
+    const currentProfitPct = ((currentPrice - entryPrice) / entryPrice) * 100;
+    const maxFloatingProfitPct = ((highestPriceSinceEntry - entryPrice) / entryPrice) * 100;
+
+    // 从高到低匹配满足最高门槛的梯次
+    const sortedTiers = [...tiers].sort((a, b) => b.profitThresholdPct - a.profitThresholdPct);
+    const activeTier = sortedTiers.find(t => maxFloatingProfitPct >= t.profitThresholdPct) || null;
+
+    let candidateFloorPrice = currentStopPrice;
+    let lockFloorProfitPct = 0;
+
+    if (activeTier) {
+        lockFloorProfitPct = activeTier.lockedFloorProfitPct;
+        const tierFloorPrice = entryPrice * (1 + activeTier.lockedFloorProfitPct / 100);
+
+        // 如果达到最高等级 4 (>=60%) 且提供了 MA20，则与 MA20 进行孰高比较
+        if (activeTier.tierIndex === 4 && ma20Price !== undefined && ma20Price > tierFloorPrice) {
+            candidateFloorPrice = ma20Price;
+        } else {
+            candidateFloorPrice = tierFloorPrice;
+        }
+    }
+
+    // 核心公理：棘轮只升不降 (Ratchet Invariance)
+    const newStopPrice = Math.max(currentStopPrice, candidateFloorPrice);
+    const isRatchetAdvanced = newStopPrice > currentStopPrice;
+    const ratchetProtectionLocked = lockFloorProfitPct > 0;
+
+    let statusMessage = `当前浮盈 ${currentProfitPct.toFixed(1)}%（历史最高 ${maxFloatingProfitPct.toFixed(1)}%）。`;
+    if (activeTier) {
+        statusMessage += ` 激活 Tier ${activeTier.tierIndex} 锁利：止损线上提至 $${newStopPrice.toFixed(2)}（锁定保底纯利润 +${lockFloorProfitPct.toFixed(1)}%）。棘轮单向锁定，禁止调低！`;
+    } else {
+        statusMessage += ` 尚未触及 +15% 移动止盈第一梯次，维持初始风控止损价 $${newStopPrice.toFixed(2)}。`;
+    }
+
+    return {
+        symbol,
+        entryPrice,
+        currentPrice,
+        highestPriceSinceEntry,
+        currentProfitPct: Number(currentProfitPct.toFixed(2)),
+        maxFloatingProfitPct: Number(maxFloatingProfitPct.toFixed(2)),
+        activeTier,
+        calculatedFloorPrice: Number(candidateFloorPrice.toFixed(2)),
+        newStopPrice: Number(newStopPrice.toFixed(2)),
+        isRatchetAdvanced,
+        ratchetProtectionLocked,
+        lockFloorProfitPct,
+        statusMessage,
+    };
+}
+
+// ----------------------------------------------------------------------------
+// 2. 美债收益率与美联储前瞻压力监控器 (Treasury & Fed Valuation Monitor)
+// 移植自 AI-Memory v9_macro_policy_monitor.py 规范
+// ----------------------------------------------------------------------------
+
+export type MacroValuationPressureState = 'normal' | 'restrictive' | 'stress' | 'unavailable';
+
+export interface TreasuryFedMacroInput {
+    asOfDate: string;
+    nominal2y: number;
+    nominal10y: number;
+    nominal30y: number;
+    real10y: number;
+    breakeven10y: number;
+    nominal10y_5d_change_bp: number;
+    real10y_5d_change_bp: number;
+    curve10s2s_bp: number;
+    priorCurve10s2s_bp?: number; // 5天前的 10s2s 利差 (bp)
+    fedTargetRangePct: [number, number];
+    fedHikeDissentCount: number;
+    fedTighteningContingency: boolean;
+    fedPolicyStale?: boolean;
+}
+
+export interface TreasuryFedMacroResult {
+    asOfDate: string;
+    state: MacroValuationPressureState;
+    structuralScore: number;
+    impulseScore: number;
+    curve10s2s_bp: number;
+    bearSteepeningDetected: boolean;
+    highDurationNewRiskMultiplier: number;
+    requiresPriceConfirmation: boolean;
+    hawkishPolicyRisk: boolean;
+    structuralFlags: {
+        real10yAtOrAbove225: boolean;
+        nominal10yAtOrAbove450: boolean;
+        hawkishPolicyRisk: boolean;
+    };
+    impulseFlags: {
+        real10yFiveObsUpAtLeast15bp: boolean;
+        nominal10yFiveObsUpAtLeast20bp: boolean;
+        tenTwoBearSteepeningAtLeast10bp: boolean;
+    };
+    directiveSummary: string;
+}
+
+/**
+ * 宏观美债收益率曲线与美联储估值折现率压力监控评估
+ */
+export function evaluateTreasuryFedMacroMonitor(input: TreasuryFedMacroInput): TreasuryFedMacroResult {
+    const {
+        asOfDate,
+        nominal10y,
+        real10y,
+        nominal10y_5d_change_bp,
+        real10y_5d_change_bp,
+        curve10s2s_bp,
+        priorCurve10s2s_bp,
+        fedHikeDissentCount,
+        fedTighteningContingency,
+        fedPolicyStale,
+    } = input;
+
+    if (fedPolicyStale) {
+        return {
+            asOfDate,
+            state: 'unavailable',
+            structuralScore: 0,
+            impulseScore: 0,
+            curve10s2s_bp,
+            bearSteepeningDetected: false,
+            highDurationNewRiskMultiplier: 0.5,
+            requiresPriceConfirmation: true,
+            hawkishPolicyRisk: false,
+            structuralFlags: {
+                real10yAtOrAbove225: false,
+                nominal10yAtOrAbove450: false,
+                hawkishPolicyRisk: false,
+            },
+            impulseFlags: {
+                real10yFiveObsUpAtLeast15bp: false,
+                nominal10yFiveObsUpAtLeast20bp: false,
+                tenTwoBearSteepeningAtLeast10bp: false,
+            },
+            directiveSummary: '美联储宏观政策数据已过下次会议有效期或缺失，系统 fail-closed 进入保守降额模式。',
+        };
+    }
+
+    // 判定 10s2s 熊陡 (Bear Steepening: 10Y-2Y 利差走阔 >= 10bp 且长端 10Y 名义利率在上涨)
+    const bearSteepeningDetected = Boolean(
+        priorCurve10s2s_bp !== undefined &&
+        (curve10s2s_bp - priorCurve10s2s_bp) >= 10.0 &&
+        nominal10y_5d_change_bp > 0
+    );
+
+    const hawkishPolicyRisk = fedHikeDissentCount > 0 || fedTighteningContingency;
+
+    const structuralFlags = {
+        real10yAtOrAbove225: real10y >= 2.25,
+        nominal10yAtOrAbove450: nominal10y >= 4.50,
+        hawkishPolicyRisk,
+    };
+
+    const impulseFlags = {
+        real10yFiveObsUpAtLeast15bp: real10y_5d_change_bp >= 15.0,
+        nominal10yFiveObsUpAtLeast20bp: nominal10y_5d_change_bp >= 20.0,
+        tenTwoBearSteepeningAtLeast10bp: bearSteepeningDetected,
+    };
+
+    const structuralScore = Object.values(structuralFlags).filter(Boolean).length;
+    const impulseScore = Object.values(impulseFlags).filter(Boolean).length;
+
+    let state: MacroValuationPressureState = 'normal';
+    let highDurationNewRiskMultiplier = 1.0;
+    let requiresPriceConfirmation = false;
+    let directiveSummary = '';
+
+    if (impulseScore >= 2 || real10y >= 2.75 || nominal10y >= 5.00) {
+        state = 'stress';
+        highDurationNewRiskMultiplier = 0.0;
+        requiresPriceConfirmation = true;
+        directiveSummary = '【美债压力警报 STRESS】折现率极速飙升（脉冲分 >=2 或 10Y 名义 >=5.0% / 实际 >=2.75%），高估值 AI/半导体等长久期资产新增买入乘数降为 0.0，冻结一切新增开仓！';
+    } else if (structuralScore >= 2 || impulseScore >= 1) {
+        state = 'restrictive';
+        highDurationNewRiskMultiplier = 0.5;
+        requiresPriceConfirmation = true;
+        directiveSummary = '【美债约束状态 RESTRICTIVE】名义利率破 4.5% 或实际利率破 2.25%，高久期资产新增限额折半至 50%，且必须等待右侧价格突破确认方可建仓。';
+    } else {
+        state = 'normal';
+        highDurationNewRiskMultiplier = 1.0;
+        requiresPriceConfirmation = false;
+        directiveSummary = '【宏观利率常态 NORMAL】折现率平稳，美债收益率曲线在基准通道内波动，高久期资产风险乘数全额放行 1.0。';
+    }
+
+    return {
+        asOfDate,
+        state,
+        structuralScore,
+        impulseScore,
+        curve10s2s_bp,
+        bearSteepeningDetected,
+        highDurationNewRiskMultiplier,
+        requiresPriceConfirmation,
+        hawkishPolicyRisk,
+        structuralFlags,
+        impulseFlags,
+        directiveSummary,
+    };
+}
+
+// ----------------------------------------------------------------------------
+// 3. 财报与重大催化剂大阳线次日 T+2 强制冷静期规则 (Earnings Cooldown Rule)
+// 借鉴 2026-06-25 MU 财报日涨 10% 次日追高套牢的真实教训
+// ----------------------------------------------------------------------------
+
+export type CooldownAction = 'FROZEN_COOLDOWN' | 'OBSERVATION_WAIT' | 'QUALIFIED_CAN_ENTER' | 'DISQUALIFIED_FAILED_CRITERIA';
+
+export interface EarningsCooldownInput {
+    symbol: string;
+    eventDayDate: string;
+    currentDate: string;
+    daysElapsedSinceEvent: number; // 0 为事件当日，1 为 T+1 日，2 为 T+2 日
+    eventDayGainPct: number; // 事件当日涨幅 (如 +10.2%)
+    eventDayVolume: number;
+    currentDayVolume: number;
+    currentDayHighPrice: number;
+    currentDayLowPrice: number;
+    currentClosePrice: number;
+    eventDayOpenPrice: number;
+    eventDayClosePrice: number;
+    ma5Price: number;
+}
+
+export interface EarningsCooldownResult {
+    symbol: string;
+    action: CooldownAction;
+    isFrozen: boolean;
+    daysElapsed: number;
+    amplitudePct: number;
+    volumeRatioPct: number;
+    eventMidpointPrice: number;
+    checks: {
+        isTPlusTwoOrLater: boolean;
+        amplitudeWithin3Point5Pct: boolean;
+        volumeCompressedUnder50Pct: boolean;
+        closeAboveMa5: boolean;
+        closeAboveEventMidpoint: boolean;
+    };
+    rationale: string;
+}
+
+/**
+ * 财报与大阳线重大事件次日强制冷却期合规性判定
+ */
+export function evaluateEarningsCooldownRule(input: EarningsCooldownInput): EarningsCooldownResult {
+    const {
+        symbol,
+        daysElapsedSinceEvent,
+        eventDayGainPct,
+        eventDayVolume,
+        currentDayVolume,
+        currentDayHighPrice,
+        currentDayLowPrice,
+        currentClosePrice,
+        eventDayOpenPrice,
+        eventDayClosePrice,
+        ma5Price,
+    } = input;
+
+    const eventMidpointPrice = Number(((eventDayOpenPrice + eventDayClosePrice) / 2).toFixed(2));
+    const amplitudePct = Number((((currentDayHighPrice - currentDayLowPrice) / currentDayLowPrice) * 100).toFixed(2));
+    const volumeRatioPct = Number(((currentDayVolume / eventDayVolume) * 100).toFixed(2));
+
+    // 如果事件当日涨幅不足 8%，不属于极端暴涨大阳线，不触发硬核冷静期
+    if (eventDayGainPct < 8.0) {
+        return {
+            symbol,
+            action: 'QUALIFIED_CAN_ENTER',
+            isFrozen: false,
+            daysElapsed: daysElapsedSinceEvent,
+            amplitudePct,
+            volumeRatioPct,
+            eventMidpointPrice,
+            checks: {
+                isTPlusTwoOrLater: true,
+                amplitudeWithin3Point5Pct: true,
+                volumeCompressedUnder50Pct: true,
+                closeAboveMa5: true,
+                closeAboveEventMidpoint: true,
+            },
+            rationale: `标的 ${symbol} 事件当日涨幅 +${eventDayGainPct.toFixed(1)}% < +8.0%，未触发极端大阳线冷却风控。`,
+        };
+    }
+
+    // T+0 或 T+1 期间强制物理冻结买入
+    if (daysElapsedSinceEvent <= 1) {
+        return {
+            symbol,
+            action: 'FROZEN_COOLDOWN',
+            isFrozen: true,
+            daysElapsed: daysElapsedSinceEvent,
+            amplitudePct,
+            volumeRatioPct,
+            eventMidpointPrice,
+            checks: {
+                isTPlusTwoOrLater: false,
+                amplitudeWithin3Point5Pct: amplitudePct <= 3.5,
+                volumeCompressedUnder50Pct: volumeRatioPct <= 50.0,
+                closeAboveMa5: currentClosePrice >= ma5Price,
+                closeAboveEventMidpoint: currentClosePrice >= eventMidpointPrice,
+            },
+            rationale: `【T+${daysElapsedSinceEvent} 强制冷静期】标的 ${symbol} 财报单日暴涨 +${eventDayGainPct.toFixed(1)}%，处于获利盘剧烈出逃与多空对冲窗口，绝对禁止买入追高！`,
+        };
+    }
+
+    // T+2 及以后：微观结构三审准入
+    const isTPlusTwoOrLater = daysElapsedSinceEvent >= 2;
+    const amplitudeWithin3Point5Pct = amplitudePct <= 3.5;
+    const volumeCompressedUnder50Pct = volumeRatioPct <= 50.0;
+    const closeAboveMa5 = currentClosePrice >= ma5Price;
+    const closeAboveEventMidpoint = currentClosePrice >= eventMidpointPrice;
+
+    const allPassed = isTPlusTwoOrLater && amplitudeWithin3Point5Pct && volumeCompressedUnder50Pct && closeAboveMa5 && closeAboveEventMidpoint;
+
+    if (allPassed) {
+        return {
+            symbol,
+            action: 'QUALIFIED_CAN_ENTER',
+            isFrozen: false,
+            daysElapsed: daysElapsedSinceEvent,
+            amplitudePct,
+            volumeRatioPct,
+            eventMidpointPrice,
+            checks: {
+                isTPlusTwoOrLater,
+                amplitudeWithin3Point5Pct,
+                volumeCompressedUnder50Pct,
+                closeAboveMa5,
+                closeAboveEventMidpoint,
+            },
+            rationale: `【T+${daysElapsedSinceEvent} 准入放行】振幅收窄至 ${amplitudePct}% (<=3.5%)，成交量萎缩至事件日 ${volumeRatioPct}% (<=50%)，且坚守在 MA5 与大阳线实体中轴 $${eventMidpointPrice} 之上，浮筹清洗完毕，允许合规建立底仓！`,
+        };
+    } else {
+        const failedReasons: string[] = [];
+        if (!amplitudeWithin3Point5Pct) failedReasons.push(`振幅 ${amplitudePct}% 过大 (>3.5%)`);
+        if (!volumeCompressedUnder50Pct) failedReasons.push(`成交量占比 ${volumeRatioPct}% 仍未充分萎缩 (>50%)`);
+        if (!closeAboveMa5) failedReasons.push(`收盘破位 MA5`);
+        if (!closeAboveEventMidpoint) failedReasons.push(`收盘跌破大阳线实体中轴 $${eventMidpointPrice}`);
+
+        return {
+            symbol,
+            action: 'DISQUALIFIED_FAILED_CRITERIA',
+            isFrozen: true,
+            daysElapsed: daysElapsedSinceEvent,
+            amplitudePct,
+            volumeRatioPct,
+            eventMidpointPrice,
+            checks: {
+                isTPlusTwoOrLater,
+                amplitudeWithin3Point5Pct,
+                volumeCompressedUnder50Pct,
+                closeAboveMa5,
+                closeAboveEventMidpoint,
+            },
+            rationale: `【T+${daysElapsedSinceEvent} 准入未过】微观结构未通过：${failedReasons.join('，')}，继续保持观望，严禁进场！`,
+        };
+    }
+}
+
+// ----------------------------------------------------------------------------
+// 4. 破位均线严禁向下摊平成本铁律 (Anti-Averaging-Down Ironclad Rule)
+// 借鉴 2026-08-21 待办中 MXL / GLW 破位后严格 no-add 的纪律
+// ----------------------------------------------------------------------------
+
+export type AveragingDownAction = 'AVERAGING_PROHIBITED' | 'SAFE_ADD_PERMITTED';
+
+export interface AntiAveragingDownInput {
+    symbol: string;
+    currentPrice: number;
+    ma5: number;
+    ma10: number;
+    ma20: number;
+    consecutiveDaysAboveKeyMAs: number; // 连续收复关键均线的交易日天数
+    isVolumeReclaimed: boolean; // 是否放量收复
+}
+
+export interface AntiAveragingDownResult {
+    symbol: string;
+    action: AveragingDownAction;
+    isBrokenTrend: boolean;
+    brokenMAs: string[];
+    canAddPosition: boolean;
+    isReclaimConfirmed: boolean;
+    rationale: string;
+}
+
+/**
+ * 破位均线严禁向下补仓摊平成本合规判定
+ */
+export function evaluateAntiAveragingDownRule(input: AntiAveragingDownInput): AntiAveragingDownResult {
+    const { symbol, currentPrice, ma5, ma10, ma20, consecutiveDaysAboveKeyMAs, isVolumeReclaimed } = input;
+    const brokenMAs: string[] = [];
+    if (currentPrice < ma5) brokenMAs.push('MA5');
+    if (currentPrice < ma10) brokenMAs.push('MA10');
+    if (currentPrice < ma20) brokenMAs.push('MA20');
+
+    const isBrokenTrend = brokenMAs.length > 0;
+    const isReclaimConfirmed = !isBrokenTrend && consecutiveDaysAboveKeyMAs >= 2 && isVolumeReclaimed;
+
+    if (isBrokenTrend) {
+        return {
+            symbol,
+            action: 'AVERAGING_PROHIBITED',
+            isBrokenTrend: true,
+            brokenMAs,
+            canAddPosition: false,
+            isReclaimConfirmed: false,
+            rationale: `【趋势破位·严禁摊平】标的 ${symbol} 收盘价处于 ${brokenMAs.join(' / ')} 下方，处于弱势调整甚至破位形态。系统物理封锁该标的的新增买入与向下补仓权限，杜绝处置效应导致的深套！`,
+        };
+    }
+
+    if (!isReclaimConfirmed) {
+        return {
+            symbol,
+            action: 'AVERAGING_PROHIBITED',
+            isBrokenTrend: false,
+            brokenMAs: [],
+            canAddPosition: false,
+            isReclaimConfirmed: false,
+            rationale: `【初次回踩收复·待企稳确认】标的 ${symbol} 虽刚收复均线，但企稳天数 ${consecutiveDaysAboveKeyMAs} < 2 天或未见放量确认，暂时保持观察，未授权加仓。`,
+        };
+    }
+
+    return {
+        symbol,
+        action: 'SAFE_ADD_PERMITTED',
+        isBrokenTrend: false,
+        brokenMAs: [],
+        canAddPosition: true,
+        isReclaimConfirmed: true,
+        rationale: `【均线健康·放量收复】标的 ${symbol} 稳居 MA5/MA10/MA20 之上，连续企稳 ${consecutiveDaysAboveKeyMAs} 日且放量确认，加仓权限已安全解锁。`,
+    };
+}
+
+// ----------------------------------------------------------------------------
+// Phase 11 综合常数与实盘经典案例对照表 (Phase 11 Tactical Audit Constants)
+// ----------------------------------------------------------------------------
+
+export const PHASE11_TACTICAL_ENHANCEMENTS = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 11 微观锁利、宏观折现率监控、财报冷却与防摊平四维统合',
+    caseStudies: {
+        trailingStopCase: {
+            symbol: 'GLW',
+            initialCost: 100.0,
+            peakPrice: 122.0, // +22% 浮盈
+            traditionalOutcome: '原策略未提拉止损线仍停留在 $92(-8%)，股价均值回归回踩至 $102，浮盈被吞噬 90%。',
+            ratchetOutcome: '触碰 Tier 1 (+15%)，止损线上推至 $108(+8%)；回踩时在 $108 触发保底锁利出局，稳稳锁定 +8% 净利润。',
+        },
+        treasuryMonitorCase: {
+            date: '2026-08-21',
+            nominal10y: 4.74,
+            real10y: 2.40,
+            status: 'RESTRICTIVE',
+            action: '高久期科技股新买入乘数减半至 0.5，要求必须具备日线价格收复与突破确认。',
+        },
+        earningsCooldownCase: {
+            symbol: 'MU',
+            eventGainPct: 10.2,
+            mistakeLesson: '2026-06-25 财报后散户次日 FOMO 追高 $1155，次日大跌 6.7% 高位被套。',
+            ruleDefense: 'T+0/T+1 强制冻结买入；T+2 须检验振幅 <=3.5% 与缩量 <=50% 后方可入场。',
+        },
+        antiAveragingCase: {
+            symbol: 'MXL',
+            action: '收盘价破位 MA20，系统判定 BROKEN_TREND_NO_ADD，物理屏蔽任何向下摊平成本指令，避免无底洞式亏损扩大。',
+        },
+    },
+};
+
+
 
 
 

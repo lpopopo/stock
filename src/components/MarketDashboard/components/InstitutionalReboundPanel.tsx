@@ -32,10 +32,20 @@ import {
     ECONOMIC_FEE_GATE_PROTOCOL,
     POSITION_RECLASSIFICATION_INVARIANCE,
     V8_V9_UNIFIED_OPERATING_MODEL,
+    DEFAULT_PROFIT_TRAILING_TIERS,
+    calculateTieredTrailingStop,
+    evaluateTreasuryFedMacroMonitor,
+    evaluateEarningsCooldownRule,
+    evaluateAntiAveragingDownRule,
+    PHASE11_TACTICAL_ENHANCEMENTS,
     type BottomReboundStock,
     type TradeChecklistInput,
     type TradeChecklistResult,
     type BatchAuditRow,
+    type TrailingStopCalculationInput,
+    type TreasuryFedMacroInput,
+    type EarningsCooldownInput,
+    type AntiAveragingDownInput,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -60,6 +70,7 @@ type SubTabType =
     | 'thematic-tiers'
     | 'fee-gate'
     | 'reclass-invariance'
+    | 'tactical-guards'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -80,6 +91,64 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     const [selectedEpoch, setSelectedEpoch] = useState<'all' | '2000-2007' | '2008-2016' | '2017-2026'>('all');
     const [hypoCategoryFilter, setHypoCategoryFilter] = useState<string>('all');
     const [hypoStatusFilter, setHypoStatusFilter] = useState<string>('all');
+
+    // Phase 11: 进阶实战四维硬风控交互表单状态
+    const [trailingInput, setTrailingInput] = useState<TrailingStopCalculationInput>({
+        symbol: 'GLW',
+        entryPrice: 100.0,
+        highestPriceSinceEntry: 122.0,
+        currentPrice: 112.0,
+        currentStopPrice: 92.0,
+        ma20Price: 106.0,
+    });
+
+    const [macroInput, setMacroInput] = useState<TreasuryFedMacroInput>({
+        asOfDate: '2026-08-21',
+        nominal2y: 4.24,
+        nominal10y: 4.74,
+        nominal30y: 5.27,
+        real10y: 2.40,
+        breakeven10y: 2.34,
+        nominal10y_5d_change_bp: 6.0,
+        real10y_5d_change_bp: -1.0,
+        curve10s2s_bp: 50.0,
+        priorCurve10s2s_bp: 48.0,
+        fedTargetRangePct: [3.50, 3.75],
+        fedHikeDissentCount: 3,
+        fedTighteningContingency: true,
+    });
+
+    const [cooldownInput, setCooldownInput] = useState<EarningsCooldownInput>({
+        symbol: 'MU',
+        eventDayDate: '2026-06-25',
+        currentDate: '2026-06-27',
+        daysElapsedSinceEvent: 2,
+        eventDayGainPct: 10.2,
+        eventDayVolume: 50_000_000,
+        currentDayVolume: 21_000_000,
+        currentDayHighPrice: 1140,
+        currentDayLowPrice: 1110,
+        currentClosePrice: 1135,
+        eventDayOpenPrice: 1050,
+        eventDayClosePrice: 1150,
+        ma5Price: 1115,
+    });
+
+    const [antiAveragingInput, setAntiAveragingInput] = useState<AntiAveragingDownInput>({
+        symbol: 'MXL',
+        currentPrice: 66.61,
+        ma5: 70.50,
+        ma10: 74.00,
+        ma20: 78.00,
+        consecutiveDaysAboveKeyMAs: 0,
+        isVolumeReclaimed: false,
+    });
+
+    // 计算 Phase 11 四维风控实时结果
+    const trailingResult = calculateTieredTrailingStop(trailingInput);
+    const macroResult = evaluateTreasuryFedMacroMonitor(macroInput);
+    const cooldownResult = evaluateEarningsCooldownRule(cooldownInput);
+    const antiAveragingResult = evaluateAntiAveragingDownRule(antiAveragingInput);
 
     // 六维实战决策自检器交互表单状态
     const [checklistInput, setChecklistInput] = useState<TradeChecklistInput>({
@@ -296,6 +365,12 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('reclass-invariance')}
                 >
                     📜 持仓重分类防鸵鸟协议
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'tactical-guards' ? 'active' : ''}`}
+                    onClick={() => setSubTab('tactical-guards')}
+                >
+                    🛡️ 进阶实战四维硬风控 (Phase 11)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -2019,6 +2094,593 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     <span>{axiom}</span>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 11 进阶实战四维硬风控 (Tactical Guards) */}
+            {subTab === 'tactical-guards' && (
+                <div className="rebound-tactical-view">
+                    {/* 顶部总览卡片 */}
+                    <div className="tactical-header-card">
+                        <div className="tactical-top-row">
+                            <div className="tactical-title-wrap">
+                                <span className="tactical-icon">🛡️</span>
+                                    <h4>{PHASE11_TACTICAL_ENHANCEMENTS.name}</h4>
+                                    <span className="as-of-date">发布于 {PHASE11_TACTICAL_ENHANCEMENTS.releaseDate} · 单向棘轮移动止盈 · 美债折现率前瞻穿透 · 财报大阳线 T+2 冷静期 · 破位均线防向下补仓</span>
+                            </div>
+                            <div className="tactical-badge-pill">
+                                <span>🔒 微观收益锁定与宏观折现穿透双轨闭环</span>
+                            </div>
+                        </div>
+
+                        <div className="tactical-kpi-grid">
+                            <div className="tactical-kpi-card highlight-card">
+                                <span className="kpi-label">移动止盈棘轮特性</span>
+                                <div className="kpi-val text-green font-mono">只升不降 (单向不可逆)</div>
+                                <span className="kpi-sub">+15% 锁 +8% / +25% 锁 +15% / +40% 锁 +25%</span>
+                            </div>
+                            <div className={`tactical-kpi-card ${macroResult.state === 'stress' ? 'danger-card' : macroResult.state === 'restrictive' ? 'warning-card' : 'highlight-card'}`}>
+                                <span className="kpi-label">美债/联储估值状态</span>
+                                <div className={`kpi-val font-mono ${macroResult.state === 'stress' ? 'text-red' : macroResult.state === 'restrictive' ? 'text-gold' : 'text-green'}`}>
+                                    {macroResult.state.toUpperCase()} ({macroResult.highDurationNewRiskMultiplier}x 乘数)
+                                </div>
+                                <span className="kpi-sub">10Y 实际 {macroInput.real10y}% · 10s2s {macroResult.curve10s2s_bp}bp</span>
+                            </div>
+                            <div className={`tactical-kpi-card ${cooldownResult.isFrozen ? 'warning-card' : 'highlight-card'}`}>
+                                <span className="kpi-label">财报催化剂冷却状态</span>
+                                <div className={`kpi-val font-mono ${cooldownResult.isFrozen ? 'text-gold' : 'text-green'}`}>
+                                    {cooldownResult.action}
+                                </div>
+                                <span className="kpi-sub">T+{cooldownResult.daysElapsed} · 振幅 {cooldownResult.amplitudePct}% · 缩量比 {cooldownResult.volumeRatioPct}%</span>
+                            </div>
+                            <div className={`tactical-kpi-card ${!antiAveragingResult.canAddPosition ? 'danger-card' : 'highlight-card'}`}>
+                                <span className="kpi-label">防向下摊平加仓控制</span>
+                                <div className={`kpi-val font-mono ${!antiAveragingResult.canAddPosition ? 'text-red' : 'text-green'}`}>
+                                    {antiAveragingResult.action}
+                                </div>
+                                <span className="kpi-sub">{antiAveragingResult.isBrokenTrend ? `破位均线: ${antiAveragingResult.brokenMAs.join(', ')}` : '均线健康已放量企稳'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 模块 1：阶梯式动态移动止盈棘轮协议交互模拟器 */}
+                    <div className="tactical-section-card">
+                        <div className="section-card-header">
+                            <span className="section-badge">支柱一 · 微观收益锁定</span>
+                            <h4>📈 阶梯式动态移动止盈棘轮协议 (Tiered Profit-Trailing Stops - Ratchet Lock)</h4>
+                            <p className="section-intro">
+                                汲取实盘 GLW 浮盈 +22% 遭遇坐过山车、利润被均值回归大幅吞噬的真实教训。建立单向棘轮机制：只能单向向上提拉，物理禁止下移，确保浮盈一旦扩大即刻落袋为安。
+                            </p>
+                        </div>
+
+                        {/* 经典案例预设加载 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载实战案卷预设：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setTrailingInput({
+                                    symbol: 'GLW',
+                                    entryPrice: 100.0,
+                                    highestPriceSinceEntry: 122.0,
+                                    currentPrice: 105.0,
+                                    currentStopPrice: 92.0,
+                                    ma20Price: 102.0,
+                                })}
+                            >
+                                📘 加载 GLW 回踩案例 (+22% 浮盈)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setTrailingInput({
+                                    symbol: 'MRVL',
+                                    entryPrice: 185.0,
+                                    highestPriceSinceEntry: 237.0,
+                                    currentPrice: 237.0,
+                                    currentStopPrice: 170.0,
+                                    ma20Price: 220.0,
+                                })}
+                            >
+                                📘 加载 MRVL 利润保护案例 (+28% 浮盈)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setTrailingInput({
+                                    symbol: 'NVDA',
+                                    entryPrice: 95.0,
+                                    highestPriceSinceEntry: 162.0,
+                                    currentPrice: 158.0,
+                                    currentStopPrice: 120.0,
+                                    ma20Price: 152.0,
+                                })}
+                            >
+                                📘 加载 NVDA 主升浪案例 (+65% 浮盈 / MA20护航)
+                            </button>
+                        </div>
+
+                        {/* 交互输入网格 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>标的代码</label>
+                                <input
+                                    type="text"
+                                    value={trailingInput.symbol}
+                                    onChange={(e) => setTrailingInput({ ...trailingInput, symbol: e.target.value.toUpperCase() })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>买入成本 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={trailingInput.entryPrice}
+                                    onChange={(e) => setTrailingInput({ ...trailingInput, entryPrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>历史最高价 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={trailingInput.highestPriceSinceEntry}
+                                    onChange={(e) => setTrailingInput({ ...trailingInput, highestPriceSinceEntry: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>当前价格 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={trailingInput.currentPrice}
+                                    onChange={(e) => setTrailingInput({ ...trailingInput, currentPrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>当前生效止损价 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={trailingInput.currentStopPrice}
+                                    onChange={(e) => setTrailingInput({ ...trailingInput, currentStopPrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>日线 MA20 价格 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={trailingInput.ma20Price || 0}
+                                    onChange={(e) => setTrailingInput({ ...trailingInput, ma20Price: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 实时棘轮评估输出 */}
+                        <div className="audit-result-banner font-mono">
+                            <div className="result-top-line">
+                                <span className="result-title">棘轮止盈评估结果：</span>
+                                <span className={`result-tag ${trailingResult.ratchetProtectionLocked ? 'tag-locked' : 'tag-pending'}`}>
+                                    {trailingResult.ratchetProtectionLocked ? `🔒 已锁定保底纯利润 +${trailingResult.lockFloorProfitPct}%` : '⏳ 未触发移动止盈'}
+                                </span>
+                                {trailingResult.activeTier && (
+                                    <span className="tier-tag">激活 Tier {trailingResult.activeTier.tierIndex} (+{trailingResult.activeTier.profitThresholdPct}% 门槛)</span>
+                                )}
+                            </div>
+                            <div className="result-stats-row">
+                                <div className="stat-item">
+                                    <span className="lbl">当前浮盈:</span>
+                                    <span className={`val ${trailingResult.currentProfitPct >= 0 ? 'text-green' : 'text-red'}`}>{trailingResult.currentProfitPct}%</span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">最高浮盈:</span>
+                                    <span className="val text-gold">{trailingResult.maxFloatingProfitPct}%</span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">原止损价:</span>
+                                    <span className="val text-muted">${trailingInput.currentStopPrice.toFixed(2)}</span>
+                                </div>
+                                <div className="stat-item">
+                                    <span className="lbl">新阶梯止损价:</span>
+                                    <span className="val text-cyan font-bold">${trailingResult.newStopPrice.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            <p className="result-directive-msg">{trailingResult.statusMessage}</p>
+                        </div>
+
+                        {/* 阶梯规范对照表 */}
+                        <div className="tiers-table-wrap">
+                            <table className="mini-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>阶梯层级</th>
+                                        <th>触发浮盈门槛</th>
+                                        <th>保底锁利地板</th>
+                                        <th>跟踪机制</th>
+                                        <th>风控执行指令</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {DEFAULT_PROFIT_TRAILING_TIERS.map((tier) => (
+                                        <tr key={tier.tierIndex} className={trailingResult.activeTier?.tierIndex === tier.tierIndex ? 'row-active' : ''}>
+                                            <td className="font-mono font-bold">Tier {tier.tierIndex}</td>
+                                            <td className="font-mono text-gold">+{tier.profitThresholdPct.toFixed(0)}%</td>
+                                            <td className="font-mono text-green font-bold">成本 +{tier.lockedFloorProfitPct.toFixed(0)}%</td>
+                                            <td className="font-mono">{tier.trackingMechanism}</td>
+                                            <td className="text-muted">{tier.directive}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* 模块 2：美债收益率与美联储前瞻估值压力监控器 */}
+                    <div className="tactical-section-card">
+                        <div className="section-card-header">
+                            <span className="section-badge">支柱二 · 宏观折现率穿透</span>
+                            <h4>🏛️ 美债收益率与美联储前瞻压力监控器 (Treasury & Fed Policy Valuation Monitor)</h4>
+                            <p className="section-intro">
+                                移植并工程化 AI-Memory 中的 <code>v9_macro_policy_monitor.py</code>。单纯看 VIX/QQQ 存在价格滞后；当 10Y 名义利率突破 4.5% 或 10Y TIPS 实际利率突破 2.25% 甚至发生熊陡时，高估值成长股在估值模型中会率先遭遇折现率杀估值。
+                            </p>
+                        </div>
+
+                        {/* 经典案例预设加载 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载宏观情境：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setMacroInput({
+                                    asOfDate: '2026-08-21',
+                                    nominal2y: 4.24,
+                                    nominal10y: 4.74,
+                                    nominal30y: 5.27,
+                                    real10y: 2.40,
+                                    breakeven10y: 2.34,
+                                    nominal10y_5d_change_bp: 6.0,
+                                    real10y_5d_change_bp: -1.0,
+                                    curve10s2s_bp: 50.0,
+                                    priorCurve10s2s_bp: 48.0,
+                                    fedTargetRangePct: [3.50, 3.75],
+                                    fedHikeDissentCount: 3,
+                                    fedTighteningContingency: true,
+                                })}
+                            >
+                                📘 加载 2026-08-21 真实美债审计 (Restrictive · 乘数 0.5x)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setMacroInput({
+                                    asOfDate: '2026-09-12',
+                                    nominal2y: 4.20,
+                                    nominal10y: 4.60,
+                                    nominal30y: 5.10,
+                                    real10y: 2.50,
+                                    breakeven10y: 2.10,
+                                    nominal10y_5d_change_bp: 25.0,
+                                    real10y_5d_change_bp: 18.0,
+                                    curve10s2s_bp: 40.0,
+                                    priorCurve10s2s_bp: 25.0,
+                                    fedTargetRangePct: [3.50, 3.75],
+                                    fedHikeDissentCount: 1,
+                                    fedTighteningContingency: true,
+                                })}
+                            >
+                                📘 加载 10s2s 熊陡冲击压力场景 (Stress · 乘数 0.0x 冻结开仓)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setMacroInput({
+                                    asOfDate: '2026-05-15',
+                                    nominal2y: 3.80,
+                                    nominal10y: 4.10,
+                                    nominal30y: 4.35,
+                                    real10y: 1.85,
+                                    breakeven10y: 2.25,
+                                    nominal10y_5d_change_bp: 4.0,
+                                    real10y_5d_change_bp: 2.0,
+                                    curve10s2s_bp: 30.0,
+                                    priorCurve10s2s_bp: 28.0,
+                                    fedTargetRangePct: [3.50, 3.75],
+                                    fedHikeDissentCount: 0,
+                                    fedTighteningContingency: false,
+                                })}
+                            >
+                                📘 加载基准常态宏观环境 (Normal · 乘数 1.0x 全额放行)
+                            </button>
+                        </div>
+
+                        {/* 交互输入网格 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>观察基准日</label>
+                                <input
+                                    type="text"
+                                    value={macroInput.asOfDate}
+                                    onChange={(e) => setMacroInput({ ...macroInput, asOfDate: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>10Y 名义利率 (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={macroInput.nominal10y}
+                                    onChange={(e) => setMacroInput({ ...macroInput, nominal10y: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>10Y TIPS 实际利率 (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={macroInput.real10y}
+                                    onChange={(e) => setMacroInput({ ...macroInput, real10y: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>10s2s 利差 (bp)</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={macroInput.curve10s2s_bp}
+                                    onChange={(e) => setMacroInput({ ...macroInput, curve10s2s_bp: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>5日前 10s2s 利差 (bp)</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={macroInput.priorCurve10s2s_bp || 0}
+                                    onChange={(e) => setMacroInput({ ...macroInput, priorCurve10s2s_bp: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>5日实际利率变动 (bp)</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={macroInput.real10y_5d_change_bp}
+                                    onChange={(e) => setMacroInput({ ...macroInput, real10y_5d_change_bp: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>5日名义利率变动 (bp)</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={macroInput.nominal10y_5d_change_bp}
+                                    onChange={(e) => setMacroInput({ ...macroInput, nominal10y_5d_change_bp: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>联储票委加息异议票数</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    value={macroInput.fedHikeDissentCount}
+                                    onChange={(e) => setMacroInput({ ...macroInput, fedHikeDissentCount: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 宏观实时评估看板 */}
+                        <div className={`audit-result-banner font-mono ${macroResult.state === 'stress' ? 'banner-danger' : macroResult.state === 'restrictive' ? 'banner-warning' : 'banner-safe'}`}>
+                            <div className="result-top-line">
+                                <span className="result-title">宏观估值折现率压力评级：</span>
+                                <span className={`state-badge state-${macroResult.state}`}>
+                                    {macroResult.state.toUpperCase()}
+                                </span>
+                                <span className="multiplier-badge">
+                                    长久期科技股新增系数: {macroResult.highDurationNewRiskMultiplier}x
+                                </span>
+                                {macroResult.bearSteepeningDetected && (
+                                    <span className="bear-steepening-tag">⚠️ 触发 10s2s 熊陡预警 (走阔 &gt;=10bp)</span>
+                                )}
+                            </div>
+                            <div className="flags-overview-row">
+                                <div className="flag-group">
+                                    <span className="flag-group-title">结构性红线 (Score: {macroResult.structuralScore}/3):</span>
+                                    <span className={`flag-pill ${macroResult.structuralFlags.real10yAtOrAbove225 ? 'flag-on' : 'flag-off'}`}>实际利率&gt;=2.25%</span>
+                                    <span className={`flag-pill ${macroResult.structuralFlags.nominal10yAtOrAbove450 ? 'flag-on' : 'flag-off'}`}>名义利率&gt;=4.50%</span>
+                                    <span className={`flag-pill ${macroResult.structuralFlags.hawkishPolicyRisk ? 'flag-on' : 'flag-off'}`}>联储鹰派加息异议</span>
+                                </div>
+                                <div className="flag-group">
+                                    <span className="flag-group-title">脉冲式异动 (Score: {macroResult.impulseScore}/3):</span>
+                                    <span className={`flag-pill ${macroResult.impulseFlags.real10yFiveObsUpAtLeast15bp ? 'flag-on' : 'flag-off'}`}>5日实际利率&gt;=15bp</span>
+                                    <span className={`flag-pill ${macroResult.impulseFlags.nominal10yFiveObsUpAtLeast20bp ? 'flag-on' : 'flag-off'}`}>5日名义利率&gt;=20bp</span>
+                                    <span className={`flag-pill ${macroResult.impulseFlags.tenTwoBearSteepeningAtLeast10bp ? 'flag-on' : 'flag-off'}`}>10s2s熊陡&gt;=10bp</span>
+                                </div>
+                            </div>
+                            <p className="result-directive-msg">{macroResult.directiveSummary}</p>
+                        </div>
+                    </div>
+
+                    {/* 模块 3：财报大阳线 T+2 冷静期与破位防摊平双闸门 */}
+                    <div className="dual-guards-grid">
+                        {/* 左卡：财报与催化剂 T+2 冷静期 */}
+                        <div className="tactical-section-card mini-guard-card">
+                            <div className="section-card-header">
+                                <span className="section-badge">支柱三 · 追高冲动物理阻断</span>
+                                <h4>🧊 财报与催化剂大阳线次日 T+2 强制冷静期</h4>
+                                <p className="section-intro">
+                                    对标 2026-06-25 MU 财报暴涨 10% 后次日散户开盘追高遭遇 6.7% 回吐深套教训。单日涨幅 &gt;=8% 后 T+0/T+1 物理冻结买入，T+2 须满足微观结构三审。
+                                </p>
+                            </div>
+
+                            <div className="interactive-form-grid mini-form-grid">
+                                <div className="form-group">
+                                    <label>事件当日涨幅 (%)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={cooldownInput.eventDayGainPct}
+                                        onChange={(e) => setCooldownInput({ ...cooldownInput, eventDayGainPct: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>距离事件交易日天数</label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        value={cooldownInput.daysElapsedSinceEvent}
+                                        onChange={(e) => setCooldownInput({ ...cooldownInput, daysElapsedSinceEvent: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>当日振幅 (%)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={cooldownResult.amplitudePct}
+                                        onChange={(e) => {
+                                            const amp = parseFloat(e.target.value) || 0;
+                                            setCooldownInput({
+                                                ...cooldownInput,
+                                                currentDayLowPrice: 1000,
+                                                currentDayHighPrice: 1000 * (1 + amp / 100),
+                                            });
+                                        }}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>当日成交量占比 (%)</label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        value={cooldownResult.volumeRatioPct}
+                                        onChange={(e) => {
+                                            const ratio = parseFloat(e.target.value) || 0;
+                                            setCooldownInput({
+                                                ...cooldownInput,
+                                                currentDayVolume: cooldownInput.eventDayVolume * (ratio / 100),
+                                            });
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className={`audit-result-banner font-mono ${cooldownResult.isFrozen ? 'banner-warning' : 'banner-safe'}`}>
+                                <div className="result-top-line">
+                                    <span className="result-title">冷静期判定：</span>
+                                    <span className={`result-tag ${cooldownResult.isFrozen ? 'tag-frozen' : 'tag-safe'}`}>
+                                        {cooldownResult.action}
+                                    </span>
+                                </div>
+                                <div className="checklist-items-col">
+                                    <div className={`chk-item ${cooldownResult.checks.isTPlusTwoOrLater ? 'pass' : 'fail'}`}>
+                                        <span>{cooldownResult.checks.isTPlusTwoOrLater ? '✓' : '✗'} 达到 T+2 或之后交易日</span>
+                                    </div>
+                                    <div className={`chk-item ${cooldownResult.checks.amplitudeWithin3Point5Pct ? 'pass' : 'fail'}`}>
+                                        <span>{cooldownResult.checks.amplitudeWithin3Point5Pct ? '✓' : '✗'} 振幅收窄至 &lt;= 3.5% (当前 {cooldownResult.amplitudePct}%)</span>
+                                    </div>
+                                    <div className={`chk-item ${cooldownResult.checks.volumeCompressedUnder50Pct ? 'pass' : 'fail'}`}>
+                                        <span>{cooldownResult.checks.volumeCompressedUnder50Pct ? '✓' : '✗'} 成交量萎缩至事件日 &lt;= 50% (当前 {cooldownResult.volumeRatioPct}%)</span>
+                                    </div>
+                                    <div className={`chk-item ${cooldownResult.checks.closeAboveMa5 && cooldownResult.checks.closeAboveEventMidpoint ? 'pass' : 'fail'}`}>
+                                        <span>{cooldownResult.checks.closeAboveMa5 && cooldownResult.checks.closeAboveEventMidpoint ? '✓' : '✗'} 收盘坚守 MA5 与大阳线实体中轴 ${cooldownResult.eventMidpointPrice} 之上</span>
+                                    </div>
+                                </div>
+                                <p className="result-directive-msg">{cooldownResult.rationale}</p>
+                            </div>
+                        </div>
+
+                        {/* 右卡：破位均线严禁向下摊平成本 */}
+                        <div className="tactical-section-card mini-guard-card">
+                            <div className="section-card-header">
+                                <span className="section-badge">支柱四 · 处置效应硬阻断</span>
+                                <h4>🚫 破位均线严禁向下摊平成本铁律</h4>
+                                <p className="section-intro">
+                                    对标 2026-08-21 盘后审计待办：MXL/GLW 跌破 MA20 趋势破位，系统执行严格 <code>no-add</code>。严禁以“拉低均价”为由向下补仓，杜绝回本心理导致的无底洞套牢。
+                                </p>
+                            </div>
+
+                            <div className="interactive-form-grid mini-form-grid">
+                                <div className="form-group">
+                                    <label>当前收盘价 ($)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={antiAveragingInput.currentPrice}
+                                        onChange={(e) => setAntiAveragingInput({ ...antiAveragingInput, currentPrice: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>MA5 价格 ($)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={antiAveragingInput.ma5}
+                                        onChange={(e) => setAntiAveragingInput({ ...antiAveragingInput, ma5: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>MA10 价格 ($)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={antiAveragingInput.ma10}
+                                        onChange={(e) => setAntiAveragingInput({ ...antiAveragingInput, ma10: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>MA20 价格 ($)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={antiAveragingInput.ma20}
+                                        onChange={(e) => setAntiAveragingInput({ ...antiAveragingInput, ma20: parseFloat(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>连续收复关键均线天数</label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        value={antiAveragingInput.consecutiveDaysAboveKeyMAs}
+                                        onChange={(e) => setAntiAveragingInput({ ...antiAveragingInput, consecutiveDaysAboveKeyMAs: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>是否放量收复</label>
+                                    <select
+                                        value={antiAveragingInput.isVolumeReclaimed ? 'true' : 'false'}
+                                        onChange={(e) => setAntiAveragingInput({ ...antiAveragingInput, isVolumeReclaimed: e.target.value === 'true' })}
+                                    >
+                                        <option value="false">缩量 / 未确认放量</option>
+                                        <option value="true">放量确认突破</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className={`audit-result-banner font-mono ${!antiAveragingResult.canAddPosition ? 'banner-danger' : 'banner-safe'}`}>
+                                <div className="result-top-line">
+                                    <span className="result-title">补仓加仓裁决：</span>
+                                    <span className={`result-tag ${!antiAveragingResult.canAddPosition ? 'tag-prohibited' : 'tag-safe'}`}>
+                                        {antiAveragingResult.action}
+                                    </span>
+                                </div>
+                                <div className="result-stats-row">
+                                    <div className="stat-item">
+                                        <span className="lbl">破位均线:</span>
+                                        <span className={`val ${antiAveragingResult.brokenMAs.length > 0 ? 'text-red' : 'text-green'}`}>
+                                            {antiAveragingResult.brokenMAs.length > 0 ? antiAveragingResult.brokenMAs.join(', ') : '无 (均线上方)'}
+                                        </span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="lbl">企稳天数:</span>
+                                        <span className="val text-gold">{antiAveragingInput.consecutiveDaysAboveKeyMAs} 天 (&gt;=2天准入)</span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="lbl">加仓权限:</span>
+                                        <span className={`val ${antiAveragingResult.canAddPosition ? 'text-green font-bold' : 'text-red font-bold'}`}>
+                                            {antiAveragingResult.canAddPosition ? '🟢 已安全解锁' : '🔴 物理锁定 (禁止买入)'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <p className="result-directive-msg">{antiAveragingResult.rationale}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
