@@ -23,6 +23,8 @@ import {
     BATCH_TRADE_AUDIT_DATA,
     RESEARCH_SATURATION_BOUNDARY,
     PORTFOLIO_FOUR_DISPOSITIONS_SOP,
+    BEHAVIORAL_FINANCE_GUARDRAIL,
+    IMMUTABLE_PRODUCTION_AUDIT_TRAIL,
     type BottomReboundStock,
     type TradeChecklistInput,
     type TradeChecklistResult,
@@ -43,6 +45,8 @@ type SubTabType =
     | 'batch-audit'
     | 'saturation-boundary'
     | 'four-dispositions'
+    | 'behavioral-guardrail'
+    | 'immutable-audit'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -231,6 +235,18 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('four-dispositions')}
                 >
                     📋 机构四项处置规程 SOP
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'behavioral-guardrail' ? 'active' : ''}`}
+                    onClick={() => setSubTab('behavioral-guardrail')}
+                >
+                    🧠 行为金融四大心理陷阱
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'immutable-audit' ? 'active' : ''}`}
+                    onClick={() => setSubTab('immutable-audit')}
+                >
+                    ⛓️ 不可篡改生产对账链条
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -1112,6 +1128,193 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：行为金融学与四大心理陷阱 */}
+            {subTab === 'behavioral-guardrail' && (
+                <div className="rebound-behavioral-view">
+                    <div className="behavioral-hero-banner">
+                        <div className="hero-left">
+                            <span className="hero-icon">🧠</span>
+                            <div>
+                                <h4>行为金融学四大心理陷阱与动量崩溃状态机</h4>
+                                <span className="as-of-date font-mono">
+                                    理论基石：{BEHAVIORAL_FINANCE_GUARDRAIL.theoreticalFoundation}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 前景理论与 S 曲线心理总结 */}
+                    <div className="prospect-theory-card">
+                        <div className="pt-head">
+                            <span className="pt-icon">📉📈</span>
+                            <h5>前景理论非对称 S 曲线心理认知偏差</h5>
+                        </div>
+                        <p className="pt-desc">{BEHAVIORAL_FINANCE_GUARDRAIL.prospectTheorySummary}</p>
+                    </div>
+
+                    {/* 四大行为认知陷阱卡片网格 */}
+                    <div className="traps-container">
+                        <h4 className="section-title">🚨 必须被机器纪律彻底扼杀的四大交易心理陷阱</h4>
+                        <div className="traps-grid">
+                            {BEHAVIORAL_FINANCE_GUARDRAIL.traps.map((trap) => (
+                                <div key={trap.trapId} className={`trap-card trap-severity-${trap.dangerSeverity.toLowerCase()}`}>
+                                    <div className="trap-head">
+                                        <div>
+                                            <h5 className="trap-title">{trap.nameCn}</h5>
+                                            <span className="trap-en font-mono">{trap.nameEn}</span>
+                                        </div>
+                                        <span className={`severity-badge sev-${trap.dangerSeverity.toLowerCase()} font-mono`}>
+                                            {trap.dangerSeverity}
+                                        </span>
+                                    </div>
+
+                                    <div className="trap-section psych-sec">
+                                        <strong>🧠 人性心理机制：</strong>
+                                        <p>{trap.psychologicalMechanism}</p>
+                                    </div>
+
+                                    <div className="trap-section disaster-sec">
+                                        <strong>💥 实盘灾难表现：</strong>
+                                        <p>{trap.disasterManifestation}</p>
+                                    </div>
+
+                                    <div className="trap-section antidote-sec">
+                                        <strong>💊 机构级机器解药：</strong>
+                                        <p>{trap.institutionalAntidote}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 动量崩溃状态机 */}
+                    <div className="momentum-crash-container">
+                        <h4 className="section-title">⚡ 动量崩溃 (Momentum Crash) 4 阶段演化状态机</h4>
+                        <div className="crash-stages-grid">
+                            {BEHAVIORAL_FINANCE_GUARDRAIL.momentumCrashStages.map((stg) => (
+                                <div key={stg.stageId} className="crash-stage-card" style={{ borderTopColor: stg.statusColor }}>
+                                    <div className="stage-head">
+                                        <h5 className="stage-name" style={{ color: stg.statusColor }}>{stg.stageName}</h5>
+                                    </div>
+                                    <div className="stage-body">
+                                        <div className="stage-sec">
+                                            <strong>🌐 市场环境：</strong>
+                                            <p>{stg.marketCondition}</p>
+                                        </div>
+                                        <div className="stage-sec">
+                                            <strong>⚠️ 风险现象：</strong>
+                                            <p>{stg.riskPhenomenon}</p>
+                                        </div>
+                                        <div className="stage-sec action-sec">
+                                            <strong>🛡️ 机构风控动作：</strong>
+                                            <p>{stg.strategyAction}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 慢速波动率平滑铁律 */}
+                    <div className="slow-vol-card">
+                        <div className="slow-vol-head">
+                            <span className="slow-vol-icon">⏱️</span>
+                            <div>
+                                <h5>慢速风险平滑法则 (Slow Volatility Scaling Overlay)</h5>
+                                <span className="sub font-mono">
+                                    已实现波动率窗口：{BEHAVIORAL_FINANCE_GUARDRAIL.slowVolatilityScalingRule.windowDays} 交易日 (半年) · 最大允许杠杆：{BEHAVIORAL_FINANCE_GUARDRAIL.slowVolatilityScalingRule.maxLeverage.toFixed(1)}x (禁止杠杆)
+                                </span>
+                            </div>
+                        </div>
+                        <p className="slow-vol-p">{BEHAVIORAL_FINANCE_GUARDRAIL.slowVolatilityScalingRule.coreLogic}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：不可篡改生产对账双轨链条 */}
+            {subTab === 'immutable-audit' && (
+                <div className="rebound-audit-chain-view">
+                    <div className="audit-chain-hero-banner">
+                        <div className="hero-left">
+                            <span className="hero-icon">⛓️</span>
+                            <div>
+                                <h4>生产级双轨不可篡改对账链条 (Immutable Audit Trail)</h4>
+                                <span className="as-of-date">
+                                    {IMMUTABLE_PRODUCTION_AUDIT_TRAIL.architecture}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 活跃链条 KPI 矩阵 */}
+                    <div className="audit-kpis-grid">
+                        <div className="audit-kpi-card">
+                            <span className="lbl">市场模型决策链区块</span>
+                            <span className="val font-mono text-cyan">{IMMUTABLE_PRODUCTION_AUDIT_TRAIL.activeChains.decisionChainLength} 块</span>
+                            <span className="sub">每日收盘自动追加 (Append-Only)</span>
+                        </div>
+                        <div className="audit-kpi-card">
+                            <span className="lbl">券商实盘对账链区块</span>
+                            <span className="val font-mono text-gold">{IMMUTABLE_PRODUCTION_AUDIT_TRAIL.activeChains.brokerChainLength} 块</span>
+                            <span className="sub">真实持仓/现金物理隔离链</span>
+                        </div>
+                        <div className="audit-kpi-card">
+                            <span className="lbl">Codex/AGY 核心文件哈希差异</span>
+                            <span className="val font-mono text-green">{IMMUTABLE_PRODUCTION_AUDIT_TRAIL.activeChains.hashDiscrepancy} 处</span>
+                            <span className="sub">50 个核心策略文件哈希完全一致</span>
+                        </div>
+                        <div className="audit-kpi-card">
+                            <span className="lbl">生产架构模式</span>
+                            <span className="val-text font-mono text-gold">Fail-Closed 缺口熔断</span>
+                            <span className="sub">缺数据即停机，绝不瞎编未来</span>
+                        </div>
+                    </div>
+
+                    {/* Fail-Closed 四大铁律卡片 */}
+                    <div className="fail-closed-card">
+                        <h4 className="card-heading">🛡️ Fail-Closed 生产运维与防未来函数四大公理</h4>
+                        <ul className="fail-closed-list">
+                            {IMMUTABLE_PRODUCTION_AUDIT_TRAIL.failClosedPrinciples.map((principle, idx) => (
+                                <li key={idx} className="fail-closed-item">
+                                    <span className="check-bullet font-mono">#{idx + 1}</span>
+                                    <span>{principle}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* 最新不可篡改对账区块流 */}
+                    <div className="audit-blocks-container">
+                        <h4 className="section-title">📦 最新不可篡改区块记录流 (Recent Immutable Blocks)</h4>
+                        <div className="blocks-timeline">
+                            {IMMUTABLE_PRODUCTION_AUDIT_TRAIL.recentAuditBlocks.map((block) => (
+                                <div key={block.blockIndex} className={`timeline-block-card chain-${block.chainType}`}>
+                                    <div className="block-header">
+                                        <div className="block-index-row font-mono">
+                                            <span className="block-num">BLOCK #{block.blockIndex}</span>
+                                            <span className={`chain-type-tag tag-${block.chainType}`}>
+                                                {block.chainType === 'decision' ? '🎯 市场模型决策链' : '💼 券商实盘对账链'}
+                                            </span>
+                                            <span className="block-time">{block.timestamp}</span>
+                                        </div>
+                                        <div className="block-meta-row font-mono">
+                                            <span className="block-nav">NAV: {block.accountNav}</span>
+                                            <span className="hash-tag">{block.hashVerification}</span>
+                                            <span className={`fail-check-badge check-${block.failClosedCheck.toLowerCase()}`}>
+                                                {block.failClosedCheck}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="block-content">
+                                        <p>{block.event}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}

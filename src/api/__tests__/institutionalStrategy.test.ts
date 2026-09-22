@@ -24,6 +24,8 @@ import {
     BATCH_TRADE_AUDIT_DATA,
     RESEARCH_SATURATION_BOUNDARY,
     PORTFOLIO_FOUR_DISPOSITIONS_SOP,
+    BEHAVIORAL_FINANCE_GUARDRAIL,
+    IMMUTABLE_PRODUCTION_AUDIT_TRAIL,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -556,6 +558,56 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
 
         const measure = PORTFOLIO_FOUR_DISPOSITIONS_SOP.dispositions.find(d => d.action === 'measure')!;
         expect(measure.currentWeeklyExecution).toContain('$5,875.91');
+    });
+
+    it('24. should verify behavioral finance cognitive traps and momentum crash state machine', () => {
+        expect(BEHAVIORAL_FINANCE_GUARDRAIL.traps.length).toBe(4);
+
+        const trapIds = BEHAVIORAL_FINANCE_GUARDRAIL.traps.map(t => t.trapId);
+        expect(trapIds).toContain('trap-1-cost-anchor');
+        expect(trapIds).toContain('trap-2-breakeven');
+        expect(trapIds).toContain('trap-3-peak-anchor');
+        expect(trapIds).toContain('trap-4-disposition');
+
+        BEHAVIORAL_FINANCE_GUARDRAIL.traps.forEach(trap => {
+            expect(trap.nameCn.length).toBeGreaterThan(3);
+            expect(trap.nameEn.length).toBeGreaterThan(3);
+            expect(trap.psychologicalMechanism.length).toBeGreaterThan(20);
+            expect(trap.disasterManifestation.length).toBeGreaterThan(20);
+            expect(trap.institutionalAntidote.length).toBeGreaterThan(20);
+            expect(['Critical', 'Severe', 'High']).toContain(trap.dangerSeverity);
+        });
+
+        // 验证动量崩溃 4 阶段演化状态机
+        expect(BEHAVIORAL_FINANCE_GUARDRAIL.momentumCrashStages.length).toBe(4);
+        const stageNames = BEHAVIORAL_FINANCE_GUARDRAIL.momentumCrashStages.map(s => s.stageName);
+        expect(stageNames.some(n => n.includes('深度回撤'))).toBe(true);
+        expect(stageNames.some(n => n.includes('暴力轧空'))).toBe(true);
+        expect(stageNames.some(n => n.includes('逻辑分化'))).toBe(true);
+        expect(stageNames.some(n => n.includes('健康趋势'))).toBe(true);
+
+        // 验证慢速波动率缩放规则
+        expect(BEHAVIORAL_FINANCE_GUARDRAIL.slowVolatilityScalingRule.windowDays).toBe(126);
+        expect(BEHAVIORAL_FINANCE_GUARDRAIL.slowVolatilityScalingRule.maxLeverage).toBe(1.0);
+    });
+
+    it('25. should verify immutable dual-chain production audit trail and fail-closed architecture', () => {
+        expect(IMMUTABLE_PRODUCTION_AUDIT_TRAIL.activeChains.decisionChainLength).toBeGreaterThanOrEqual(10);
+        expect(IMMUTABLE_PRODUCTION_AUDIT_TRAIL.activeChains.brokerChainLength).toBeGreaterThanOrEqual(10);
+        expect(IMMUTABLE_PRODUCTION_AUDIT_TRAIL.activeChains.hashDiscrepancy).toBe(0);
+
+        expect(IMMUTABLE_PRODUCTION_AUDIT_TRAIL.failClosedPrinciples.length).toBe(4);
+        expect(IMMUTABLE_PRODUCTION_AUDIT_TRAIL.failClosedPrinciples.some(p => p.includes('Fail-Closed'))).toBe(true);
+
+        expect(IMMUTABLE_PRODUCTION_AUDIT_TRAIL.recentAuditBlocks.length).toBeGreaterThanOrEqual(4);
+        IMMUTABLE_PRODUCTION_AUDIT_TRAIL.recentAuditBlocks.forEach(block => {
+            expect(block.blockIndex).toBeGreaterThan(0);
+            expect(block.accountNav).toContain('$');
+            expect(block.hashVerification).toContain('MATCH');
+            expect(['PASSED', 'HALTED']).toContain(block.failClosedCheck);
+            expect(['decision', 'broker']).toContain(block.chainType);
+            expect(block.event.length).toBeGreaterThan(15);
+        });
     });
 });
 

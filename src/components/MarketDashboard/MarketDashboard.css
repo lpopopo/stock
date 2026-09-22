@@ -8314,6 +8314,554 @@
   line-height: 1.4;
 }
 
+/* ========================================================
+   Phase 7: 行为金融学风控审计与不可篡改生产对账链条
+   ======================================================== */
+
+/* 1. 行为金融学与四大心理陷阱 (Behavioral Guardrail View) */
+.rebound-behavioral-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.behavioral-hero-banner {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(22, 27, 34, 0.95));
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.behavioral-hero-banner .hero-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.behavioral-hero-banner .hero-icon {
+  font-size: 2.2rem;
+}
+
+.behavioral-hero-banner h4 {
+  margin: 0 0 4px 0;
+  font-size: 1.15rem;
+  color: #f8fafc;
+}
+
+.behavioral-hero-banner .as-of-date {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.prospect-theory-card {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(15, 23, 42, 0.9));
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pt-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pt-head .pt-icon {
+  font-size: 1.4rem;
+}
+
+.pt-head h5 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #fca5a5;
+}
+
+.pt-desc {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  line-height: 1.55;
+}
+
+.traps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.traps-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .traps-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trap-card {
+  background: #11161d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.2s ease;
+}
+
+.trap-card:hover {
+  transform: translateY(-2px);
+}
+
+.trap-card.trap-severity-critical {
+  border-left: 3px solid #ef4444;
+}
+
+.trap-card.trap-severity-severe {
+  border-left: 3px solid #f59e0b;
+}
+
+.trap-card.trap-severity-high {
+  border-left: 3px solid #38bdf8;
+}
+
+.trap-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 8px;
+}
+
+.trap-title {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #f8fafc;
+}
+
+.trap-en {
+  font-size: 0.65rem;
+  color: #64748b;
+}
+
+.severity-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.sev-critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.sev-severe {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.sev-high {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.trap-section strong {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.trap-section p {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.psych-sec {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid #8b5cf6;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+.psych-sec p { color: #cbd5e1; }
+
+.disaster-sec {
+  background: rgba(239, 68, 68, 0.04);
+  border-left: 2px solid #ef4444;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+.disaster-sec p { color: #fca5a5; }
+
+.antidote-sec {
+  background: rgba(16, 185, 129, 0.04);
+  border-left: 2px solid #10b981;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+.antidote-sec p { color: #86efac; }
+
+/* 动量崩溃状态机 */
+.momentum-crash-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.crash-stages-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .crash-stages-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  .crash-stages-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.crash-stage-card {
+  background: #11161d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 3px solid;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stage-head {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 6px;
+}
+
+.stage-name {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.stage-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stage-sec strong {
+  display: block;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.stage-sec p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.action-sec {
+  background: rgba(0, 0, 0, 0.25);
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.slow-vol-card {
+  background: rgba(56, 189, 248, 0.05);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slow-vol-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slow-vol-icon {
+  font-size: 1.5rem;
+}
+
+.slow-vol-head h5 {
+  margin: 0 0 2px 0;
+  font-size: 0.95rem;
+  color: #38bdf8;
+}
+
+.slow-vol-head .sub {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.slow-vol-p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+/* 2. 不可篡改生产对账链条 (Immutable Audit View) */
+.rebound-audit-chain-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.audit-chain-hero-banner {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.08), rgba(22, 27, 34, 0.95));
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.audit-chain-hero-banner .hero-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.audit-chain-hero-banner .hero-icon {
+  font-size: 2.2rem;
+}
+
+.audit-chain-hero-banner h4 {
+  margin: 0 0 4px 0;
+  font-size: 1.15rem;
+  color: #f8fafc;
+}
+
+.audit-chain-hero-banner .as-of-date {
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+.audit-kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .audit-kpis-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.audit-kpi-card {
+  background: #11161d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.audit-kpi-card .lbl {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.audit-kpi-card .val {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.audit-kpi-card .val-text {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.audit-kpi-card .sub {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.fail-closed-card {
+  background: #11161d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.fail-closed-card .card-heading {
+  margin: 0 0 12px 0;
+  font-size: 0.95rem;
+  color: #f8fafc;
+}
+
+.fail-closed-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fail-closed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.check-bullet {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+  font-weight: 700;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.audit-blocks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.blocks-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timeline-block-card {
+  background: #11161d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeline-block-card.chain-decision {
+  border-left: 3px solid #38bdf8;
+}
+
+.timeline-block-card.chain-broker {
+  border-left: 3px solid #eab308;
+}
+
+.block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 6px;
+}
+
+.block-index-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.block-num {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.chain-type-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.tag-decision {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+.tag-broker {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+.block-time {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.block-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.block-nav {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.hash-tag {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.fail-check-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.check-passed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.check-halted {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.block-content p {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+
 
 
 

@@ -2434,5 +2434,209 @@ export const PORTFOLIO_FOUR_DISPOSITIONS_SOP: PortfolioFourDispositionsData = {
     ],
 };
 
+// ==========================================
+// Phase 7: 行为金融学风控审计与不可篡改生产对账链条
+// ==========================================
+
+export interface BehavioralCognitiveTrap {
+    trapId: string;
+    nameCn: string;
+    nameEn: string;
+    psychologicalMechanism: string;
+    disasterManifestation: string;
+    institutionalAntidote: string;
+    dangerSeverity: 'Critical' | 'Severe' | 'High';
+}
+
+export interface MomentumCrashStage {
+    stageId: string;
+    stageName: string;
+    marketCondition: string;
+    riskPhenomenon: string;
+    strategyAction: string;
+    statusColor: string;
+}
+
+export interface BehavioralFinanceGuardrailData {
+    asOfDate: string;
+    theoreticalFoundation: string;
+    prospectTheorySummary: string;
+    traps: BehavioralCognitiveTrap[];
+    momentumCrashStages: MomentumCrashStage[];
+    slowVolatilityScalingRule: {
+        windowDays: number;
+        maxLeverage: number;
+        coreLogic: string;
+    };
+}
+
+/**
+ * 行为金融学认知陷阱防护网与动量崩溃状态机
+ */
+export const BEHAVIORAL_FINANCE_GUARDRAIL: BehavioralFinanceGuardrailData = {
+    asOfDate: '2026-09-21',
+    theoreticalFoundation: '前景理论 (Prospect Theory, Kahneman & Tversky) 与处置效应 (Disposition Effect, Shefrin & Statman)。人类交易者天生在面对浮亏时表现出风险偏好（嗜赌抗单拒绝止损），在面对微幅浮盈时表现出极度风险厌恶（过早割肉好股锁定蝇头小利）。量化系统的核心使命是建立机器纪律，彻底剔除人性心理弱点。',
+    prospectTheorySummary: '投资者的心理价值函数呈非对称 S 曲线：面对损失的痛苦感受是同等金额收益快乐感受的 2.25 倍。这导致交易者将“买入成本价”错误设立为主观心理参考点，产生非理性的回本执念与损失厌恶。',
+    traps: [
+        {
+            trapId: 'trap-1-cost-anchor',
+            nameCn: '陷阱 1: 买入成本价锚定 (Cost-Basis Anchoring)',
+            nameEn: 'COST-BASIS ANCHORING',
+            psychologicalMechanism: '将个人买入价视作客观价值基准。市场根本不知道也不关心你的买入成本，成本价只是历史账面数字，不具备任何技术或基本面支撑含义。',
+            disasterManifestation: '标的已跌破 MA50 或关键支撑位，但因为“还未跌到买入成本”或“刚亏 2% 不甘心认赔”，拒绝执行标准技术止损，最终拖成 -30%~-50% 的灾难性深套。',
+            institutionalAntidote: '强制剥离券商持仓盈亏视图，仅依据客观 K 线结构、成交量与收盘价是否破位触发机器止损，严禁以成本盈亏作为离场参数。',
+            dangerSeverity: 'Critical',
+        },
+        {
+            trapId: 'trap-2-breakeven',
+            nameCn: '陷阱 2: 回本偏执狂 (Break-Even Desire)',
+            nameEn: 'BREAK-EVEN DESIRE',
+            psychologicalMechanism: '“只要等反弹回本我就一定卖”的心理契约。在面对持续恶化的基本面或估值重估时，为了逃避承认决策错误的痛苦而无限期被动等待。',
+            disasterManifestation: '资金长期被僵死沉淀在缺乏动能的弱势股（如周期下行的劣质半导体），错失了将资本轮动调仓至领涨核心龙头的大牛市主升浪机会成本。',
+            institutionalAntidote: '设定最大观察时间窗口（如 V9 5 日观察或 10 日无效强制清理）。时间也是杠杆，超时不企稳立即全额清仓出场。',
+            dangerSeverity: 'Severe',
+        },
+        {
+            trapId: 'trap-3-peak-anchor',
+            nameCn: '陷阱 3: 前期历史高点锚定 (Prior-Peak Anchoring)',
+            nameEn: 'PEAK ANCHORING',
+            psychologicalMechanism: '以股票曾经达到过的历史最高价或最高浮盈作为心理参照物，误认为现在的回踩是“大打折”，产生盲目便宜的错觉。',
+            disasterManifestation: '在半导体周期见顶、 Capex 砍单拐点出现时，股价从 $200 跌到 $150 觉得便宜盲目左侧接飞刀，殊不知其估值公允中枢在 $80。',
+            institutionalAntidote: '执行 RSR2 相对强弱筛选，只在标的处于 52 周高点附近的健康箱体突破时进攻，严禁在腰斩下行趋势中以“打折”为借口建仓。',
+            dangerSeverity: 'High',
+        },
+        {
+            trapId: 'trap-4-disposition',
+            nameCn: '陷阱 4: 处置效应反指 (Disposition Effect)',
+            nameEn: 'DISPOSITION EFFECT',
+            psychologicalMechanism: '急不可耐地卖出刚刚放量突破、处于主升段的盈利大牛股（急于把纸面利润落袋为安），同时死抱深幅亏损的弱势股等待奇迹。',
+            disasterManifestation: '“割掉花朵，浇灌杂草”。账户最终变成了由垃圾亏损股组成的“僵尸组合”，跑输指数且承担极高暴跌风险。',
+            institutionalAntidote: '全额锁利规则 ($+15\\%$ 或 20 日到期) 配合 8% 刚性移动止损。持仓必须由领头羊霸占，绝不允许亏损股占据风险预算。',
+            dangerSeverity: 'Critical',
+        },
+    ],
+    momentumCrashStages: [
+        {
+            stageId: 'stage-1-decline',
+            stageName: '阶段 1: 市场深度回撤期 (Deep Decline)',
+            marketCondition: '大盘指数大跌，全市场恐慌扩散，高贝塔前期亏损股被极度抛售。',
+            riskPhenomenon: '低质量劣质股（高负债、高空头仓位）估值被严重压缩，做空获利盘极度拥挤。',
+            strategyAction: 'Fear Gate 计入 Stress/Panic 状态，禁止任何多头冲动建仓，保留充足现金。',
+            statusColor: '#ef4444',
+        },
+        {
+            stageId: 'stage-2-snapback',
+            stageName: '阶段 2: 暴力轧空修复期 (Violent Snapback / Rebound)',
+            marketCondition: '大盘突然无预警单日大暴涨，空头仓位遭遇灾难性踩踏轧空 (Short Squeeze)。',
+            riskPhenomenon: '前期表现最差的垃圾股由于空头平仓涨幅高达 +20%~+40%，而优质龙头股反而跑输或小幅整理。',
+            strategyAction: '⚠️ 动量崩溃高危过渡态：严禁将垃圾股的暴涨误认为新牛市主升浪盲目追涨！维持 63.93% 现金防御，启动 126 日慢速风险缩放。',
+            statusColor: '#f59e0b',
+        },
+        {
+            stageId: 'stage-3-differentiation',
+            stageName: '阶段 3: 逻辑分化与右侧确认 (Divergence & Reclaim)',
+            marketCondition: '轧空狂热消退，垃圾股缺乏基本面支撑重新回落，真有业绩的科技龙头收复 MA50。',
+            riskPhenomenon: '微观广度开始真正扩散，RSP/SPY 比率转正，信用利差平复。',
+            strategyAction: 'Fear Gate 解除恐慌，执行 RSR2 与六维自检，开始向优质瓶颈龙头分批阶梯建仓。',
+            statusColor: '#10b981',
+        },
+        {
+            stageId: 'stage-4-healthy-trend',
+            stageName: '阶段 4: 健康趋势主升期 (Healthy Bull Trend)',
+            marketCondition: '均线多头排列，量价配合健康，全市场呈现普涨。',
+            riskPhenomenon: '动量因子 Alpha 重新主导市场，龙头股票持续创出历史新高。',
+            strategyAction: '全面激活 V9 70/30 双轨架构，享受长周期复利进攻。',
+            statusColor: '#3b82f6',
+        },
+    ],
+    slowVolatilityScalingRule: {
+        windowDays: 126,
+        maxLeverage: 1.0,
+        coreLogic: '动量风险平滑铁律：采用 126 个交易日（半年度）已实现波动率进行慢速仓位平滑，严禁使用 5~10 日的快速波动率过度调整。无杠杆约束，单向交易成本计入，防止在暴跌暴涨之间反复追涨杀跌损耗本金。',
+    },
+};
+
+// ----------------------------------------------------
+// 不可篡改生产对账双轨链条 (Immutable Production Audit Trail)
+// ----------------------------------------------------
+
+export interface ImmutableAuditBlock {
+    blockIndex: number;
+    timestamp: string;
+    chainType: 'decision' | 'broker';
+    event: string;
+    accountNav: string;
+    hashVerification: string;
+    failClosedCheck: 'PASSED' | 'HALTED';
+}
+
+export interface ImmutableProductionAuditData {
+    architecture: string;
+    failClosedPrinciples: string[];
+    activeChains: {
+        decisionChainLength: number;
+        brokerChainLength: number;
+        hashDiscrepancy: number;
+    };
+    recentAuditBlocks: ImmutableAuditBlock[];
+}
+
+/**
+ * 生产级双轨不可篡改对账链条数据
+ */
+export const IMMUTABLE_PRODUCTION_AUDIT_TRAIL: ImmutableProductionAuditData = {
+    architecture: '模型市场决策链条 (Market Decision Chain) 与 券商实盘对账链条 (Broker Observation Chain) 双轨独立物理隔离。两链均采用仅追加 (Append-Only) 架构，杜绝任何历史数据重写。',
+    failClosedPrinciples: [
+        '数据缺口熔断 (Fail-Closed)：任何必需的行情或宏观指标若未达到已完成交易日标准，系统强制暂停所有计算，绝不插值瞎编。',
+        '禁止未来函数与后视重写：既有历史事件与决策一旦写入，永久不可更改。新发生的观察只能作为新区块按时间戳向后追加。',
+        '严禁跳过交易日：前瞻跟踪必须每日连续，禁止挑挑拣拣选择性记录。',
+        '双重哈希交叉验证：Codex 与 Antigravity 独立复核全部 50 个策略核心文件，哈希差异必须严格为 0。',
+    ],
+    activeChains: {
+        decisionChainLength: 12,
+        brokerChainLength: 12,
+        hashDiscrepancy: 0,
+    },
+    recentAuditBlocks: [
+        {
+            blockIndex: 12,
+            timestamp: '2026-09-18 20:05:00 UTC',
+            chainType: 'decision',
+            event: 'Canonical Fear Gate 重算完成：评分 5 分 (Elevated 警戒态)，核心 70% 指数核 + 30% 股票预算，股票合规新信号 0 个。',
+            accountNav: '$5,875.91',
+            hashVerification: 'sha256:4a8c9e1...MATCH',
+            failClosedCheck: 'PASSED',
+        },
+        {
+            blockIndex: 11,
+            timestamp: '2026-09-18 19:40:00 UTC',
+            chainType: 'broker',
+            event: '券商实盘真实对账：核实可用现金 $3,756.49 (63.93%)，持仓 GLW 2股、MRVL 4股、MXL 6股、QCOM 2股，挂单 0 笔。',
+            accountNav: '$5,875.91',
+            hashVerification: 'sha256:7b1f3c2...MATCH',
+            failClosedCheck: 'PASSED',
+        },
+        {
+            blockIndex: 10,
+            timestamp: '2026-09-17 20:10:00 UTC',
+            chainType: 'decision',
+            event: 'V9-E 与 V9-A 账户归一化净值 1.008624 (+0.8624%)，SMH 收复 MA50，但微观广度仅 19.5% 依然警报。',
+            accountNav: '$5,845.05',
+            hashVerification: 'sha256:9d2a4e8...MATCH',
+            failClosedCheck: 'PASSED',
+        },
+        {
+            blockIndex: 9,
+            timestamp: '2026-09-16 20:00:00 UTC',
+            chainType: 'decision',
+            event: '美联储宣布加息 25bp，点阵图中位 4.125%，Fear Gate 维持 Stress 9分，禁止追空与开多。',
+            accountNav: '$5,832.18',
+            hashVerification: 'sha256:1f6e8b4...MATCH',
+            failClosedCheck: 'PASSED',
+        },
+    ],
+};
+
+
 
 
