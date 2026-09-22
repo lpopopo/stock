@@ -2901,6 +2901,252 @@ export const V9_CORE_INSURANCE_COST_AUDIT: CoreWhipsawAuditData = {
     ],
 };
 
+// ----------------------------------------------------
+// 主题浓度分级防御梯次与加仓速度阻尼器 (Thematic Concentration Tiers)
+// ----------------------------------------------------
+
+export interface ThematicConcentrationTier {
+    tierRange: string;
+    zoneName: string;
+    zoneType: 'free' | 'managed' | 'rotation_only' | 'hard_breaker';
+    maxDailyNetAdditionPct: number;
+    operatingRules: string;
+    riskDirectives: string;
+}
+
+export interface ThematicConcentrationFramework {
+    asOfDate: string;
+    themeExposureCeilingPct: number;
+    subThemeExposureCeilingPct: number;
+    maxSingleDayAdditionPct: number;
+    empiricalOriginCase: string;
+    tiers: ThematicConcentrationTier[];
+    currentAccountStatus: {
+        dominantTheme: string;
+        currentExposurePct: number;
+        currentZone: string;
+        dailyNetAddedPct: number;
+        complianceVerdict: 'COMPLIANT' | 'WARNING' | 'BREACH';
+    };
+}
+
+/**
+ * 主题浓度分级防御梯次与同日加仓速度阻尼数据
+ */
+export const THEMATIC_CONCENTRATION_TIERS: ThematicConcentrationFramework = {
+    asOfDate: '2026-08-15',
+    themeExposureCeilingPct: 55.0,
+    subThemeExposureCeilingPct: 25.0,
+    maxSingleDayAdditionPct: 15.0,
+    empiricalOriginCase: '2026-06-25 实盘惨痛教训复盘：当日因情绪兴奋，在同日连续买入 DRAM + MXL + MU，导致 AI Capex 主题仓位从 22% 瞬间跳涨至 47%（单日净增 25%），直接击穿组合风险边界并承受同向大幅回撤。由此确立：单一主题单日净买入硬上限 <= 15%，且严格实行 4 级阶梯管理。',
+    tiers: [
+        {
+            tierRange: '0% ~ 40%',
+            zoneName: '自由构建区 (Normal Accumulation)',
+            zoneType: 'free',
+            maxDailyNetAdditionPct: 15.0,
+            operatingRules: '正常分批建仓。只要满足市场 Fear Gate 正常、个股日 K 右侧企稳并伴随量价共振，允许按标准仓位梯度自由买入。',
+            riskDirectives: '保持标的分散，同一子主题标的不宜超过 2 只。',
+        },
+        {
+            tierRange: '40% ~ 50%',
+            zoneName: '集中管理区 (Concentration Management Area)',
+            zoneType: 'managed',
+            maxDailyNetAdditionPct: 5.0,
+            operatingRules: '进入警觉监控。只有当 Fear Gate 为 normal、微观广度无背离、且买入标的为该主题确定性最高的唯一领头羊时才允许净加仓。单日净增硬限制 <= 5.0%。',
+            riskDirectives: '收紧全主题个股止损线，杜绝浮盈盲目加仓拉高持仓成本。',
+        },
+        {
+            tierRange: '50% ~ 55%',
+            zoneName: '换仓锁死区 (Rotation-Only Zone)',
+            zoneType: 'rotation_only',
+            maxDailyNetAdditionPct: 0.0,
+            operatingRules: '严禁净增主题敞口！只允许同主题“等额强弱换仓”（必须先卖出弱势个股，方可买入同等市值的强势突破龙头）。',
+            riskDirectives: '绝对禁止单边裸买入，违规订单交易引擎物理 fail-closed 拦截。',
+        },
+        {
+            tierRange: '> 55%',
+            zoneName: '硬性熔断区 (Hard Breaker Veto)',
+            zoneType: 'hard_breaker',
+            maxDailyNetAdditionPct: 0.0,
+            operatingRules: '触发主题集中度系统熔断！全面冻结该主题所有买入信号，并在正式盘后审计时生成强制减仓 SOP，将仓位削减至 55% 以下。',
+            riskDirectives: '不考虑基本面好坏，纯粹以组合数学防灾为第一优先级执行减半。',
+        },
+    ],
+    currentAccountStatus: {
+        dominantTheme: 'AI Capex & 自然垄断公用事业',
+        currentExposurePct: 36.07,
+        currentZone: '0% ~ 40% 自由构建区',
+        dailyNetAddedPct: 0.0,
+        complianceVerdict: 'COMPLIANT',
+    },
+};
+
+// ----------------------------------------------------
+// 小微账户经济费率门槛与非对称执行安全阀 (Economic Fee Gate)
+// ----------------------------------------------------
+
+export interface EconomicFeeGateRule {
+    ruleId: string;
+    parameterName: string;
+    thresholdValue: string;
+    enforcementScope: 'BUY_ONLY' | 'ALL_ORDERS';
+    firstPrinciplesRationale: string;
+}
+
+export interface EconomicFeeGateData {
+    asOfDate: string;
+    minNotionalUsd: number;
+    maxRoundTripFeeDragPct: number;
+    asymmetricExecutionThesis: string;
+    rules: EconomicFeeGateRule[];
+    stressScenarios: Array<{
+        orderType: 'BUY' | 'SELL';
+        ticker: string;
+        orderNotionalUsd: number;
+        estimatedFeeUsd: number;
+        feeDragPct: number;
+        systemAction: 'ALLOWED' | 'BLOCKED';
+        actionReason: string;
+    }>;
+}
+
+/**
+ * OPT-PROC-02 小微账户经济费率门槛与出场保命非对称豁免协议
+ */
+export const ECONOMIC_FEE_GATE_PROTOCOL: EconomicFeeGateData = {
+    asOfDate: '2026-08-15',
+    minNotionalUsd: 200.0,
+    maxRoundTripFeeDragPct: 1.0,
+    asymmetricExecutionThesis: '非对称执行铁律 (OPT-PROC-02)：费率摩擦门槛是小微账户（$5,000~$20,000）防止过度交易 (Overtrading) 的防护堤。但在任何情况下，风控卖出、止损、减仓与熔断平仓的生命线优先级高于一切经济费率约束！系统在数学上保证：费率门槛严格仅作用于买入开仓，绝不拦截任何撤退指令。',
+    rules: [
+        {
+            ruleId: 'FEE-01-MIN-NOTIONAL',
+            parameterName: '单笔最低名义本金 (Minimum Notional)',
+            thresholdValue: '$200.00 USD',
+            enforcementScope: 'BUY_ONLY',
+            firstPrinciplesRationale: '小额碎股开仓会导致固定券商佣金占比较大（如 $1 佣金在 $50 开仓中占比高达 2%），直接吞噬策略阿尔法。',
+        },
+        {
+            ruleId: 'FEE-02-DRAG-CEILING',
+            parameterName: '双边最大费率摩擦 (Round-Trip Fee Drag)',
+            thresholdValue: '<= 1.0% (2 * fee / notional <= 0.01)',
+            enforcementScope: 'BUY_ONLY',
+            firstPrinciplesRationale: '双边买卖摩擦必须严格压制在 1.0% 以内，确保交易成本在数学上不破坏 2.5% 的单笔预期数学期望。',
+        },
+        {
+            ruleId: 'FEE-03-ASYMMETRIC-EXIT',
+            parameterName: '出场保命非对称豁免 (Asymmetric Exit Exemption)',
+            thresholdValue: '完全无条件豁免 (100% Exemption)',
+            enforcementScope: 'BUY_ONLY',
+            firstPrinciplesRationale: '任何止损、平仓、清仓、减半指令，哪怕剩余市值仅 $50 或费率高达 5%，系统必须即刻放行执行，绝不因费率成本牺牲账户生存。',
+        },
+    ],
+    stressScenarios: [
+        {
+            orderType: 'BUY',
+            ticker: 'NVDA',
+            orderNotionalUsd: 120.0,
+            estimatedFeeUsd: 1.5,
+            feeDragPct: 2.50,
+            systemAction: 'BLOCKED',
+            actionReason: '名义本金低于 $200 且费率拖累 2.50% > 1.0%，经济门槛 fail-closed 拦截，防碎股摩擦。',
+        },
+        {
+            orderType: 'BUY',
+            ticker: 'SO',
+            orderNotionalUsd: 480.0,
+            estimatedFeeUsd: 1.5,
+            feeDragPct: 0.625,
+            systemAction: 'ALLOWED',
+            actionReason: '名义本金 $480 >= $200 且双边拖累 0.625% <= 1.0%，合规放行。',
+        },
+        {
+            orderType: 'SELL',
+            ticker: 'CRDO (止损平仓)',
+            orderNotionalUsd: 95.0,
+            estimatedFeeUsd: 1.5,
+            feeDragPct: 3.16,
+            systemAction: 'ALLOWED',
+            actionReason: '⭐ 触发非对称生命线豁免！属于止损卖出动作，即便费率拖累 3.16%，强制放行立即离场！',
+        },
+    ],
+};
+
+// ----------------------------------------------------
+// 持仓重分类防鸵鸟协议与前瞻性不可篡改存证 (Position Reclassification Invariance)
+// ----------------------------------------------------
+
+export interface ReclassificationRequirement {
+    field: string;
+    requirement: string;
+    failClosedConsequence: string;
+}
+
+export interface ReclassificationInvarianceData {
+    asOfDate: string;
+    antiOstrichPhilosophy: string;
+    mandatoryRequirements: ReclassificationRequirement[];
+    auditCaseStudy: {
+        symbol: string;
+        originalHorizon: 'short_term_tactical';
+        attemptedNewHorizon: 'long_term_core';
+        originalEntryPrice: number;
+        currentDrawdownPct: number;
+        originalRecordSha256: string;
+        decisionVerdict: 'RECLASSIFICATION_VETOED_FORCE_STOP';
+        verdictExplanation: string;
+    };
+    unbreakableInvariants: string[];
+}
+
+/**
+ * OPT-GOV-01 持仓周期重分类防鸵鸟心理协议与不可篡改存证
+ */
+export const POSITION_RECLASSIFICATION_INVARIANCE: ReclassificationInvarianceData = {
+    asOfDate: '2026-08-15',
+    antiOstrichPhilosophy: '根除“鸵鸟心理”与认知失调 (OPT-GOV-01)：散户最普遍的毁灭性习惯是“短线被套舍不得割，自我催眠转为价值长线持有”。量化系统必须建立不可篡改的审查协议，凡在中途回撤中试图变更持仓周期的，必须受到极端苛刻的密码学散列快照对账与前瞻性审查，绝不允许逃避止损纪律！',
+    mandatoryRequirements: [
+        {
+            field: 'original_record_snapshot_hash',
+            requirement: '必须包含原始开仓记录的 64 位 SHA-256 哈希快照，且必须与系统创世区块完全一致。',
+            failClosedConsequence: '快照不一致立即判定为篡改历史，重分类申请直接作废。',
+        },
+        {
+            field: 'new_horizon & replacement_thesis',
+            requirement: '必须明确提供非空的全新投资周期定义，并书面论证新鲜的增量基本面证据（绝不能引用原建仓理由）。',
+            failClosedConsequence: '无新鲜论证直接判定为“因套牢而找借口”，系统执行原策略硬止损。',
+        },
+        {
+            field: 'new_invalidation & risk_budget',
+            requirement: '必须根据长线周期重新核定独立的正向风险预算，并划定全新、更严谨的失效底线。',
+            failClosedConsequence: '无明确止损底线视为裸奔下注，予以强行驳回。',
+        },
+        {
+            field: 'preserves_original_scores & prospective_only',
+            requirement: '重分类生效必须严格前瞻（Prospective Only），绝对保留原始交易的历史评分与失误记录。',
+            failClosedConsequence: '禁止任何事后诸葛亮式的倒填改写，杜绝幸存者偏差。',
+        },
+    ],
+    auditCaseStudy: {
+        symbol: 'MRVL',
+        originalHorizon: 'short_term_tactical',
+        attemptedNewHorizon: 'long_term_core',
+        originalEntryPrice: 90.70,
+        currentDrawdownPct: -9.8,
+        originalRecordSha256: 'a948f2b3e8c1097e8f52d0a1b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2',
+        decisionVerdict: 'RECLASSIFICATION_VETOED_FORCE_STOP',
+        verdictExplanation: '审计裁决：MRVL 在买入后破位 MA20，交易员试图将其从短线波段转为“长线核心持仓”以规避触发 -8% 止损。系统核验发现其未提供超越原逻辑的新鲜独立证据，属于典型的回本心理与处置效应。重分类被正式否决，系统严格维持原短线止损纪律并下达减仓指令！',
+    },
+    unbreakableInvariants: [
+        '公理一：任何人都不得通过修改持仓分类来抹去一笔错误的交易。',
+        '公理二：历史执行评分 (Process Score) 永久固化，无论后续盈利与否均不可补正。',
+        '公理三：重分类必须经人工独立授权与两道密码学哈希对账，程序永不自动妥协。',
+        '公理四：前瞻生效是底线——绝不允许任何带有回溯属性的净值曲线粉饰。',
+    ],
+};
+
+
 
 
 

@@ -9251,6 +9251,431 @@
   color: #ef4444;
 }
 
+/* ==========================================================================
+   Phase 9: Thematic Concentration Tiers, Economic Fee Gate & Reclass Invariance
+   ========================================================================== */
+
+/* 1. Thematic Concentration Tiers View */
+.rebound-thematic-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.thematic-header-card,
+.thematic-tiers-card,
+.fee-header-card,
+.fee-rules-card,
+.fee-scenarios-card,
+.reclass-header-card,
+.reclass-requirements-card,
+.reclass-case-card,
+.reclass-axioms-card {
+  background: var(--bg-secondary, #161b22);
+  border: 1px solid var(--border-default, #30363d);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.thematic-top-row,
+.fee-top-row,
+.reclass-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.thematic-title-wrap,
+.fee-title-wrap,
+.reclass-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.thematic-icon,
+.fee-icon,
+.reclass-icon {
+  font-size: 1.6rem;
+}
+
+.thematic-title-wrap h4,
+.fee-title-wrap h4,
+.reclass-title-wrap h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f0f6fc;
+}
+
+.thematic-badge-pill,
+.fee-badge-pill,
+.reclass-badge-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.thematic-kpi-grid,
+.fee-kpi-grid,
+.reclass-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.thematic-kpi-card,
+.fee-kpi-card,
+.reclass-kpi-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thematic-kpi-card.danger-card,
+.reclass-kpi-card.danger-card {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.thematic-origin-alert,
+.fee-thesis-box,
+.reclass-philosophy-box {
+  background: rgba(234, 179, 8, 0.05);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.thematic-origin-alert p,
+.fee-thesis-box p,
+.reclass-philosophy-box p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+
+.thematic-table-wrap,
+.fee-table-wrap {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.thematic-tiers-table,
+.fee-scenarios-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.thematic-tiers-table th,
+.fee-scenarios-table th {
+  background: rgba(255, 255, 255, 0.04);
+  color: #8b949e;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-default, #30363d);
+  white-space: nowrap;
+}
+
+.thematic-tiers-table td,
+.fee-scenarios-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e6edf3;
+  white-space: nowrap;
+}
+
+.zone-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.zone-free {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.zone-managed {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+.zone-rotation_only {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+.zone-hard_breaker {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.rules-cell,
+.directives-cell {
+  white-space: normal !important;
+  max-width: 320px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #8b949e;
+}
+
+/* 2. Economic Fee Gate View */
+.rebound-fee-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.fee-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.fee-rule-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rule-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+}
+
+.rule-id {
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.scope-badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.scope-buy_only {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+.scope-all_orders {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+.rule-param-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #f0f6fc;
+}
+
+.param-val {
+  color: #10b981;
+  font-weight: 700;
+}
+
+.rule-rationale {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #8b949e;
+}
+
+.order-type-tag {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.tag-buy {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+.tag-sell {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+.action-pill {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.pill-allowed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.pill-blocked {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* 3. Reclassification Invariance View */
+.rebound-reclass-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.requirements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.requirement-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.req-text {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #c9d1d9;
+}
+
+.fail-consequence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.audit-case-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 12px 0 16px;
+}
+
+@media (max-width: 768px) {
+  .audit-case-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.case-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.case-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+}
+
+.case-verdict-banner {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.verdict-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.verdict-label {
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+.verdict-explanation {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #e6edf3;
+}
+
+.axioms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.axiom-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+}
+
+
 
 
 

@@ -28,6 +28,9 @@ import {
     CASH_EFFICIENCY_SWEEP_DATA,
     OPTIMAL_POSITION_SIZING_FRONTIER,
     V9_CORE_INSURANCE_COST_AUDIT,
+    THEMATIC_CONCENTRATION_TIERS,
+    ECONOMIC_FEE_GATE_PROTOCOL,
+    POSITION_RECLASSIFICATION_INVARIANCE,
     type BottomReboundStock,
     type TradeChecklistInput,
     type TradeChecklistResult,
@@ -53,6 +56,9 @@ type SubTabType =
     | 'cash-efficiency'
     | 'position-sizing'
     | 'core-whipsaw'
+    | 'thematic-tiers'
+    | 'fee-gate'
+    | 'reclass-invariance'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -271,6 +277,24 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('core-whipsaw')}
                 >
                     🛡️ 指数核心洗盘与保险成本
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'thematic-tiers' ? 'active' : ''}`}
+                    onClick={() => setSubTab('thematic-tiers')}
+                >
+                    🎨 主题浓度分级防御梯次
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'fee-gate' ? 'active' : ''}`}
+                    onClick={() => setSubTab('fee-gate')}
+                >
+                    ⚖️ 小微账户经济费率阀
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'reclass-invariance' ? 'active' : ''}`}
+                    onClick={() => setSubTab('reclass-invariance')}
+                >
+                    📜 持仓重分类防鸵鸟协议
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -1664,6 +1688,336 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：主题浓度分级防御梯次与同日加仓速度阻尼器 */}
+            {subTab === 'thematic-tiers' && (
+                <div className="rebound-thematic-view">
+                    <div className="thematic-header-card">
+                        <div className="thematic-top-row">
+                            <div className="thematic-title-wrap">
+                                <span className="thematic-icon">🎨</span>
+                                <div>
+                                    <h4>主题浓度分级防御梯次与同日加仓阻尼器 (Thematic Concentration Tiers)</h4>
+                                    <span className="as-of-date">主题硬上限：{THEMATIC_CONCENTRATION_TIERS.themeExposureCeilingPct}% · 子主题上限：{THEMATIC_CONCENTRATION_TIERS.subThemeExposureCeilingPct}% · 单日净增上限：{THEMATIC_CONCENTRATION_TIERS.maxSingleDayAdditionPct}% · 截至 {THEMATIC_CONCENTRATION_TIERS.asOfDate}</span>
+                                </div>
+                            </div>
+                            <div className="thematic-badge-pill">
+                                <span className="pill-dot"></span>
+                                <span>当前敞口 {THEMATIC_CONCENTRATION_TIERS.currentAccountStatus.currentExposurePct}% (合规自由区)</span>
+                            </div>
+                        </div>
+
+                        <div className="thematic-kpi-grid">
+                            <div className="thematic-kpi-card danger-card">
+                                <span className="kpi-label">单一大主题硬上限 (Ceiling)</span>
+                                <div className="kpi-val text-red font-mono">{THEMATIC_CONCENTRATION_TIERS.themeExposureCeilingPct.toFixed(1)}%</div>
+                                <span className="kpi-sub">超出立即触发硬性熔断减仓</span>
+                            </div>
+                            <div className="thematic-kpi-card">
+                                <span className="kpi-label">单一子赛道硬上限 (Sub-theme)</span>
+                                <div className="kpi-val text-gold font-mono">{THEMATIC_CONCENTRATION_TIERS.subThemeExposureCeilingPct.toFixed(1)}%</div>
+                                <span className="kpi-sub">防单点技术路线黑天鹅突变</span>
+                            </div>
+                            <div className="thematic-kpi-card highlight-card">
+                                <span className="kpi-label">单日同主题净增上限 (Velocity)</span>
+                                <div className="kpi-val text-cyan font-mono">{THEMATIC_CONCENTRATION_TIERS.maxSingleDayAdditionPct.toFixed(1)}%</div>
+                                <span className="kpi-sub">阻尼器：杜绝单日冲动一次性扎堆</span>
+                            </div>
+                            <div className="thematic-kpi-card">
+                                <span className="kpi-label">当前主导主题与敞口</span>
+                                <div className="kpi-val text-green font-mono">{THEMATIC_CONCENTRATION_TIERS.currentAccountStatus.currentExposurePct.toFixed(2)}%</div>
+                                <span className="kpi-sub">{THEMATIC_CONCENTRATION_TIERS.currentAccountStatus.dominantTheme}</span>
+                            </div>
+                        </div>
+
+                        <div className="thematic-origin-alert">
+                            <span className="alert-icon">⚠️</span>
+                            <div>
+                                <span className="alert-heading">实盘惨痛教训起源 (2026-06-25 复盘)：</span>
+                                <p>{THEMATIC_CONCENTRATION_TIERS.empiricalOriginCase}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="thematic-tiers-card">
+                        <h4 className="section-title">🪜 四级防御梯次管理矩阵 (Four-Tier Thematic Management Matrix)</h4>
+                        <div className="thematic-table-wrap">
+                            <table className="thematic-tiers-table">
+                                <thead>
+                                    <tr>
+                                        <th>仓位区间</th>
+                                        <th>梯次命名与状态</th>
+                                        <th>单日最大净增</th>
+                                        <th>运作规程与入场门槛</th>
+                                        <th>机构风控底线指令</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {THEMATIC_CONCENTRATION_TIERS.tiers.map((tier) => (
+                                        <tr key={tier.tierRange} className={`tier-row-${tier.zoneType}`}>
+                                            <td className="font-mono font-bold">{tier.tierRange}</td>
+                                            <td>
+                                                <span className={`zone-badge zone-${tier.zoneType}`}>
+                                                    {tier.zoneName}
+                                                </span>
+                                            </td>
+                                            <td className="font-mono font-bold text-center">
+                                                {tier.maxDailyNetAdditionPct > 0 ? `+${tier.maxDailyNetAdditionPct.toFixed(1)}%` : '0.0% (冻结)'}
+                                            </td>
+                                            <td className="rules-cell">{tier.operatingRules}</td>
+                                            <td className="directives-cell">{tier.riskDirectives}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：小微账户经济费率门槛与出场保命安全阀 */}
+            {subTab === 'fee-gate' && (
+                <div className="rebound-fee-view">
+                    <div className="fee-header-card">
+                        <div className="fee-top-row">
+                            <div className="fee-title-wrap">
+                                <span className="fee-icon">⚖️</span>
+                                <div>
+                                    <h4>小微账户经济费率门槛与出场保命安全阀 (OPT-PROC-02 Economic Fee Gate)</h4>
+                                    <span className="as-of-date">最低开仓名义额：${ECONOMIC_FEE_GATE_PROTOCOL.minNotionalUsd.toFixed(2)} · 双边费率上限：&lt;= {ECONOMIC_FEE_GATE_PROTOCOL.maxRoundTripFeeDragPct}% · 卖出平仓无条件豁免 · 截至 {ECONOMIC_FEE_GATE_PROTOCOL.asOfDate}</span>
+                                </div>
+                            </div>
+                            <div className="fee-badge-pill">
+                                <span>⭐ 出场保命非对称豁免 (100% Exemption)</span>
+                            </div>
+                        </div>
+
+                        <div className="fee-kpi-grid">
+                            <div className="fee-kpi-card highlight-card">
+                                <span className="kpi-label">单笔最低名义开仓额</span>
+                                <div className="kpi-val text-green font-mono">${ECONOMIC_FEE_GATE_PROTOCOL.minNotionalUsd.toFixed(2)}</div>
+                                <span className="kpi-sub">小微账户杜绝碎股摩擦</span>
+                            </div>
+                            <div className="fee-kpi-card">
+                                <span className="kpi-label">双边最大费率摩擦拖累</span>
+                                <div className="kpi-val text-gold font-mono">&lt;= {ECONOMIC_FEE_GATE_PROTOCOL.maxRoundTripFeeDragPct.toFixed(1)}%</div>
+                                <span className="kpi-sub">2 * fee / notional &lt;= 0.01</span>
+                            </div>
+                            <div className="fee-kpi-card highlight-card">
+                                <span className="kpi-label">止损卖出拦截率</span>
+                                <div className="kpi-val text-cyan font-mono">0.0% (永不拦截)</div>
+                                <span className="kpi-sub">保命第一，费率豁免</span>
+                            </div>
+                            <div className="fee-kpi-card">
+                                <span className="kpi-label">执行安全模式</span>
+                                <div className="kpi-val text-green font-mono">单向非对称</div>
+                                <span className="kpi-sub">买入受限，卖出自由</span>
+                            </div>
+                        </div>
+
+                        <div className="fee-thesis-box">
+                            <div className="thesis-title">
+                                <span className="icon">🛡️</span>
+                                <strong>非对称执行第一性原理 (Asymmetric Execution Thesis)</strong>
+                            </div>
+                            <p>{ECONOMIC_FEE_GATE_PROTOCOL.asymmetricExecutionThesis}</p>
+                        </div>
+                    </div>
+
+                    {/* 3 大核心执行铁律 */}
+                    <div className="fee-rules-card">
+                        <h4 className="section-title">📋 经济费率三大执行铁律条目 (Three Economic Principles)</h4>
+                        <div className="fee-rules-grid">
+                            {ECONOMIC_FEE_GATE_PROTOCOL.rules.map((rule) => (
+                                <div key={rule.ruleId} className="fee-rule-item">
+                                    <div className="rule-top-row font-mono">
+                                        <span className="rule-id">{rule.ruleId}</span>
+                                        <span className={`scope-badge scope-${rule.enforcementScope.toLowerCase()}`}>
+                                            {rule.enforcementScope === 'BUY_ONLY' ? '仅作用于买入/加仓' : '全订单'}
+                                        </span>
+                                    </div>
+                                    <div className="rule-param-row">
+                                        <strong>{rule.parameterName}</strong>
+                                        <span className="param-val font-mono">{rule.thresholdValue}</span>
+                                    </div>
+                                    <p className="rule-rationale">{rule.firstPrinciplesRationale}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 压力测试实操场景对照表 */}
+                    <div className="fee-scenarios-card">
+                        <h4 className="section-title">🧪 典型订单压力测试决策对照 (Stress Scenarios Validation)</h4>
+                        <div className="fee-table-wrap">
+                            <table className="fee-scenarios-table">
+                                <thead>
+                                    <tr>
+                                        <th>方向</th>
+                                        <th>标的代码</th>
+                                        <th>订单名义金额</th>
+                                        <th>预估佣金</th>
+                                        <th>双边摩擦拖累</th>
+                                        <th>系统执行裁决</th>
+                                        <th>机构处置详细原因</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {ECONOMIC_FEE_GATE_PROTOCOL.stressScenarios.map((sc, idx) => (
+                                        <tr key={idx} className={sc.systemAction === 'BLOCKED' ? 'blocked-row' : 'allowed-row'}>
+                                            <td>
+                                                <span className={`order-type-tag ${sc.orderType === 'BUY' ? 'tag-buy' : 'tag-sell'}`}>
+                                                    {sc.orderType}
+                                                </span>
+                                            </td>
+                                            <td className="font-bold">{sc.ticker}</td>
+                                            <td className="font-mono">${sc.orderNotionalUsd.toFixed(2)}</td>
+                                            <td className="font-mono">${sc.estimatedFeeUsd.toFixed(2)}</td>
+                                            <td className={`font-mono font-bold ${sc.feeDragPct > 1.0 ? 'text-red' : 'text-green'}`}>
+                                                {sc.feeDragPct.toFixed(2)}%
+                                            </td>
+                                            <td>
+                                                <span className={`action-pill ${sc.systemAction === 'ALLOWED' ? 'pill-allowed' : 'pill-blocked'}`}>
+                                                    {sc.systemAction === 'ALLOWED' ? '✅ 放行执行' : '🛑 熔断拦截'}
+                                                </span>
+                                            </td>
+                                            <td className="reason-cell">{sc.actionReason}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：持仓周期重分类防鸵鸟协议与不可篡改存证 */}
+            {subTab === 'reclass-invariance' && (
+                <div className="rebound-reclass-view">
+                    <div className="reclass-header-card">
+                        <div className="reclass-top-row">
+                            <div className="reclass-title-wrap">
+                                <span className="reclass-icon">📜</span>
+                                <div>
+                                    <h4>持仓周期重分类防鸵鸟协议与不可篡改存证 (OPT-GOV-01 Reclassification Invariance)</h4>
+                                    <span className="as-of-date">64 位 SHA-256 快照哈希校验 · 根除散户认知失调 · 严格仅前瞻生效 · 截至 {POSITION_RECLASSIFICATION_INVARIANCE.asOfDate}</span>
+                                </div>
+                            </div>
+                            <div className="reclass-badge-pill">
+                                <span>🔒 历史失误与执行评分永久固化</span>
+                            </div>
+                        </div>
+
+                        <div className="reclass-kpi-grid">
+                            <div className="reclass-kpi-card danger-card">
+                                <span className="kpi-label">历史评分回溯覆写许可</span>
+                                <div className="kpi-val text-red font-mono">0.0% (绝对禁止)</div>
+                                <span className="kpi-sub">杜绝事后诸葛亮粉饰曲线</span>
+                            </div>
+                            <div className="reclass-kpi-card highlight-card">
+                                <span className="kpi-label">独立替代论据要求</span>
+                                <div className="kpi-val text-green font-mono">100% 严查</div>
+                                <span className="kpi-sub">严禁沿用原建仓理由找借口</span>
+                            </div>
+                            <div className="reclass-kpi-card">
+                                <span className="kpi-label">密码学快照对账要求</span>
+                                <div className="kpi-val text-gold font-mono">SHA-256</div>
+                                <span className="kpi-sub">创世开仓快照逐字节匹配</span>
+                            </div>
+                            <div className="reclass-kpi-card">
+                                <span className="kpi-label">重分类生效范畴</span>
+                                <div className="kpi-val text-cyan font-mono">前瞻生效 (Prospective)</div>
+                                <span className="kpi-sub">原始交易评级永不篡改</span>
+                            </div>
+                        </div>
+
+                        <div className="reclass-philosophy-box">
+                            <div className="philosophy-title">
+                                <span className="icon">🧠</span>
+                                <strong>防鸵鸟心理第一性原理 (Anti-Ostrich Philosophy)</strong>
+                            </div>
+                            <p>{POSITION_RECLASSIFICATION_INVARIANCE.antiOstrichPhilosophy}</p>
+                        </div>
+                    </div>
+
+                    {/* 4 项硬性准入前置条件 */}
+                    <div className="reclass-requirements-card">
+                        <h4 className="section-title">🔐 四项密码学与合规硬性前置门槛 (Four Invariant Requirements)</h4>
+                        <div className="requirements-grid">
+                            {POSITION_RECLASSIFICATION_INVARIANCE.mandatoryRequirements.map((req, idx) => (
+                                <div key={idx} className="requirement-item">
+                                    <div className="req-header font-mono">
+                                        <span className="field-name">#{idx + 1} {req.field}</span>
+                                    </div>
+                                    <p className="req-text"><strong>准入要求：</strong>{req.requirement}</p>
+                                    <div className="fail-consequence font-mono">
+                                        <span className="fail-icon">🛑</span>
+                                        <span>违规熔断：{req.failClosedConsequence}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 真实案例审计案卷深度剖析 */}
+                    <div className="reclass-case-card">
+                        <h4 className="section-title">📂 真实案卷深度审计剖析：{POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy.symbol} 企图逃避止损复盘</h4>
+                        <div className="audit-case-grid">
+                            <div className="case-col">
+                                <div className="case-row">
+                                    <span className="lbl">标的代码：</span>
+                                    <span className="val font-mono font-bold">{POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy.symbol}</span>
+                                </div>
+                                <div className="case-row">
+                                    <span className="lbl">原始意图周期：</span>
+                                    <span className="val font-mono text-cyan">{POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy.originalHorizon} (短线波段)</span>
+                                </div>
+                                <div className="case-row">
+                                    <span className="lbl">试图变更新周期：</span>
+                                    <span className="val font-mono text-gold">{POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy.attemptedNewHorizon} (长线核心)</span>
+                                </div>
+                            </div>
+                            <div className="case-col">
+                                <div className="case-row">
+                                    <span className="lbl">原始买入成本：</span>
+                                    <span className="val font-mono">${POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy.originalEntryPrice.toFixed(2)}</span>
+                                </div>
+                                <div className="case-row">
+                                    <span className="lbl">破位时浮亏：</span>
+                                    <span className="val font-mono text-red font-bold">{POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy.currentDrawdownPct.toFixed(1)}%</span>
+                                </div>
+                                <div className="case-row">
+                                    <span className="lbl">创世哈希快照：</span>
+                                    <span className="val font-mono text-muted text-truncate">{POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy.originalRecordSha256.slice(0, 16)}...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="case-verdict-banner">
+                            <div className="verdict-tag-row font-mono">
+                                <span className="verdict-label">系统审计最终裁决：</span>
+                                <span className="verdict-pill pill-rejected">
+                                    {POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy.decisionVerdict} (否决重分类，强制止损)
+                                </span>
+                            </div>
+                            <p className="verdict-explanation">{POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy.verdictExplanation}</p>
+                        </div>
+                    </div>
+
+                    {/* 4 大不可动摇公理 */}
+                    <div className="reclass-axioms-card">
+                        <h4 className="section-title">🏛️ 生产级四大不可动摇治理公理 (Four Unbreakable Invariants)</h4>
+                        <div className="axioms-grid">
+                            {POSITION_RECLASSIFICATION_INVARIANCE.unbreakableInvariants.map((axiom, idx) => (
+                                <div key={idx} className="axiom-pill">
+                                    <span className="axiom-icon">⚖️</span>
+                                    <span>{axiom}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

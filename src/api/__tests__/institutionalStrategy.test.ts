@@ -29,6 +29,9 @@ import {
     CASH_EFFICIENCY_SWEEP_DATA,
     OPTIMAL_POSITION_SIZING_FRONTIER,
     V9_CORE_INSURANCE_COST_AUDIT,
+    THEMATIC_CONCENTRATION_TIERS,
+    ECONOMIC_FEE_GATE_PROTOCOL,
+    POSITION_RECLASSIFICATION_INVARIANCE,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -692,6 +695,85 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         const v1 = rejected.find(v => v.variantName.includes('进出均需 2 个月'))!;
         expect(v1.maxDD2025Pct).toBeCloseTo(-10.54, 2);
     });
+
+    it('29. should verify thematic concentration tiers, ceiling boundaries, and velocity dampener', () => {
+        expect(THEMATIC_CONCENTRATION_TIERS.themeExposureCeilingPct).toBe(55.0);
+        expect(THEMATIC_CONCENTRATION_TIERS.subThemeExposureCeilingPct).toBe(25.0);
+        expect(THEMATIC_CONCENTRATION_TIERS.maxSingleDayAdditionPct).toBe(15.0);
+        expect(THEMATIC_CONCENTRATION_TIERS.empiricalOriginCase).toContain('2026-06-25');
+        expect(THEMATIC_CONCENTRATION_TIERS.empiricalOriginCase).toContain('DRAM + MXL + MU');
+
+        expect(THEMATIC_CONCENTRATION_TIERS.tiers.length).toBe(4);
+        const zoneTypes = THEMATIC_CONCENTRATION_TIERS.tiers.map(t => t.zoneType);
+        expect(zoneTypes).toEqual(['free', 'managed', 'rotation_only', 'hard_breaker']);
+
+        // 验证 40~50% 集中管理区单日净增上限压缩至 5%
+        const managedTier = THEMATIC_CONCENTRATION_TIERS.tiers.find(t => t.zoneType === 'managed')!;
+        expect(managedTier.maxDailyNetAdditionPct).toBe(5.0);
+
+        // 验证 50~55% 换仓区与 >55% 熔断区单日净增绝对冻结 (0%)
+        const rotationTier = THEMATIC_CONCENTRATION_TIERS.tiers.find(t => t.zoneType === 'rotation_only')!;
+        const breakerTier = THEMATIC_CONCENTRATION_TIERS.tiers.find(t => t.zoneType === 'hard_breaker')!;
+        expect(rotationTier.maxDailyNetAdditionPct).toBe(0.0);
+        expect(breakerTier.maxDailyNetAdditionPct).toBe(0.0);
+
+        // 验证账户当前合规状态
+        expect(THEMATIC_CONCENTRATION_TIERS.currentAccountStatus.complianceVerdict).toBe('COMPLIANT');
+        expect(THEMATIC_CONCENTRATION_TIERS.currentAccountStatus.currentExposurePct).toBeLessThan(40.0);
+    });
+
+    it('30. should verify small-account economic fee gate protocol and asymmetric exit exemption', () => {
+        expect(ECONOMIC_FEE_GATE_PROTOCOL.minNotionalUsd).toBe(200.0);
+        expect(ECONOMIC_FEE_GATE_PROTOCOL.maxRoundTripFeeDragPct).toBe(1.0);
+        expect(ECONOMIC_FEE_GATE_PROTOCOL.asymmetricExecutionThesis).toContain('非对称执行铁律');
+        expect(ECONOMIC_FEE_GATE_PROTOCOL.rules.length).toBe(3);
+
+        const ruleIds = ECONOMIC_FEE_GATE_PROTOCOL.rules.map(r => r.ruleId);
+        expect(ruleIds).toContain('FEE-01-MIN-NOTIONAL');
+        expect(ruleIds).toContain('FEE-02-DRAG-CEILING');
+        expect(ruleIds).toContain('FEE-03-ASYMMETRIC-EXIT');
+
+        // 验证压力测试用例：小额买入拦截，合规买入放行，小额止损平仓无论费率多高均 100% 豁免放行
+        expect(ECONOMIC_FEE_GATE_PROTOCOL.stressScenarios.length).toBe(3);
+        const blockedBuy = ECONOMIC_FEE_GATE_PROTOCOL.stressScenarios.find(s => s.orderType === 'BUY' && s.orderNotionalUsd < 200)!;
+        expect(blockedBuy.systemAction).toBe('BLOCKED');
+        expect(blockedBuy.feeDragPct).toBeGreaterThan(1.0);
+
+        const allowedBuy = ECONOMIC_FEE_GATE_PROTOCOL.stressScenarios.find(s => s.orderType === 'BUY' && s.orderNotionalUsd >= 200)!;
+        expect(allowedBuy.systemAction).toBe('ALLOWED');
+        expect(allowedBuy.feeDragPct).toBeLessThanOrEqual(1.0);
+
+        const exitExempt = ECONOMIC_FEE_GATE_PROTOCOL.stressScenarios.find(s => s.orderType === 'SELL')!;
+        expect(exitExempt.systemAction).toBe('ALLOWED');
+        expect(exitExempt.feeDragPct).toBeGreaterThan(3.0); // 即使费率高达 3.16%，依然豁免放行保命
+        expect(exitExempt.actionReason).toContain('非对称生命线豁免');
+    });
+
+    it('31. should verify position horizon reclassification anti-ostrich invariance protocol', () => {
+        expect(POSITION_RECLASSIFICATION_INVARIANCE.antiOstrichPhilosophy).toContain('鸵鸟心理');
+        expect(POSITION_RECLASSIFICATION_INVARIANCE.mandatoryRequirements.length).toBe(4);
+
+        const fields = POSITION_RECLASSIFICATION_INVARIANCE.mandatoryRequirements.map(r => r.field);
+        expect(fields.some(f => f.includes('snapshot_hash'))).toBe(true);
+        expect(fields.some(f => f.includes('new_horizon'))).toBe(true);
+        expect(fields.some(f => f.includes('new_invalidation'))).toBe(true);
+        expect(fields.some(f => f.includes('preserves_original_scores'))).toBe(true);
+
+        // 验证 MRVL 逃避止损案例审计裁决为否决并强制执行止损
+        const caseStudy = POSITION_RECLASSIFICATION_INVARIANCE.auditCaseStudy;
+        expect(caseStudy.symbol).toBe('MRVL');
+        expect(caseStudy.decisionVerdict).toBe('RECLASSIFICATION_VETOED_FORCE_STOP');
+        expect(caseStudy.originalRecordSha256.length).toBe(64);
+        expect(caseStudy.currentDrawdownPct).toBeLessThan(-8.0);
+        expect(caseStudy.verdictExplanation).toContain('止损');
+        expect(caseStudy.verdictExplanation).toContain('重分类被正式否决');
+
+        // 验证四大不可动摇公理
+        expect(POSITION_RECLASSIFICATION_INVARIANCE.unbreakableInvariants.length).toBe(4);
+        expect(POSITION_RECLASSIFICATION_INVARIANCE.unbreakableInvariants.some(a => a.includes('前瞻生效'))).toBe(true);
+        expect(POSITION_RECLASSIFICATION_INVARIANCE.unbreakableInvariants.some(a => a.includes('永久固化'))).toBe(true);
+    });
 });
+
 
 
