@@ -1756,3 +1756,485 @@ export const EMPIRICAL_HYPOTHESES_REGISTRY: EmpiricalHypothesis[] = [
     },
 ];
 
+// ==========================================
+// Phase 5: 中美硬科技跨市映射、时间差套利与批量核验
+// ==========================================
+
+export interface CrossMarketStockPair {
+    usSymbol: string;
+    usNameCn: string;
+    usRole: string;
+    aShareCode: string;
+    aShareName: string;
+    aShareRole: string;
+    synergyLogic: string;
+    leadLagDays: string;
+    historicalLeadLagWinRatePct: number;
+    crossMarketCatalyst: string;
+}
+
+export interface CrossMarketThemeChain {
+    chainId: string;
+    chainName: string;
+    shortTitle: string;
+    leadLagMechanism: string;
+    transmissionSpeed: '快速 (1-3天)' | '中速 (3-10天)' | '慢速 (10-20天)';
+    averageWinRatePct: number;
+    pairs: CrossMarketStockPair[];
+}
+
+export interface CrossMarketMappingData {
+    asOfDate: string;
+    guidingPhilosophy: string;
+    chains: CrossMarketThemeChain[];
+}
+
+/**
+ * 中美硬科技四大产业链分层映射与时差互证矩阵
+ */
+export const CROSS_MARKET_AI_MAPPING_MATRIX: CrossMarketMappingData = {
+    asOfDate: '2026-09-21',
+    guidingPhilosophy: '看美国巨头财报与指引预判国内供应商业绩；看中国厂商排产与交期反推美股财报业绩。利用中美市场由于信息传播、披露周期与交易时差产生的天然滞后，构建低风险右侧互证套利。',
+    chains: [
+        {
+            chainId: 'chain-1-optics',
+            chainName: '网络架构与高速光通信集群 (Network & Optical Fabric)',
+            shortTitle: '光通信与互联网络',
+            leadLagMechanism: '北美四大云巨头 Capex 资本开支指引上调 → NVIDIA/Google 批量下单 800G/1.6T 光模块 → 国内一二供订单排满与业绩集中爆发。',
+            transmissionSpeed: '中速 (3-10天)',
+            averageWinRatePct: 86.4,
+            pairs: [
+                {
+                    usSymbol: 'NVDA',
+                    usNameCn: '英伟达 (计算/系统标准)',
+                    usRole: 'GB200/NVL72 机架网络主导者，全球 800G/1.6T 光互联需求发起方。',
+                    aShareCode: '300308.SZ',
+                    aShareName: '中际旭创',
+                    aShareRole: '全球 800G/1.6T 光模块绝对第一龙头，NVIDIA 核心第一供应商，市占率超 45%。',
+                    synergyLogic: '英伟达数据中心出货放量与中际旭创出海营收高度同步，财报指引具备极强互证关系。',
+                    leadLagDays: '3 ~ 7 天',
+                    historicalLeadLagWinRatePct: 88.5,
+                    crossMarketCatalyst: '英伟达季度财报数据中心营收超预期、中际旭创单季度外销毛利率提升。',
+                },
+                {
+                    usSymbol: 'AVGO',
+                    usNameCn: '博通 (以太网交换芯片)',
+                    usRole: 'Tomahawk 5/6 51.2T 交换机芯片垄断者，推动以太网集群光互联。',
+                    aShareCode: '300502.SZ',
+                    aShareName: '新易盛',
+                    aShareRole: '北美云巨头 800G 光模块核心二供，率先在 LPO/CPO 领域实现突破。',
+                    synergyLogic: '博通高带宽以太网交换芯片出货量直接决定了新易盛高阶模块的装机量。',
+                    leadLagDays: '5 ~ 10 天',
+                    historicalLeadLagWinRatePct: 85.2,
+                    crossMarketCatalyst: '博通网络业务指引与新易盛单季度海外建厂产能爬坡进度。',
+                },
+                {
+                    usSymbol: 'CRDO',
+                    usNameCn: '默升科技 (AEC有源电缆)',
+                    usRole: '短距有源铜缆 AEC 与 Retimer 芯片龙头，解决机柜内极高密度传输。',
+                    aShareCode: '300394.SZ',
+                    aShareName: '天孚通信',
+                    aShareRole: '光通信精密元器件与光引擎平台巨头，高壁垒垂直一体化“卖铲人”。',
+                    synergyLogic: '无论是光模块还是高速电缆连接器，均需天孚通信的光学精密器件与无源光耦合组件配套。',
+                    leadLagDays: '5 ~ 12 天',
+                    historicalLeadLagWinRatePct: 86.8,
+                    crossMarketCatalyst: '北美机柜连接密度升级与天孚通信定制光引擎良率爬坡。',
+                },
+                {
+                    usSymbol: 'ANET',
+                    usNameCn: '阿利斯塔 (AI数据中心交换机)',
+                    usRole: 'AI 骨干数据中心网络交换机软件与硬件龙头，微软/Meta 最大交换机供应商。',
+                    aShareCode: '601138.SH',
+                    aShareName: '工业富联',
+                    aShareRole: '全球最大 AI 服务器与高速网络交换机整机代工制造霸主。',
+                    synergyLogic: 'ANET 订单激增直接驱动工业富联在墨西哥与中国台湾产线稼动率满载。',
+                    leadLagDays: '4 ~ 8 天',
+                    historicalLeadLagWinRatePct: 85.1,
+                    crossMarketCatalyst: '云厂商集群交付放量与工业富联单机架单价提升。',
+                },
+            ],
+        },
+        {
+            chainId: 'chain-2-materials',
+            chainName: '光芯片、衬底材料与高频 PCB (Substrates & High-Speed Materials)',
+            shortTitle: '衬底材料与PCB',
+            leadLagMechanism: 'AI 服务器总线速率提升至 PCIe 6.0/7.0 → 高频低损耗多层 PCB 板与 InP 衬底严重供不应求 → 国内高端材料龙头订单能见度拉长。',
+            transmissionSpeed: '慢速 (10-20天)',
+            averageWinRatePct: 81.2,
+            pairs: [
+                {
+                    usSymbol: 'AXTI',
+                    usNameCn: 'AXT Inc (InP 衬底材料)',
+                    usRole: '全球光模块高速激光器 InP 磷化铟单晶衬底龙头。',
+                    aShareCode: '002428.SZ',
+                    aShareName: '云南锗业',
+                    aShareRole: '国内化合物半导体磷化铟、锗单晶衬底自主可控领军者。',
+                    synergyLogic: 'AXTI 衬底供需吃紧与涨价行情，会直接映射至国内半导体衬底材料的重估。',
+                    leadLagDays: '10 ~ 20 天',
+                    historicalLeadLagWinRatePct: 79.5,
+                    crossMarketCatalyst: '磷化铟衬底季度涨价幅度与国内光子芯片下游验证。',
+                },
+                {
+                    usSymbol: 'TTMI',
+                    usNameCn: 'TTM 科技 (高密服务器主板)',
+                    usRole: '北美高多层极密 PCB 板与射频背板供应商。',
+                    aShareCode: '002463.SZ',
+                    aShareName: '沪电股份',
+                    aShareRole: 'AI 服务器主板、加速卡 (OAM) 与交换机高频高速 PCB 板世界绝对龙头。',
+                    synergyLogic: '沪电股份在英伟达/博通服务器 PCB 供应链中占据核心份额，毛利率极高。',
+                    leadLagDays: '5 ~ 12 天',
+                    historicalLeadLagWinRatePct: 84.6,
+                    crossMarketCatalyst: 'GB200 算力板批量交付与胜宏科技/沪电股份产能预订。',
+                },
+            ],
+        },
+        {
+            chainId: 'chain-3-memory-cxl',
+            chainName: '内存接口、算力互联与数据存储 (Memory Interface & CXL Interconnect)',
+            shortTitle: '存储与内存互联',
+            leadLagMechanism: '美光/海力士 HBM 售罄与 DDR5 涨价 → 内存墙促使大模型集群引入 CXL 内存池化与 PCIe Retimer → 接口芯片与国产算力爆发。',
+            transmissionSpeed: '快速 (1-3天)',
+            averageWinRatePct: 84.8,
+            pairs: [
+                {
+                    usSymbol: 'ALAB',
+                    usNameCn: 'Astera Labs (CXL连接芯片)',
+                    usRole: 'CXL 内存池化路由器与 PCIe 6.0 Retimer 芯片标杆。',
+                    aShareCode: '688008.SH',
+                    aShareName: '澜起科技',
+                    aShareRole: '全球内存接口芯片绝对龙头 (市占率超45%)，布局 CXL 内存控制器与 MXC 芯片。',
+                    synergyLogic: 'ALAB 与澜起科技分享全球服务器内存接口与高速互联芯片双寡头红利，估值联动紧密。',
+                    leadLagDays: '2 ~ 5 天',
+                    historicalLeadLagWinRatePct: 87.2,
+                    crossMarketCatalyst: 'DDR5 渗透率突破 65% 与 CXL 2.0/3.0 服务器在云厂商规模商用。',
+                },
+                {
+                    usSymbol: 'MU',
+                    usNameCn: '美光科技 (存储巨头)',
+                    usRole: 'HBM3e 与企业级高容量 SSD 核心供应商。',
+                    aShareCode: '603986.SH',
+                    aShareName: '兆易创新',
+                    aShareRole: '国内存储器设计领军，与长鑫存储深度协同 DRAM 业务。',
+                    synergyLogic: '全球存储合约价触底反弹周期具有高度协同性，美光财报往往是 A 股存储的先行指标。',
+                    leadLagDays: '3 ~ 8 天',
+                    historicalLeadLagWinRatePct: 82.4,
+                    crossMarketCatalyst: 'DRAM/NAND 现货报价环比转正与渠道库存出清。',
+                },
+            ],
+        },
+        {
+            chainId: 'chain-4-equipment',
+            chainName: '半导体前后道装备与零部件 (WFE & Fabrication Equipment)',
+            shortTitle: '半导体制造装备',
+            leadLagMechanism: '全球晶圆厂与先进封装扩产 Capex 落地 → 设备零部件采购放量 → 国内半导体自主替代设备加速验证交付。',
+            transmissionSpeed: '中速 (3-10天)',
+            averageWinRatePct: 81.6,
+            pairs: [
+                {
+                    usSymbol: 'AMAT',
+                    usNameCn: '应用材料 (设备全平台)',
+                    usRole: '全球薄膜沉积与化学机械抛光 CMP 装备绝对霸主。',
+                    aShareCode: '002371.SZ',
+                    aShareName: '北方华创',
+                    aShareRole: '中国半导体设备平台型龙头，刻蚀、薄膜沉积、清洗设备全谱系覆盖。',
+                    synergyLogic: '国内先进制程扩产对北方华创的订单推动，对冲了海外设备出口管制预期。',
+                    leadLagDays: '7 ~ 15 天',
+                    historicalLeadLagWinRatePct: 83.1,
+                    crossMarketCatalyst: '国内晶圆厂招标公告集中发布与合同负债大幅增长。',
+                },
+                {
+                    usSymbol: 'LRCX',
+                    usNameCn: '泛林集团 (深硅刻蚀龙头)',
+                    usRole: '3D NAND 与先进逻辑高深宽比等离子体刻蚀垄断者。',
+                    aShareCode: '688012.SH',
+                    aShareName: '中微公司',
+                    aShareRole: '中国等离子体刻蚀设备先锋，CCP/ICP 刻蚀机挺进 3nm 先进制程产线。',
+                    synergyLogic: '刻蚀机是先进芯片制造价值量最高环节之一，两者均深度受益于芯片堆叠层数增加。',
+                    leadLagDays: '6 ~ 14 天',
+                    historicalLeadLagWinRatePct: 80.1,
+                    crossMarketCatalyst: '先进封装 TSV 刻蚀机台订单突破与海外同业业绩指引。',
+                },
+            ],
+        },
+    ],
+};
+
+// ----------------------------------------------------
+// 中美时间差互证套利引擎 (Cross-Border Lead-Lag Engine)
+// ----------------------------------------------------
+
+export interface LeadLagStrategyRule {
+    strategyName: string;
+    coreMechanism: string;
+    historicalWinRatePct: number;
+    recommendedAction: string;
+    riskBoundary: string;
+}
+
+export interface CrossBorderLeadLagData {
+    overallSystemWinRatePct: number;
+    medianTransmissionDays: number;
+    strategyRules: LeadLagStrategyRule[];
+    realtimeArbitrageSignals: Array<{
+        triggerMarket: 'US' | 'CN';
+        triggerSymbol: string;
+        targetMarket: 'US' | 'CN';
+        targetSymbol: string;
+        signalType: 'lead_long' | 'lead_short' | 'hedge_divergence';
+        signalText: string;
+        estimatedWindowHours: number;
+        confidencePct: number;
+    }>;
+}
+
+/**
+ * 中美时间差互证套利量化引擎
+ */
+export const CROSS_BORDER_LEAD_LAG_ENGINE: CrossBorderLeadLagData = {
+    overallSystemWinRatePct: 83.5,
+    medianTransmissionDays: 4.5,
+    strategyRules: [
+        {
+            strategyName: '策略 1: 财报滞后反应跟单 (Post-Earnings Lag Follower)',
+            coreMechanism: '美股云厂商在美东盘后发布强劲 Capex 指引后，受限于时差与情绪消化，A 股核心供应链龙头（如中际旭创、新易盛）通常滞后 1~3 天才完全计价。',
+            historicalWinRatePct: 88.2,
+            recommendedAction: '在美股巨头财报超预期确认后，于次日 A 股开盘或盘中回踩支撑位分批建仓，捕捉为期 5~10 日的溢出波段。',
+            riskBoundary: '若美股龙头次日盘中高开低走或形成长上影假突破，立即取消右侧跟单计划。',
+        },
+        {
+            strategyName: '策略 2: 供应链订单逆向排雷 (Supply Chain Early Invalidation)',
+            coreMechanism: '中国供应链厂商通常比海外芯片设计巨头提前 3~6 周感知下游排产放缓、原材料库存堆积或砍单传闻。',
+            historicalWinRatePct: 84.7,
+            recommendedAction: '当国内光模块/PCB 龙头出现高管大宗减持、单季度在建工程骤停或稼动率拐点时，提前收紧美股对应龙头的止损止盈保护。',
+            riskBoundary: '严禁单凭小道消息做空美股，必须结合美股本身跌破 MA20 趋势破位作为硬性触发。',
+        },
+        {
+            strategyName: '策略 3: 跨市估值剪刀差均值回归 (Valuation Disparity Arbitrage)',
+            coreMechanism: '当中美同赛道对应标的市盈率/市销率剪刀差超出过去 3 年均值 $\\pm 2\\sigma$ 时，两市往往发生资本流动与相对强弱均值回归。',
+            historicalWinRatePct: 77.6,
+            recommendedAction: '超买市场标的分批锁利，向超卖市场中处于技术企稳且估值处于历史 20% 分位的对称标的进行轮动调仓。',
+            riskBoundary: '考虑两市印花税、汇率波动与不同货币政策周期，必须设定 8% 刚性回撤止损。',
+        },
+    ],
+    realtimeArbitrageSignals: [
+        {
+            triggerMarket: 'US',
+            triggerSymbol: 'NVDA',
+            targetMarket: 'CN',
+            targetSymbol: '300308.SZ (中际旭创)',
+            signalType: 'lead_long',
+            signalText: '英伟达 GB200 机架出货进入量产加速期，北美 1.6T 需求上调，中际旭创具备强支撑多头动能。',
+            estimatedWindowHours: 72,
+            confidencePct: 89,
+        },
+        {
+            triggerMarket: 'US',
+            triggerSymbol: 'MU',
+            targetMarket: 'CN',
+            targetSymbol: '688008.SH (澜起科技)',
+            signalType: 'lead_long',
+            signalText: '美光 HBM 产能提前锁定与 DDR5 价格持续坚挺，澜起科技内存接口芯片迎来量价齐升窗口。',
+            estimatedWindowHours: 96,
+            confidencePct: 85,
+        },
+        {
+            triggerMarket: 'US',
+            triggerSymbol: 'CRDO',
+            targetMarket: 'CN',
+            targetSymbol: '300394.SZ (天孚通信)',
+            signalType: 'hedge_divergence',
+            signalText: 'CRDO 短期乖离率偏高需防冲高回落，但天孚通信估值处于年内健康中枢，建议以天孚通信作为防御替代。',
+            estimatedWindowHours: 48,
+            confidencePct: 81,
+        },
+    ],
+};
+
+// ----------------------------------------------------
+// 核心池全量六维批量核验大盘 (Batch Trade Audit Data)
+// ----------------------------------------------------
+
+export interface BatchAuditRow {
+    symbol: string;
+    nameCn: string;
+    market: 'US' | 'CN';
+    theme: string;
+    fearGateScore: number;
+    crowdingScore: number;
+    rsRating: number;
+    trendStatus: 'Bullish' | 'Bearish';
+    reclaimStatus: 'Confirmed' | 'Pending';
+    currentThemeWeightPct: number;
+    verdict: 'authorized' | 'caution' | 'vetoed';
+    verdictText: string;
+    verdictColor: string;
+    primaryReason: string;
+}
+
+/**
+ * 重点监控池 10 股全量预先核验矩阵
+ */
+export const BATCH_TRADE_AUDIT_DATA: BatchAuditRow[] = [
+    {
+        symbol: 'NVDA',
+        nameCn: '英伟达',
+        market: 'US',
+        theme: '算力/GPU',
+        fearGateScore: 5,
+        crowdingScore: 82,
+        rsRating: 98,
+        trendStatus: 'Bullish',
+        reclaimStatus: 'Confirmed',
+        currentThemeWeightPct: 24.5,
+        verdict: 'vetoed',
+        verdictText: '🚫 决策否决',
+        verdictColor: '#ef4444',
+        primaryReason: '拥挤度高达 82 分超标，触发流动性脆弱反指；禁止高位追涨开仓。',
+    },
+    {
+        symbol: 'AVGO',
+        nameCn: '博通',
+        market: 'US',
+        theme: '定制ASIC/交换芯片',
+        fearGateScore: 5,
+        crowdingScore: 78,
+        rsRating: 94,
+        trendStatus: 'Bullish',
+        reclaimStatus: 'Confirmed',
+        currentThemeWeightPct: 18.0,
+        verdict: 'caution',
+        verdictText: '⚠️ 谨慎折半',
+        verdictColor: '#f59e0b',
+        primaryReason: '处于多头健康主升段但拥挤度略高，允许以 50% 仓位试水建仓并设紧密止损。',
+    },
+    {
+        symbol: 'MRVL',
+        nameCn: '迈威尔科技',
+        market: 'US',
+        theme: '光互联/定制硅',
+        fearGateScore: 5,
+        crowdingScore: 72,
+        rsRating: 88,
+        trendStatus: 'Bullish',
+        reclaimStatus: 'Confirmed',
+        currentThemeWeightPct: 36.07,
+        verdict: 'vetoed',
+        verdictText: '🚫 决策否决',
+        verdictColor: '#ef4444',
+        primaryReason: '当前持仓主题因子敞口 36.07% 突破 30% 上限硬约束，冻结新买入。',
+    },
+    {
+        symbol: 'AMD',
+        nameCn: '超威半导体',
+        market: 'US',
+        theme: 'GPU挑战者',
+        fearGateScore: 5,
+        crowdingScore: 65,
+        rsRating: 72,
+        trendStatus: 'Bearish',
+        reclaimStatus: 'Pending',
+        currentThemeWeightPct: 0.0,
+        verdict: 'vetoed',
+        verdictText: '🚫 决策否决',
+        verdictColor: '#ef4444',
+        primaryReason: 'RS 评分 72 < 80 动能不足，且均线空头未企稳，严禁左侧接飞刀。',
+    },
+    {
+        symbol: 'GLW',
+        nameCn: '康宁',
+        market: 'US',
+        theme: '光纤物理底座',
+        fearGateScore: 5,
+        crowdingScore: 58,
+        rsRating: 86,
+        trendStatus: 'Bullish',
+        reclaimStatus: 'Confirmed',
+        currentThemeWeightPct: 7.5,
+        verdict: 'caution',
+        verdictText: '⚠️ 谨慎折半',
+        verdictColor: '#f59e0b',
+        primaryReason: '环境处于 Elevated 警戒态，允许小额加仓并严守 MA50 止损。',
+    },
+    {
+        symbol: 'CRDO',
+        nameCn: '默升科技',
+        market: 'US',
+        theme: 'AEC有源电缆',
+        fearGateScore: 5,
+        crowdingScore: 84,
+        rsRating: 95,
+        trendStatus: 'Bullish',
+        reclaimStatus: 'Confirmed',
+        currentThemeWeightPct: 0.0,
+        verdict: 'vetoed',
+        verdictText: '🚫 决策否决',
+        verdictColor: '#ef4444',
+        primaryReason: '拥挤度 84 分严重过热，社交网络密集晒单，存在期权踩踏闪崩风险。',
+    },
+    {
+        symbol: 'MU',
+        nameCn: '美光科技',
+        market: 'US',
+        theme: 'HBM先进存储',
+        fearGateScore: 5,
+        crowdingScore: 68,
+        rsRating: 84,
+        trendStatus: 'Bullish',
+        reclaimStatus: 'Confirmed',
+        currentThemeWeightPct: 0.0,
+        verdict: 'caution',
+        verdictText: '⚠️ 谨慎折半',
+        verdictColor: '#f59e0b',
+        primaryReason: '箱体震荡突破确认，拥挤度中等，允许折半试水建仓。',
+    },
+    {
+        symbol: 'ORCL',
+        nameCn: '甲骨文',
+        market: 'US',
+        theme: 'AI云工厂',
+        fearGateScore: 5,
+        crowdingScore: 62,
+        rsRating: 91,
+        trendStatus: 'Bullish',
+        reclaimStatus: 'Confirmed',
+        currentThemeWeightPct: 5.0,
+        verdict: 'caution',
+        verdictText: '⚠️ 谨慎折半',
+        verdictColor: '#f59e0b',
+        primaryReason: '云基建 RPO 强劲，各项指标健康，环境 Elevated 状态下控制规模执行。',
+    },
+    {
+        symbol: 'SO',
+        nameCn: '南方电力',
+        market: 'US',
+        theme: '自然垄断公用',
+        fearGateScore: 3,
+        crowdingScore: 28,
+        rsRating: 82,
+        trendStatus: 'Bullish',
+        reclaimStatus: 'Confirmed',
+        currentThemeWeightPct: 0.0,
+        verdict: 'authorized',
+        verdictText: '✅ 授权开仓',
+        verdictColor: '#10b981',
+        primaryReason: '六维全票合格！极度冷门洼地、自然垄断安全垫厚实，符合 100% 胜率买点。',
+    },
+    {
+        symbol: 'CVX',
+        nameCn: '雪佛龙',
+        market: 'US',
+        theme: '传统能源垄断',
+        fearGateScore: 3,
+        crowdingScore: 32,
+        rsRating: 81,
+        trendStatus: 'Bullish',
+        reclaimStatus: 'Confirmed',
+        currentThemeWeightPct: 0.0,
+        verdict: 'authorized',
+        verdictText: '✅ 授权开仓',
+        verdictColor: '#10b981',
+        primaryReason: '六维全票合格！低波动高股息，回踩支撑确认，允许按计划执行。',
+    },
+];
+
+

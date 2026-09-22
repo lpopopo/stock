@@ -19,6 +19,9 @@ import {
     THEME_CROWDING_RADAR,
     evaluateTradeChecklist,
     EMPIRICAL_HYPOTHESES_REGISTRY,
+    CROSS_MARKET_AI_MAPPING_MATRIX,
+    CROSS_BORDER_LEAD_LAG_ENGINE,
+    BATCH_TRADE_AUDIT_DATA,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -374,6 +377,119 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
             expect(h.empiricalMethod.length).toBeGreaterThan(10);
             expect(h.keyFindings.length).toBeGreaterThan(10);
             expect(h.actionImpact.length).toBeGreaterThan(10);
+        });
+    });
+
+    it('19. should verify cross-market AI mapping matrix chains and stock pairs', () => {
+        expect(CROSS_MARKET_AI_MAPPING_MATRIX.chains.length).toBe(4);
+
+        const chainIds = CROSS_MARKET_AI_MAPPING_MATRIX.chains.map(c => c.chainId);
+        expect(chainIds).toContain('chain-1-optics');
+        expect(chainIds).toContain('chain-2-materials');
+        expect(chainIds).toContain('chain-3-memory-cxl');
+        expect(chainIds).toContain('chain-4-equipment');
+
+        // 验证 Chain 1 光通信互联标的配对
+        const opticsChain = CROSS_MARKET_AI_MAPPING_MATRIX.chains.find(c => c.chainId === 'chain-1-optics')!;
+        expect(opticsChain.averageWinRatePct).toBeGreaterThan(85.0);
+        expect(opticsChain.transmissionSpeed).toBe('中速 (3-10天)');
+
+        const usOpticsSymbols = opticsChain.pairs.map(p => p.usSymbol);
+        expect(usOpticsSymbols).toContain('NVDA');
+        expect(usOpticsSymbols).toContain('AVGO');
+        expect(usOpticsSymbols).toContain('CRDO');
+        expect(usOpticsSymbols).toContain('ANET');
+
+        const aOpticsCodes = opticsChain.pairs.map(p => p.aShareCode);
+        expect(aOpticsCodes).toContain('300308.SZ'); // 中际旭创
+        expect(aOpticsCodes).toContain('300502.SZ'); // 新易盛
+        expect(aOpticsCodes).toContain('300394.SZ'); // 天孚通信
+        expect(aOpticsCodes).toContain('601138.SH'); // 工业富联
+
+        // 验证所有产业链中所有标的配对的字段完整性
+        CROSS_MARKET_AI_MAPPING_MATRIX.chains.forEach(chain => {
+            expect(chain.averageWinRatePct).toBeGreaterThan(75.0);
+            expect(chain.leadLagMechanism.length).toBeGreaterThan(20);
+            chain.pairs.forEach(pair => {
+                expect(pair.usNameCn.length).toBeGreaterThan(1);
+                expect(pair.aShareName.length).toBeGreaterThan(1);
+                expect(pair.synergyLogic.length).toBeGreaterThan(15);
+                expect(pair.crossMarketCatalyst.length).toBeGreaterThan(10);
+                expect(pair.historicalLeadLagWinRatePct).toBeGreaterThan(75.0);
+            });
+        });
+    });
+
+    it('20. should verify cross-border lead-lag arbitrage engine and real-time signals', () => {
+        expect(CROSS_BORDER_LEAD_LAG_ENGINE.overallSystemWinRatePct).toBeGreaterThan(80.0);
+        expect(CROSS_BORDER_LEAD_LAG_ENGINE.medianTransmissionDays).toBeCloseTo(4.5, 1);
+        expect(CROSS_BORDER_LEAD_LAG_ENGINE.strategyRules.length).toBe(3);
+
+        const ruleNames = CROSS_BORDER_LEAD_LAG_ENGINE.strategyRules.map(r => r.strategyName);
+        expect(ruleNames.some(n => n.includes('财报滞后反应'))).toBe(true);
+        expect(ruleNames.some(n => n.includes('供应链订单逆向排雷'))).toBe(true);
+        expect(ruleNames.some(n => n.includes('估值剪刀差'))).toBe(true);
+
+        CROSS_BORDER_LEAD_LAG_ENGINE.strategyRules.forEach(rule => {
+            expect(rule.historicalWinRatePct).toBeGreaterThan(75.0);
+            expect(rule.coreMechanism.length).toBeGreaterThan(20);
+            expect(rule.recommendedAction.length).toBeGreaterThan(20);
+            expect(rule.riskBoundary.length).toBeGreaterThan(20);
+        });
+
+        // 验证实时套利信号
+        expect(CROSS_BORDER_LEAD_LAG_ENGINE.realtimeArbitrageSignals.length).toBeGreaterThanOrEqual(3);
+        CROSS_BORDER_LEAD_LAG_ENGINE.realtimeArbitrageSignals.forEach(signal => {
+            expect(signal.confidencePct).toBeGreaterThan(75);
+            expect(signal.estimatedWindowHours).toBeGreaterThan(0);
+            expect(signal.signalText.length).toBeGreaterThan(10);
+            expect(['lead_long', 'lead_short', 'hedge_divergence']).toContain(signal.signalType);
+        });
+    });
+
+    it('21. should verify batch trade audit dataset for 10 focus stocks and verdicts', () => {
+        expect(BATCH_TRADE_AUDIT_DATA.length).toBe(10);
+
+        const symbols = BATCH_TRADE_AUDIT_DATA.map(d => d.symbol);
+        expect(symbols).toContain('NVDA');
+        expect(symbols).toContain('AVGO');
+        expect(symbols).toContain('MRVL');
+        expect(symbols).toContain('AMD');
+        expect(symbols).toContain('GLW');
+        expect(symbols).toContain('CRDO');
+        expect(symbols).toContain('MU');
+        expect(symbols).toContain('ORCL');
+        expect(symbols).toContain('SO');
+        expect(symbols).toContain('CVX');
+
+        // 验证裁决分布：授权(2只自然垄断), 谨慎(4只), 否决(4只触犯不同禁令)
+        const authorized = BATCH_TRADE_AUDIT_DATA.filter(d => d.verdict === 'authorized');
+        const caution = BATCH_TRADE_AUDIT_DATA.filter(d => d.verdict === 'caution');
+        const vetoed = BATCH_TRADE_AUDIT_DATA.filter(d => d.verdict === 'vetoed');
+
+        expect(authorized.length).toBe(2);
+        expect(caution.length).toBe(4);
+        expect(vetoed.length).toBe(4);
+
+        // 验证具体否决原因逻辑
+        const nvda = BATCH_TRADE_AUDIT_DATA.find(d => d.symbol === 'NVDA')!;
+        expect(nvda.verdict).toBe('vetoed');
+        expect(nvda.crowdingScore).toBeGreaterThan(80); // 拥挤度超标否决
+
+        const mrvl = BATCH_TRADE_AUDIT_DATA.find(d => d.symbol === 'MRVL')!;
+        expect(mrvl.verdict).toBe('vetoed');
+        expect(mrvl.currentThemeWeightPct).toBeGreaterThan(30); // 30% 预算超标否决
+
+        const amd = BATCH_TRADE_AUDIT_DATA.find(d => d.symbol === 'AMD')!;
+        expect(amd.verdict).toBe('vetoed');
+        expect(amd.rsRating).toBeLessThan(80); // 动能不足与左侧接飞刀否决
+
+        BATCH_TRADE_AUDIT_DATA.forEach(row => {
+            expect(row.primaryReason.length).toBeGreaterThan(10);
+            expect(row.fearGateScore).toBeGreaterThanOrEqual(0);
+            expect(row.fearGateScore).toBeLessThanOrEqual(10);
+            expect(row.crowdingScore).toBeGreaterThanOrEqual(0);
+            expect(row.crowdingScore).toBeLessThanOrEqual(100);
         });
     });
 });

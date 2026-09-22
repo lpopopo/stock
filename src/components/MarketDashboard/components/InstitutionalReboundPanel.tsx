@@ -18,9 +18,13 @@ import {
     THEME_CROWDING_RADAR,
     evaluateTradeChecklist,
     EMPIRICAL_HYPOTHESES_REGISTRY,
+    CROSS_MARKET_AI_MAPPING_MATRIX,
+    CROSS_BORDER_LEAD_LAG_ENGINE,
+    BATCH_TRADE_AUDIT_DATA,
     type BottomReboundStock,
     type TradeChecklistInput,
     type TradeChecklistResult,
+    type BatchAuditRow,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -32,6 +36,9 @@ type SubTabType =
     | 'live-shadow'
     | 'fear-matrix'
     | 'breadth'
+    | 'cross-market'
+    | 'lead-lag'
+    | 'batch-audit'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -67,6 +74,21 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     });
 
     const checklistResult: TradeChecklistResult = evaluateTradeChecklist(checklistInput);
+
+    const handleLoadSymbolToChecklist = (row: BatchAuditRow) => {
+        setChecklistInput({
+            symbol: row.symbol,
+            fearGateScore: row.fearGateScore,
+            crowdingScore: row.crowdingScore,
+            rsRating: row.rsRating,
+            trendAboveMa50: row.trendStatus === 'Bullish',
+            entryReclaimConfirmed: row.reclaimStatus === 'Confirmed',
+            currentThemeWeightPct: row.currentThemeWeightPct,
+            plannedLossUnder1PctNav: true,
+            hasHardStopPlan: true,
+        });
+        setSubTab('trade-checklist');
+    };
 
     const summary = BOTTOM_REBOUND_100WIN_SUMMARY;
     const stocks = BOTTOM_REBOUND_UNIVERSE;
@@ -175,6 +197,24 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('ai-bottleneck')}
                 >
                     🌐 AI 基建四层产业链瓶颈
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'cross-market' ? 'active' : ''}`}
+                    onClick={() => setSubTab('cross-market')}
+                >
+                    🇨🇳🇺🇸 中美AI产业链跨市映射
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'lead-lag' ? 'active' : ''}`}
+                    onClick={() => setSubTab('lead-lag')}
+                >
+                    ⏱️ 中美时间差互证套利
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'batch-audit' ? 'active' : ''}`}
+                    onClick={() => setSubTab('batch-audit')}
+                >
+                    🚦 核心池全量六维审计
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -639,6 +679,251 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：中美AI产业链跨市映射雷达 */}
+            {subTab === 'cross-market' && (
+                <div className="rebound-cross-market-view">
+                    <div className="cross-market-banner">
+                        <div className="banner-top">
+                            <span className="banner-icon">🇨🇳🇺🇸</span>
+                            <div>
+                                <h4>中美硬科技四大产业链分层映射与时差互证矩阵</h4>
+                                <span className="as-of-date">数据基准：{CROSS_MARKET_AI_MAPPING_MATRIX.asOfDate} · 涵盖光通信、衬底材料、内存接口与前后道装备四大产业链</span>
+                            </div>
+                        </div>
+                        <div className="philosophy-box">
+                            <strong>💡 跨市场互证核心哲学：</strong>
+                            <p>{CROSS_MARKET_AI_MAPPING_MATRIX.guidingPhilosophy}</p>
+                        </div>
+                    </div>
+
+                    <div className="chains-stack">
+                        {CROSS_MARKET_AI_MAPPING_MATRIX.chains.map((chain) => (
+                            <div key={chain.chainId} className="chain-card">
+                                <div className="chain-header">
+                                    <div className="chain-title-wrap">
+                                        <h4 className="chain-name">{chain.chainName}</h4>
+                                        <span className="chain-sub">{chain.shortTitle}</span>
+                                    </div>
+                                    <div className="chain-stats">
+                                        <span className="trans-speed-tag">传导速度: {chain.transmissionSpeed}</span>
+                                        <span className="winrate-tag font-mono">协同胜率: {chain.averageWinRatePct}%</span>
+                                    </div>
+                                </div>
+
+                                <div className="chain-mechanism-box">
+                                    <strong>⚙️ 跨市场传导机制：</strong>
+                                    <span>{chain.leadLagMechanism}</span>
+                                </div>
+
+                                <div className="pairs-grid">
+                                    {chain.pairs.map((pair, idx) => (
+                                        <div key={idx} className="pair-card">
+                                            <div className="pair-bilateral-head">
+                                                <div className="market-side us-side">
+                                                    <span className="market-tag">🇺🇸 美股龙头</span>
+                                                    <span className="stock-sym font-mono font-bold">{pair.usSymbol}</span>
+                                                    <span className="stock-name">{pair.usNameCn}</span>
+                                                </div>
+                                                <div className="transfer-arrow-wrap">
+                                                    <span className="arrow-icon">➔</span>
+                                                    <span className="lag-pill font-mono">{pair.leadLagDays}</span>
+                                                    <span className="rate-sub font-mono">{pair.historicalLeadLagWinRatePct}% 胜率</span>
+                                                </div>
+                                                <div className="market-side cn-side">
+                                                    <span className="market-tag">🇨🇳 A股映射</span>
+                                                    <span className="stock-sym font-mono font-bold">{pair.aShareCode}</span>
+                                                    <span className="stock-name">{pair.aShareName}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="pair-roles-row">
+                                                <div className="role-box">
+                                                    <span className="lbl">美股角色：</span>
+                                                    <p>{pair.usRole}</p>
+                                                </div>
+                                                <div className="role-box">
+                                                    <span className="lbl">A股角色：</span>
+                                                    <p>{pair.aShareRole}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="pair-synergy-box">
+                                                <strong>🔗 产业链协同逻辑：</strong>
+                                                <p>{pair.synergyLogic}</p>
+                                            </div>
+
+                                            <div className="pair-catalyst-box">
+                                                <strong>🎯 核心互证催化剂：</strong>
+                                                <code>{pair.crossMarketCatalyst}</code>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：中美时间差互证套利引擎 */}
+            {subTab === 'lead-lag' && (
+                <div className="rebound-lead-lag-view">
+                    <div className="lead-lag-banner">
+                        <div className="banner-top">
+                            <span className="banner-icon">⏱️</span>
+                            <div>
+                                <h4>中美硬科技时间差互证套利量化引擎</h4>
+                                <span className="as-of-date">系统实证综合胜率：{CROSS_BORDER_LEAD_LAG_ENGINE.overallSystemWinRatePct}% · 中位数传导时滞：{CROSS_BORDER_LEAD_LAG_ENGINE.medianTransmissionDays} 个交易日</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 实时时间差套利信号大盘 */}
+                    <div className="arbitrage-signals-card">
+                        <h4 className="card-title">⚡ 实时活跃跨市场时间差互证套利信号</h4>
+                        <div className="signals-grid">
+                            {CROSS_BORDER_LEAD_LAG_ENGINE.realtimeArbitrageSignals.map((sig, i) => (
+                                <div key={i} className="signal-box">
+                                    <div className="sig-head">
+                                        <div className="sig-route font-mono">
+                                            <span className="trigger-tag">{sig.triggerMarket}:{sig.triggerSymbol}</span>
+                                            <span className="sig-arrow">➔</span>
+                                            <span className="target-tag">{sig.targetMarket}:{sig.targetSymbol}</span>
+                                        </div>
+                                        <div className="sig-meta">
+                                            <span className="conf-badge font-mono">置信度: {sig.confidencePct}%</span>
+                                            <span className="window-badge font-mono">窗口: {sig.estimatedWindowHours}h</span>
+                                        </div>
+                                    </div>
+                                    <p className="sig-text">{sig.signalText}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 三大约束套利法则 */}
+                    <div className="strategy-rules-card">
+                        <h4 className="card-title">📜 中美时间差套利三大实操法则</h4>
+                        <div className="rules-grid">
+                            {CROSS_BORDER_LEAD_LAG_ENGINE.strategyRules.map((r, i) => (
+                                <div key={i} className="rule-card">
+                                    <div className="rule-card-head">
+                                        <h5 className="rule-name">{r.strategyName}</h5>
+                                        <span className="rule-winrate font-mono">历史胜率: {r.historicalWinRatePct}%</span>
+                                    </div>
+                                    <div className="rule-section">
+                                        <strong>⚙️ 核心机制：</strong>
+                                        <p>{r.coreMechanism}</p>
+                                    </div>
+                                    <div className="rule-section action-section">
+                                        <strong>🎯 实战执行建议：</strong>
+                                        <p>{r.recommendedAction}</p>
+                                    </div>
+                                    <div className="rule-section boundary-section">
+                                        <strong>🛡️ 严格风控边界：</strong>
+                                        <p>{r.riskBoundary}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：核心池全量六维批量核验矩阵 */}
+            {subTab === 'batch-audit' && (
+                <div className="rebound-batch-audit-view">
+                    <div className="batch-audit-banner">
+                        <div className="banner-top">
+                            <span className="banner-icon">🚦</span>
+                            <div>
+                                <h4>美股重点关注池 10 股全量六维机器核验大盘</h4>
+                                <p>全量预审市场恐慌门控、情绪拥挤、趋势动量、右侧企稳、因子集中度与硬止损预案，杜绝主观侥幸，支持一键载入自检器实时调试。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="batch-audit-table-card">
+                        <div className="table-responsive">
+                            <table className="batch-table font-mono">
+                                <thead>
+                                    <tr>
+                                        <th>代码/名称</th>
+                                        <th>所属主题</th>
+                                        <th>恐慌门控</th>
+                                        <th>拥挤度</th>
+                                        <th>RS评分</th>
+                                        <th>趋势/企稳</th>
+                                        <th>主题权重</th>
+                                        <th>机器核验裁决</th>
+                                        <th>核心风控原因</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {BATCH_TRADE_AUDIT_DATA.map((row) => (
+                                        <tr key={row.symbol} className={`verdict-row-${row.verdict}`}>
+                                            <td>
+                                                <div className="symbol-cell">
+                                                    <span className="sym-bold">{row.symbol}</span>
+                                                    <span className="sym-sub">{row.nameCn}</span>
+                                                </div>
+                                            </td>
+                                            <td><span className="theme-tag">{row.theme}</span></td>
+                                            <td>
+                                                <span className={`status-dot-num ${row.fearGateScore <= 6 ? 'text-green' : 'text-red'}`}>
+                                                    {row.fearGateScore}分
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`status-dot-num ${row.crowdingScore <= 65 ? 'text-green' : row.crowdingScore <= 80 ? 'text-gold' : 'text-red'}`}>
+                                                    {row.crowdingScore}分
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`status-dot-num ${row.rsRating >= 80 ? 'text-gold' : 'text-red'}`}>
+                                                    {row.rsRating}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="dual-status-cell">
+                                                    <span className={`mini-pill ${row.trendStatus === 'Bullish' ? 'pass-mini' : 'fail-mini'}`}>
+                                                        {row.trendStatus === 'Bullish' ? '多头' : '空头'}
+                                                    </span>
+                                                    <span className={`mini-pill ${row.reclaimStatus === 'Confirmed' ? 'pass-mini' : 'fail-mini'}`}>
+                                                        {row.reclaimStatus === 'Confirmed' ? '企稳' : '待定'}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className={row.currentThemeWeightPct > 30 ? 'text-red font-bold' : 'text-slate'}>
+                                                    {row.currentThemeWeightPct.toFixed(1)}%
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className="verdict-tag font-bold" style={{ color: row.verdictColor, borderColor: row.verdictColor }}>
+                                                    {row.verdictText}
+                                                </span>
+                                            </td>
+                                            <td className="reason-cell">{row.primaryReason}</td>
+                                            <td>
+                                                <button
+                                                    className="load-checklist-btn font-mono"
+                                                    onClick={() => handleLoadSymbolToChecklist(row)}
+                                                    title="载入六维自检器进行个性化调试"
+                                                >
+                                                    🔍 调参核验
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}
