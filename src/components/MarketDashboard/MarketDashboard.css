@@ -8861,6 +8861,397 @@
   line-height: 1.45;
 }
 
+/* ==========================================================================
+   Phase 8: SGOV Cash Sweep, 8% Position Sizing & Core Whipsaw Audit Styles
+   ========================================================================== */
+
+/* 1. SGOV Cash Efficiency View */
+.rebound-cash-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.cash-header-card,
+.sizing-header-card,
+.whipsaw-header-card,
+.cash-table-card,
+.sizing-table-card,
+.whipsaw-case-card,
+.whipsaw-variants-card {
+  background: var(--bg-secondary, #161b22);
+  border: 1px solid var(--border-default, #30363d);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.cash-top-row,
+.sizing-top-row,
+.whipsaw-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cash-title-wrap,
+.sizing-title-wrap,
+.whipsaw-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cash-icon,
+.sizing-icon,
+.whipsaw-icon {
+  font-size: 1.6rem;
+}
+
+.cash-title-wrap h4,
+.sizing-title-wrap h4,
+.whipsaw-title-wrap h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f0f6fc;
+}
+
+.cash-badge-pill,
+.sizing-badge-pill,
+.whipsaw-badge-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.cash-kpi-grid,
+.sizing-kpi-grid,
+.whipsaw-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cash-kpi-card,
+.sizing-kpi-card,
+.whipsaw-kpi-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cash-kpi-card.highlight-card,
+.sizing-kpi-card.highlight-card,
+.whipsaw-kpi-card.highlight-card {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.sizing-kpi-card.danger-card,
+.whipsaw-kpi-card.danger-card {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.kpi-label {
+  font-size: 0.72rem;
+  color: #8b949e;
+  font-weight: 500;
+}
+
+.kpi-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.kpi-sub {
+  font-size: 0.7rem;
+  color: #6e7681;
+}
+
+.cash-mechanism-box,
+.sizing-philosophy-box,
+.whipsaw-thesis-box {
+  background: rgba(56, 189, 248, 0.05);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 6px;
+}
+
+.mechanism-title,
+.philosophy-title,
+.thesis-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #38bdf8;
+  margin-bottom: 6px;
+}
+
+.cash-mechanism-box p,
+.sizing-philosophy-box p,
+.whipsaw-thesis-box p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #c9d1d9;
+}
+
+.cash-table-wrap,
+.sizing-table-wrap,
+.whipsaw-table-wrap {
+  overflow-x: auto;
+  margin: 12px 0 16px;
+}
+
+.cash-comparison-table,
+.sizing-comparison-table,
+.whipsaw-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.cash-comparison-table th,
+.sizing-comparison-table th,
+.whipsaw-comparison-table th {
+  background: rgba(255, 255, 255, 0.04);
+  color: #8b949e;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-default, #30363d);
+  white-space: nowrap;
+}
+
+.cash-comparison-table td,
+.sizing-comparison-table td,
+.whipsaw-comparison-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e6edf3;
+  white-space: nowrap;
+}
+
+.cash-comparison-table tr.highlight-row {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.cash-comparison-table tr.highlight-row td {
+  border-bottom-color: rgba(16, 185, 129, 0.2);
+}
+
+.sizing-comparison-table tr.optimal-row {
+  background: rgba(234, 179, 8, 0.08);
+}
+
+.sizing-comparison-table tr.optimal-row td {
+  border-bottom-color: rgba(234, 179, 8, 0.3);
+}
+
+.strat-tag {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.star-tag {
+  margin-right: 4px;
+}
+
+.stability-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.badge-stable {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.badge-cliff {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.eval-notes-cell,
+.reason-cell {
+  white-space: normal !important;
+  max-width: 320px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #8b949e;
+}
+
+.cash-takeaway-alert,
+.sizing-cliff-alert {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.cash-takeaway-alert {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.sizing-cliff-alert {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.alert-heading {
+  font-weight: 700;
+  font-size: 0.82rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.cash-takeaway-alert .alert-heading {
+  color: #10b981;
+}
+
+.sizing-cliff-alert .alert-heading {
+  color: #ef4444;
+}
+
+.cash-takeaway-alert p,
+.sizing-cliff-alert p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #c9d1d9;
+}
+
+/* 2. Position Sizing View */
+.rebound-sizing-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* 3. Core Whipsaw & Disaster Insurance View */
+.rebound-whipsaw-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.case-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+
+.case-detail-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-lbl {
+  font-size: 0.7rem;
+  color: #8b949e;
+}
+
+.item-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.case-narrative-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+  .case-narrative-block {
+    grid-template-columns: 1fr;
+  }
+}
+
+.narrative-col {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.narrative-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.narrative-col p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #cbd5e1;
+}
+
+.whipsaw-comparison-table tr.base-variant-row {
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.whipsaw-comparison-table tr.rejected-variant-row {
+  opacity: 0.85;
+}
+
+.verdict-pill {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.pill-base {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+.pill-rejected {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+
 
 
 

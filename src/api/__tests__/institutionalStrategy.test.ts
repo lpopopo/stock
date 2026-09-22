@@ -26,6 +26,9 @@ import {
     PORTFOLIO_FOUR_DISPOSITIONS_SOP,
     BEHAVIORAL_FINANCE_GUARDRAIL,
     IMMUTABLE_PRODUCTION_AUDIT_TRAIL,
+    CASH_EFFICIENCY_SWEEP_DATA,
+    OPTIMAL_POSITION_SIZING_FRONTIER,
+    V9_CORE_INSURANCE_COST_AUDIT,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -609,5 +612,86 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
             expect(block.event.length).toBeGreaterThan(15);
         });
     });
+
+    it('26. should verify SGOV cash efficiency sweep yield enhancement data', () => {
+        expect(CASH_EFFICIENCY_SWEEP_DATA.annualRiskFreeRatePct).toBe(5.25);
+        expect(CASH_EFFICIENCY_SWEEP_DATA.sgovFullPeriodProxyReturnPct).toBe(12.12);
+        expect(CASH_EFFICIENCY_SWEEP_DATA.coreMechanism.length).toBeGreaterThan(30);
+        expect(CASH_EFFICIENCY_SWEEP_DATA.comparisons.length).toBe(4);
+
+        // 验证全样本期 SGOV 清扫效果: 收益跃迁 +12.77%，夏普从 1.77 升至 2.83
+        const fullPeriod = CASH_EFFICIENCY_SWEEP_DATA.comparisons.find(c => c.period.includes('全样本'))!;
+        expect(fullPeriod.zeroYieldReturnPct).toBeCloseTo(18.11, 2);
+        expect(fullPeriod.sgovSweepReturnPct).toBeCloseTo(30.88, 2);
+        expect(fullPeriod.sgovSweepReturnPct - fullPeriod.zeroYieldReturnPct).toBeCloseTo(12.77, 2);
+        expect(fullPeriod.zeroYieldSharpe).toBeCloseTo(1.77, 2);
+        expect(fullPeriod.sgovSweepSharpe).toBeCloseTo(2.83, 2);
+        expect(fullPeriod.sgovSweepMaxDDPct).toBeGreaterThanOrEqual(fullPeriod.zeroYieldMaxDDPct); // 回撤更优或相当
+        expect(fullPeriod.earnedInterestUsd).toBeGreaterThan(700);
+
+        // 验证所有周期的利息增厚均严格为正且夏普全部提升
+        CASH_EFFICIENCY_SWEEP_DATA.comparisons.forEach(comp => {
+            expect(comp.sgovSweepReturnPct).toBeGreaterThan(comp.zeroYieldReturnPct);
+            expect(comp.sgovSweepSharpe).toBeGreaterThan(comp.zeroYieldSharpe);
+            expect(comp.earnedInterestUsd).toBeGreaterThan(0);
+        });
+
+        expect(CASH_EFFICIENCY_SWEEP_DATA.operationalTakeaway).toContain('SGOV 自动清扫');
+        expect(CASH_EFFICIENCY_SWEEP_DATA.operationalTakeaway).toContain('防御收益发生器');
+    });
+
+    it('27. should verify optimal 8% position sizing frontier and sizing cliff mechanics', () => {
+        expect(OPTIMAL_POSITION_SIZING_FRONTIER.optimalWeightPct).toBe(8.0);
+        expect(OPTIMAL_POSITION_SIZING_FRONTIER.optimalConcurrentNames).toBe(3);
+        expect(OPTIMAL_POSITION_SIZING_FRONTIER.sizingRows.length).toBe(6);
+
+        const weights = OPTIMAL_POSITION_SIZING_FRONTIER.sizingRows.map(r => r.targetWeightPct);
+        expect(weights).toEqual([4.0, 6.0, 8.0, 10.0, 12.0, 15.0]);
+
+        // 验证 8% 是帕累托最高夏普最优解
+        const row8 = OPTIMAL_POSITION_SIZING_FRONTIER.sizingRows.find(r => r.targetWeightPct === 8.0)!;
+        expect(row8.fullReturnPct).toBeCloseTo(17.81, 2);
+        expect(row8.fullSharpe).toBeCloseTo(1.77, 2);
+        expect(row8.fullMaxDDPct).toBeCloseTo(-2.33, 2);
+        expect(row8.peakConcurrentNames).toBe(3);
+        expect(row8.executionStability).toBe('Stable (Jaccard 1.0)');
+
+        // 验证定寸悬崖 (Sizing Cliff)：>= 10% 导致并发萎缩与回撤恶化
+        const row10 = OPTIMAL_POSITION_SIZING_FRONTIER.sizingRows.find(r => r.targetWeightPct === 10.0)!;
+        const row15 = OPTIMAL_POSITION_SIZING_FRONTIER.sizingRows.find(r => r.targetWeightPct === 15.0)!;
+        expect(row10.peakConcurrentNames).toBeLessThan(row8.peakConcurrentNames);
+        expect(row15.peakConcurrentNames).toBeLessThan(row8.peakConcurrentNames);
+        expect(row15.fullSharpe).toBeLessThan(row8.fullSharpe);
+        expect(row15.fullMaxDDPct).toBeLessThan(row8.fullMaxDDPct); // -3.54% 比 -2.33% 更差
+
+        expect(OPTIMAL_POSITION_SIZING_FRONTIER.sizingCliffExplanation).toContain('定寸悬崖');
+        expect(OPTIMAL_POSITION_SIZING_FRONTIER.sizingCliffExplanation).toContain('大数定律');
+    });
+
+    it('28. should verify V9 core whipsaw audit and cost of disaster insurance thesis', () => {
+        expect(V9_CORE_INSURANCE_COST_AUDIT.costOfInsuranceThesis).toContain('购买巨灾保险');
+        expect(V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.spyGainMissedPct).toBeCloseTo(9.98, 2);
+        expect(V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.qqqGainMissedPct).toBeCloseTo(15.38, 2);
+        expect(V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.netMissedCoreReturnPct).toBeCloseTo(4.44, 2);
+        expect(V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.whyExitWasDisciplined.length).toBeGreaterThan(20);
+        expect(V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.counterfactualPenalty).toContain('3.08');
+
+        // 验证 4 大挑战者变体全盘测试与否决
+        expect(V9_CORE_INSURANCE_COST_AUDIT.variantsTested.length).toBe(5);
+        const base = V9_CORE_INSURANCE_COST_AUDIT.variantsTested.find(v => v.verdict === 'BASE')!;
+        expect(base.variantName).toContain('基准');
+        expect(base.maxDD2025Pct).toBeCloseTo(-7.46, 2);
+
+        const rejected = V9_CORE_INSURANCE_COST_AUDIT.variantsTested.filter(v => v.verdict === 'REJECTED');
+        expect(rejected.length).toBe(4);
+
+        // 变体 1 与 变体 2 均造成 2025 回撤暴增至 -10.54%
+        rejected.forEach(v => {
+            expect(v.rejectionReason.length).toBeGreaterThan(15);
+        });
+        const v1 = rejected.find(v => v.variantName.includes('进出均需 2 个月'))!;
+        expect(v1.maxDD2025Pct).toBeCloseTo(-10.54, 2);
+    });
 });
+
 

@@ -25,6 +25,9 @@ import {
     PORTFOLIO_FOUR_DISPOSITIONS_SOP,
     BEHAVIORAL_FINANCE_GUARDRAIL,
     IMMUTABLE_PRODUCTION_AUDIT_TRAIL,
+    CASH_EFFICIENCY_SWEEP_DATA,
+    OPTIMAL_POSITION_SIZING_FRONTIER,
+    V9_CORE_INSURANCE_COST_AUDIT,
     type BottomReboundStock,
     type TradeChecklistInput,
     type TradeChecklistResult,
@@ -47,6 +50,9 @@ type SubTabType =
     | 'four-dispositions'
     | 'behavioral-guardrail'
     | 'immutable-audit'
+    | 'cash-efficiency'
+    | 'position-sizing'
+    | 'core-whipsaw'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -247,6 +253,24 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('immutable-audit')}
                 >
                     ⛓️ 不可篡改生产对账链条
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'cash-efficiency' ? 'active' : ''}`}
+                    onClick={() => setSubTab('cash-efficiency')}
+                >
+                    💵 SGOV 现金清扫与资金效率
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'position-sizing' ? 'active' : ''}`}
+                    onClick={() => setSubTab('position-sizing')}
+                >
+                    🎯 8% 黄金仓位定寸前沿
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'core-whipsaw' ? 'active' : ''}`}
+                    onClick={() => setSubTab('core-whipsaw')}
+                >
+                    🛡️ 指数核心洗盘与保险成本
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -1314,6 +1338,332 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：SGOV 现金自动清扫与资金效率 */}
+            {subTab === 'cash-efficiency' && (
+                <div className="rebound-cash-view">
+                    <div className="cash-header-card">
+                        <div className="cash-top-row">
+                            <div className="cash-title-wrap">
+                                <span className="cash-icon">💵</span>
+                                <div>
+                                    <h4>SGOV 现金自动清扫与资金效率前沿 (Cash Sweep Optimization)</h4>
+                                    <span className="as-of-date">监测基准：无风险利率 {CASH_EFFICIENCY_SWEEP_DATA.annualRiskFreeRatePct}% · SGOV 全周期收益率 +{CASH_EFFICIENCY_SWEEP_DATA.sgovFullPeriodProxyReturnPct}% · 截至 {CASH_EFFICIENCY_SWEEP_DATA.asOfDate}</span>
+                                </div>
+                            </div>
+                            <div className="cash-badge-pill">
+                                <span className="pill-dot"></span>
+                                <span>全周期增厚 +12.77% 纯阿尔法</span>
+                            </div>
+                        </div>
+
+                        <div className="cash-kpi-grid">
+                            <div className="cash-kpi-card">
+                                <span className="kpi-label">闲置现金收益基准</span>
+                                <div className="kpi-val text-cyan">{CASH_EFFICIENCY_SWEEP_DATA.annualRiskFreeRatePct}%</div>
+                                <span className="kpi-sub">SGOV 0~3月超短美债年化</span>
+                            </div>
+                            <div className="cash-kpi-card highlight-card">
+                                <span className="kpi-label">全周期收益跃迁 (2024~2026)</span>
+                                <div className="kpi-val text-green font-mono">18.11% → 30.88%</div>
+                                <span className="kpi-sub text-green">抹平 63.93% 闲置现金拖累</span>
+                            </div>
+                            <div className="cash-kpi-card">
+                                <span className="kpi-label">夏普比率提升 (Sharpe)</span>
+                                <div className="kpi-val text-gold font-mono">1.77 → 2.83</div>
+                                <span className="kpi-sub">+59.9% 风险调整收益爆发</span>
+                            </div>
+                            <div className="cash-kpi-card">
+                                <span className="kpi-label">最大回撤收窄</span>
+                                <div className="kpi-val text-cyan font-mono">-2.33% → -2.24%</div>
+                                <span className="kpi-sub">零额外权益下行暴露</span>
+                            </div>
+                        </div>
+
+                        <div className="cash-mechanism-box">
+                            <div className="mechanism-title">
+                                <span className="icon">⚙️</span>
+                                <strong>每日自动清扫运作机制 (Daily Cash Sweep Protocol)</strong>
+                            </div>
+                            <p>{CASH_EFFICIENCY_SWEEP_DATA.coreMechanism}</p>
+                        </div>
+                    </div>
+
+                    <div className="cash-table-card">
+                        <h4 className="section-title">📊 零息现金 vs SGOV 自动清扫多周期回测实证对照表</h4>
+                        <div className="cash-table-wrap">
+                            <table className="cash-comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>回测周期</th>
+                                        <th>量化策略</th>
+                                        <th>0息现金收益</th>
+                                        <th>SGOV清扫收益</th>
+                                        <th>0息夏普</th>
+                                        <th>SGOV夏普</th>
+                                        <th>0息最大回撤</th>
+                                        <th>SGOV最大回撤</th>
+                                        <th>累计增厚利息</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {CASH_EFFICIENCY_SWEEP_DATA.comparisons.map((row, idx) => (
+                                        <tr key={idx} className={row.period.includes('全样本') ? 'highlight-row' : ''}>
+                                            <td className="font-semibold">{row.period}</td>
+                                            <td><span className="strat-tag">{row.strategy}</span></td>
+                                            <td className="font-mono text-muted">+{row.zeroYieldReturnPct.toFixed(2)}%</td>
+                                            <td className="font-mono text-green font-bold">+{row.sgovSweepReturnPct.toFixed(2)}%</td>
+                                            <td className="font-mono text-muted">{row.zeroYieldSharpe.toFixed(2)}</td>
+                                            <td className="font-mono text-gold font-bold">{row.sgovSweepSharpe.toFixed(2)}</td>
+                                            <td className="font-mono text-red">{row.zeroYieldMaxDDPct.toFixed(2)}%</td>
+                                            <td className="font-mono text-cyan">{row.sgovSweepMaxDDPct.toFixed(2)}%</td>
+                                            <td className="font-mono text-gold">+${row.earnedInterestUsd.toFixed(2)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="cash-takeaway-alert">
+                            <span className="alert-icon">💡</span>
+                            <div>
+                                <span className="alert-heading">第一性原理实证定论：</span>
+                                <p>{CASH_EFFICIENCY_SWEEP_DATA.operationalTakeaway}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：8% 黄金仓位定寸前沿 */}
+            {subTab === 'position-sizing' && (
+                <div className="rebound-sizing-view">
+                    <div className="sizing-header-card">
+                        <div className="sizing-top-row">
+                            <div className="sizing-title-wrap">
+                                <span className="sizing-icon">🎯</span>
+                                <div>
+                                    <h4>最优仓位定寸前沿与定寸悬崖实证 (Optimal Position Sizing Frontier)</h4>
+                                    <span className="as-of-date">最优目标权重：8.0% · 黄金并发上限：3 只 · 30% 个股袖子预算硬约束 · 截至 {OPTIMAL_POSITION_SIZING_FRONTIER.asOfDate}</span>
+                                </div>
+                            </div>
+                            <div className="sizing-badge-pill">
+                                <span>⭐ 8% 帕累托最优解</span>
+                            </div>
+                        </div>
+
+                        <div className="sizing-kpi-grid">
+                            <div className="sizing-kpi-card highlight-card">
+                                <span className="kpi-label">帕累托最优目标仓位</span>
+                                <div className="kpi-val text-gold font-mono">{OPTIMAL_POSITION_SIZING_FRONTIER.optimalWeightPct.toFixed(1)}%</div>
+                                <span className="kpi-sub">全周期收益 +17.81% / 夏普 1.77</span>
+                            </div>
+                            <div className="sizing-kpi-card">
+                                <span className="kpi-label">黄金并发个股数</span>
+                                <div className="kpi-val text-cyan font-mono">{OPTIMAL_POSITION_SIZING_FRONTIER.optimalConcurrentNames} 只</div>
+                                <span className="kpi-sub">大数定律分散非系统性风险</span>
+                            </div>
+                            <div className="sizing-kpi-card danger-card">
+                                <span className="kpi-label">定寸悬崖拐点 (Sizing Cliff)</span>
+                                <div className="kpi-val text-red font-mono">&gt;= 10.0%</div>
+                                <span className="kpi-sub">并发萎缩至 1~2 只，回撤暴增</span>
+                            </div>
+                            <div className="sizing-kpi-card">
+                                <span className="kpi-label">执行稳定性 (Jaccard)</span>
+                                <div className="kpi-val text-green font-mono">1.00</div>
+                                <span className="kpi-sub">在 1.5x 滑点扰动下路径完全重合</span>
+                            </div>
+                        </div>
+
+                        <div className="sizing-philosophy-box">
+                            <div className="philosophy-title">
+                                <span className="icon">📐</span>
+                                <strong>定寸科学前沿逻辑 (Position Sizing Theory)</strong>
+                            </div>
+                            <p>{OPTIMAL_POSITION_SIZING_FRONTIER.corePhilosophy}</p>
+                        </div>
+                    </div>
+
+                    <div className="sizing-table-card">
+                        <h4 className="section-title">📈 6 组仓位梯度全指标实证回测对比</h4>
+                        <div className="sizing-table-wrap">
+                            <table className="sizing-comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>单票目标仓位</th>
+                                        <th>全周期收益</th>
+                                        <th>最大回撤</th>
+                                        <th>夏普比率 (Sharpe)</th>
+                                        <th>最大并发标的数</th>
+                                        <th>最大单票盈利贡献</th>
+                                        <th>执行稳定性</th>
+                                        <th>实证评价与定论</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {OPTIMAL_POSITION_SIZING_FRONTIER.sizingRows.map((row) => (
+                                        <tr key={row.targetWeightPct} className={row.targetWeightPct === 8.0 ? 'optimal-row' : ''}>
+                                            <td className="font-mono font-bold">
+                                                {row.targetWeightPct === 8.0 && <span className="star-tag">⭐</span>}
+                                                {row.targetWeightPct.toFixed(1)}%
+                                            </td>
+                                            <td className="font-mono font-bold text-green">+{row.fullReturnPct.toFixed(2)}%</td>
+                                            <td className={`font-mono ${row.fullMaxDDPct < -3.0 ? 'text-red font-bold' : 'text-cyan'}`}>
+                                                {row.fullMaxDDPct.toFixed(2)}%
+                                            </td>
+                                            <td className="font-mono font-bold text-gold">{row.fullSharpe.toFixed(2)}</td>
+                                            <td className="font-mono text-center">{row.peakConcurrentNames} 只</td>
+                                            <td className="font-mono">{row.maxProfitSharePct.toFixed(2)}%</td>
+                                            <td>
+                                                <span className={`stability-badge ${row.executionStability.includes('Stable') ? 'badge-stable' : 'badge-cliff'}`}>
+                                                    {row.executionStability}
+                                                </span>
+                                            </td>
+                                            <td className="eval-notes-cell">{row.evaluationNotes}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="sizing-cliff-alert">
+                            <span className="alert-icon">⚠️</span>
+                            <div>
+                                <span className="alert-heading">定寸悬崖 (Sizing Cliff) 机制原理解析：</span>
+                                <p>{OPTIMAL_POSITION_SIZING_FRONTIER.sizingCliffExplanation}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：指数核心洗盘假突破复盘与巨灾保险成本 */}
+            {subTab === 'core-whipsaw' && (
+                <div className="rebound-whipsaw-view">
+                    <div className="whipsaw-header-card">
+                        <div className="whipsaw-top-row">
+                            <div className="whipsaw-title-wrap">
+                                <span className="whipsaw-icon">🛡️</span>
+                                <div>
+                                    <h4>指数核心洗盘假突破复盘与保险成本 (Core Insurance Cost Audit)</h4>
+                                    <span className="as-of-date">2026 年 4 月洗盘深度解剖 · 4 大挑战者变体全盘否决 · 截至 {V9_CORE_INSURANCE_COST_AUDIT.asOfDate}</span>
+                                </div>
+                            </div>
+                            <div className="whipsaw-badge-pill">
+                                <span>防范 2008 世纪毁灭的必要保险费</span>
+                            </div>
+                        </div>
+
+                        <div className="whipsaw-kpi-grid">
+                            <div className="whipsaw-kpi-card danger-card">
+                                <span className="kpi-label">2026年4月洗盘踏空影响</span>
+                                <div className="kpi-val text-red font-mono">-{V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.netMissedCoreReturnPct.toFixed(2)}%</div>
+                                <span className="kpi-sub">踏空 SPY +{V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.spyGainMissedPct}% / QQQ +{V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.qqqGainMissedPct}%</span>
+                            </div>
+                            <div className="whipsaw-kpi-card highlight-card">
+                                <span className="kpi-label">行为性质定性</span>
+                                <div className="kpi-val text-green font-mono">纪律性保险费</div>
+                                <span className="kpi-sub">非策略缺陷，属不可或缺风控开支</span>
+                            </div>
+                            <div className="whipsaw-kpi-card danger-card">
+                                <span className="kpi-label">迟滞离场反事实代价</span>
+                                <div className="kpi-val text-red font-mono">+3.08% 回撤恶化</div>
+                                <span className="kpi-sub">迟滞退出将 2025 回撤从 -7.46% 扩大到 -10.54%</span>
+                            </div>
+                            <div className="whipsaw-kpi-card">
+                                <span className="kpi-label">挑战者变体采纳率</span>
+                                <div className="kpi-val text-gold font-mono">0 / 4 (全否决)</div>
+                                <span className="kpi-sub">无一能在保留防灾能力的同时提升稳健性</span>
+                            </div>
+                        </div>
+
+                        <div className="whipsaw-thesis-box">
+                            <div className="thesis-title">
+                                <span className="icon">🏛️</span>
+                                <strong>巨灾保险第一性原理 (Cost of Insurance Thesis)</strong>
+                            </div>
+                            <p>{V9_CORE_INSURANCE_COST_AUDIT.costOfInsuranceThesis}</p>
+                        </div>
+                    </div>
+
+                    {/* 2026 年 4 月洗盘踏空案卷拆解 */}
+                    <div className="whipsaw-case-card">
+                        <h4 className="section-title">📂 2026 年 4 月洗盘案卷深度复盘 (Case Study Breakdown)</h4>
+                        <div className="case-details-grid">
+                            <div className="case-detail-item">
+                                <span className="item-lbl">清仓/减半执行日</span>
+                                <span className="item-val font-mono">{V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.exitDate}</span>
+                            </div>
+                            <div className="case-detail-item">
+                                <span className="item-lbl">右侧收复买回日</span>
+                                <span className="item-val font-mono">{V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.reentryDate}</span>
+                            </div>
+                            <div className="case-detail-item">
+                                <span className="item-lbl">期间标普500 (SPY) 涨幅</span>
+                                <span className="item-val font-mono text-green">+{V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.spyGainMissedPct.toFixed(2)}%</span>
+                            </div>
+                            <div className="case-detail-item">
+                                <span className="item-lbl">期间纳指100 (QQQ) 涨幅</span>
+                                <span className="item-val font-mono text-green">+{V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.qqqGainMissedPct.toFixed(2)}%</span>
+                            </div>
+                        </div>
+
+                        <div className="case-narrative-block">
+                            <div className="narrative-col">
+                                <div className="narrative-label text-cyan">
+                                    <span>🛡️ 为什么当时离场是严格合规的顶级纪律？</span>
+                                </div>
+                                <p>{V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.whyExitWasDisciplined}</p>
+                            </div>
+                            <div className="narrative-col">
+                                <div className="narrative-label text-red">
+                                    <span>⚠️ 若事后诸葛亮引入“迟滞离场”的反事实代价</span>
+                                </div>
+                                <p>{V9_CORE_INSURANCE_COST_AUDIT.april2026WhipsawBreakdown.counterfactualPenalty}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 4 大挑战者变体全盘否决对照表 */}
+                    <div className="whipsaw-variants-card">
+                        <h4 className="section-title">🧪 4 大挑战者变体全盘回测与否决审计表</h4>
+                        <div className="whipsaw-table-wrap">
+                            <table className="whipsaw-comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>变体架构</th>
+                                        <th>2026测试收益</th>
+                                        <th>2025历史最大回撤</th>
+                                        <th>2025夏普比率</th>
+                                        <th>科学评审裁决</th>
+                                        <th>详细否决 / 保留技术原因</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {V9_CORE_INSURANCE_COST_AUDIT.variantsTested.map((v, idx) => (
+                                        <tr key={idx} className={v.verdict === 'BASE' ? 'base-variant-row' : 'rejected-variant-row'}>
+                                            <td className="font-bold">{v.variantName}</td>
+                                            <td className={`font-mono font-bold ${v.return2026Pct < 0 ? 'text-red' : 'text-green'}`}>
+                                                {v.return2026Pct > 0 ? `+${v.return2026Pct.toFixed(2)}%` : `${v.return2026Pct.toFixed(2)}%`}
+                                            </td>
+                                            <td className={`font-mono font-bold ${v.maxDD2025Pct < -8.0 ? 'text-red' : 'text-muted'}`}>
+                                                {v.maxDD2025Pct.toFixed(2)}%
+                                            </td>
+                                            <td className="font-mono">{v.sharpe2025.toFixed(2)}</td>
+                                            <td>
+                                                <span className={`verdict-pill ${v.verdict === 'BASE' ? 'pill-base' : 'pill-rejected'}`}>
+                                                    {v.verdict === 'BASE' ? '⭐ 基准采用' : '❌ 严厉否决'}
+                                                </span>
+                                            </td>
+                                            <td className="reason-cell">{v.rejectionReason}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

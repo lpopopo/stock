@@ -2637,6 +2637,271 @@ export const IMMUTABLE_PRODUCTION_AUDIT_TRAIL: ImmutableProductionAuditData = {
     ],
 };
 
+// ==========================================
+// Phase 8: 资金效率清扫、最优仓位定寸前沿与指数核心保险成本
+// ==========================================
+
+export interface CashEfficiencyComparison {
+    period: string;
+    strategy: string;
+    zeroYieldReturnPct: number;
+    sgovSweepReturnPct: number;
+    zeroYieldSharpe: number;
+    sgovSweepSharpe: number;
+    zeroYieldMaxDDPct: number;
+    sgovSweepMaxDDPct: number;
+    earnedInterestUsd: number;
+}
+
+export interface CashEfficiencyData {
+    asOfDate: string;
+    annualRiskFreeRatePct: number;
+    sgovFullPeriodProxyReturnPct: number;
+    coreMechanism: string;
+    comparisons: CashEfficiencyComparison[];
+    operationalTakeaway: string;
+}
+
+/**
+ * SGOV 现金自动清扫与资金效率实证数据
+ */
+export const CASH_EFFICIENCY_SWEEP_DATA: CashEfficiencyData = {
+    asOfDate: '2026-08-15',
+    annualRiskFreeRatePct: 5.25,
+    sgovFullPeriodProxyReturnPct: 12.12,
+    coreMechanism: '在非全仓暴露与防守震荡期（V9 现金储备高达 63.93%），将闲置现金每日收盘自动清扫 (Sweep) 至 0~3 个月美国超短国债 ETF (SGOV)。不承担任何权益市场 Beta，获取年化 ~5.25% 稳健收益，并在次日开盘需建仓时 $T+0/T+1$ 闪电释放购买力。',
+    comparisons: [
+        {
+            period: '2024~2025 训练期',
+            strategy: 'RSR1 突破战法',
+            zeroYieldReturnPct: 15.01,
+            sgovSweepReturnPct: 25.89,
+            zeroYieldSharpe: 1.89,
+            sgovSweepSharpe: 2.98,
+            zeroYieldMaxDDPct: -2.46,
+            sgovSweepMaxDDPct: -2.37,
+            earnedInterestUsd: 571.17,
+        },
+        {
+            period: '2024~2025 训练期',
+            strategy: 'RSR2 相对强弱动量',
+            zeroYieldReturnPct: 17.18,
+            sgovSweepReturnPct: 27.19,
+            zeroYieldSharpe: 2.13,
+            sgovSweepSharpe: 3.15,
+            zeroYieldMaxDDPct: -1.91,
+            sgovSweepMaxDDPct: -2.24,
+            earnedInterestUsd: 573.92,
+        },
+        {
+            period: '2026 年测试期',
+            strategy: 'RSR2 相对强弱动量',
+            zeroYieldReturnPct: 0.82,
+            sgovSweepReturnPct: 2.95,
+            zeroYieldSharpe: 0.42,
+            sgovSweepSharpe: 1.47,
+            zeroYieldMaxDDPct: -1.69,
+            sgovSweepMaxDDPct: -1.55,
+            earnedInterestUsd: 128.14,
+        },
+        {
+            period: '2024~2026 全样本期',
+            strategy: 'RSR2 相对强弱动量',
+            zeroYieldReturnPct: 18.11,
+            sgovSweepReturnPct: 30.88,
+            zeroYieldSharpe: 1.77,
+            sgovSweepSharpe: 2.83,
+            zeroYieldMaxDDPct: -2.33,
+            sgovSweepMaxDDPct: -2.24,
+            earnedInterestUsd: 739.37,
+        },
+    ],
+    operationalTakeaway: '全样本实证震撼发现：SGOV 自动清扫使 RSR2 全周期收益从 +18.11% 飙升至 +30.88% (增厚 +12.77%)，夏普比率从 1.77 暴增至 2.83，最大回撤收窄至 -2.24%。现金不再是拖累，而是高夏普的防御收益发生器！',
+};
+
+// ----------------------------------------------------
+// 最优单票仓位定寸前沿 (Optimal Position Sizing Frontier)
+// ----------------------------------------------------
+
+export interface PositionSizingRow {
+    targetWeightPct: number;
+    fullReturnPct: number;
+    fullMaxDDPct: number;
+    fullSharpe: number;
+    peakConcurrentNames: number;
+    maxProfitSharePct: number;
+    executionStability: 'Stable (Jaccard 1.0)' | 'Unstable (Sizing Cliff)';
+    evaluationNotes: string;
+}
+
+export interface OptimalPositionSizingData {
+    asOfDate: string;
+    optimalWeightPct: number;
+    optimalConcurrentNames: number;
+    corePhilosophy: string;
+    sizingRows: PositionSizingRow[];
+    sizingCliffExplanation: string;
+}
+
+/**
+ * 6 组仓位梯度回测实证数据与 8% 黄金定寸前沿
+ */
+export const OPTIMAL_POSITION_SIZING_FRONTIER: OptimalPositionSizingData = {
+    asOfDate: '2026-08-15',
+    optimalWeightPct: 8.0,
+    optimalConcurrentNames: 3,
+    corePhilosophy: '仓位定寸的科学前沿：在 30% 个股预算硬上限内，单一标的目标权重存在严格的“数学帕累托最优解”。过轻（4%）不足以产生可观阿尔法并被交易佣金磨损；过重（10%~15%）则触发定寸悬崖，削减并发持仓数，使组合暴露在非系统性黑天鹅个股破位之中。',
+    sizingRows: [
+        {
+            targetWeightPct: 4.0,
+            fullReturnPct: 3.98,
+            fullMaxDDPct: -1.62,
+            fullSharpe: 0.90,
+            peakConcurrentNames: 3,
+            maxProfitSharePct: 18.85,
+            executionStability: 'Unstable (Sizing Cliff)',
+            evaluationNotes: '收益率偏低 (+3.98%)，资金利用率严重不足，无法覆盖交易滑点。',
+        },
+        {
+            targetWeightPct: 6.0,
+            fullReturnPct: 10.00,
+            fullMaxDDPct: -1.92,
+            fullSharpe: 1.46,
+            peakConcurrentNames: 3,
+            maxProfitSharePct: 22.17,
+            executionStability: 'Unstable (Sizing Cliff)',
+            evaluationNotes: '表现稳健但弹性受限，夏普比率低于 8% 基准。',
+        },
+        {
+            targetWeightPct: 8.0,
+            fullReturnPct: 17.81,
+            fullMaxDDPct: -2.33,
+            fullSharpe: 1.77,
+            peakConcurrentNames: 3,
+            maxProfitSharePct: 25.78,
+            executionStability: 'Stable (Jaccard 1.0)',
+            evaluationNotes: '⭐ 黄金最优解！全周期收益 +17.81%，夏普 1.77，完美容纳 3 只并发个股分散风险。',
+        },
+        {
+            targetWeightPct: 10.0,
+            fullReturnPct: 18.22,
+            fullMaxDDPct: -2.76,
+            fullSharpe: 1.57,
+            peakConcurrentNames: 2,
+            maxProfitSharePct: 21.78,
+            executionStability: 'Stable (Jaccard 1.0)',
+            evaluationNotes: '并发标的降至 2 只，回撤从 -2.33% 恶化至 -2.76%，夏普降至 1.57。',
+        },
+        {
+            targetWeightPct: 12.0,
+            fullReturnPct: 21.76,
+            fullMaxDDPct: -3.26,
+            fullSharpe: 1.58,
+            peakConcurrentNames: 2,
+            maxProfitSharePct: 22.26,
+            executionStability: 'Unstable (Sizing Cliff)',
+            evaluationNotes: '回撤失控放大至 -3.26%，在滑点压力下交易路径不稳定 (Jaccard 0.95)。',
+        },
+        {
+            targetWeightPct: 15.0,
+            fullReturnPct: 15.65,
+            fullMaxDDPct: -3.54,
+            fullSharpe: 1.19,
+            peakConcurrentNames: 2,
+            maxProfitSharePct: 26.74,
+            executionStability: 'Stable (Jaccard 1.0)',
+            evaluationNotes: '严重定寸悬崖！收益下跌至 +15.65%，回撤达 -3.54%，夏普暴跌至 1.19。',
+        },
+    ],
+    sizingCliffExplanation: '定寸悬崖 (Sizing Cliff) 揭示：当单票权重提高至 15% 时，整股买入与 30% 袖上限发生碰撞冲突，导致系统被迫放弃后续出现的高质量交易机会，并发个股数量萎缩，单一标的盈亏主导全局，摧毁了量化系统的多样本大数定律保护。',
+};
+
+// ----------------------------------------------------
+// 指数核心洗盘假突破复盘与保险成本 (Core Insurance Cost)
+// ----------------------------------------------------
+
+export interface CoreWhipsawAuditData {
+    asOfDate: string;
+    costOfInsuranceThesis: string;
+    april2026WhipsawBreakdown: {
+        exitDate: string;
+        reentryDate: string;
+        spyGainMissedPct: number;
+        qqqGainMissedPct: number;
+        netMissedCoreReturnPct: number;
+        whyExitWasDisciplined: string;
+        counterfactualPenalty: string;
+    };
+    variantsTested: Array<{
+        variantName: string;
+        return2026Pct: number;
+        maxDD2025Pct: number;
+        sharpe2025: number;
+        verdict: 'REJECTED' | 'BASE';
+        rejectionReason: string;
+    }>;
+}
+
+/**
+ * 2026 年 4 月洗盘踏空解剖与认知升级实证
+ */
+export const V9_CORE_INSURANCE_COST_AUDIT: CoreWhipsawAuditData = {
+    asOfDate: '2026-08-15',
+    costOfInsuranceThesis: '风控本质是“购买巨灾保险”：在 2000 年互联网泡沫和 2008 年次贷危机中，MA150/MA200 牛熊分界硬规则挽救了 50%~80% 的本金毁灭。2026 年 4 月由于指标跌破均线与 Fear Gate 计入 14 分恐慌熔断，系统在 4/1 卖出核心 ETF、并在 5/1 收复后买回，期间 SPY 上涨 9.98%、QQQ 上涨 15.38%，错失了约 4.44% 的净收益。这绝不是策略缺陷，而是享受 26 年免遭腰斩的必然“保险费支出”！',
+    april2026WhipsawBreakdown: {
+        exitDate: '2026-04-01 (3月末信号触发)',
+        reentryDate: '2026-05-01 (4月末收复触发)',
+        spyGainMissedPct: 9.98,
+        qqqGainMissedPct: 15.38,
+        netMissedCoreReturnPct: 4.44,
+        whyExitWasDisciplined: '当时 VIX 飙升、SPY/QQQ/SMH 出现 63 日破位，Fear Gate 综合恐慌评分高达 14 分 (极度恐慌)，系统严格按纪律执行 35% 减半与均线清仓，完全符合生产纪律。',
+        counterfactualPenalty: '若将规则篡改为“必须连续 2 个月确认破位才离场”，虽然 2026 年收益挽回 +4.58%，但 2025 年回撤立即恶化 3.08 个百分点！更会在真正的世纪大熊市中遭遇毁灭性净值穿透。',
+    },
+    variantsTested: [
+        {
+            variantName: '基准 V9: 1 个月均线即时响应',
+            return2026Pct: 1.41,
+            maxDD2025Pct: -7.46,
+            sharpe2025: 0.79,
+            verdict: 'BASE',
+            rejectionReason: '基准系统，保留最敏锐的下行风控触角。',
+        },
+        {
+            variantName: '变体 1: 进出均需 2 个月连续确认',
+            return2026Pct: 5.99,
+            maxDD2025Pct: -10.54,
+            sharpe2025: 0.42,
+            verdict: 'REJECTED',
+            rejectionReason: '2025 年最大回撤暴增至 -10.54%，夏普暴跌至 0.42，不可接受。',
+        },
+        {
+            variantName: '变体 2: 仅退出需 2 个月连续确认 (迟滞离场)',
+            return2026Pct: 5.99,
+            maxDD2025Pct: -10.54,
+            sharpe2025: 0.73,
+            verdict: 'REJECTED',
+            rejectionReason: '2025 年最大回撤同样恶化 3.08%，违背下行保护第一原则。',
+        },
+        {
+            variantName: '变体 3: 仅入场需 2 个月连续确认 (迟滞进场)',
+            return2026Pct: -3.75,
+            maxDD2025Pct: -7.46,
+            sharpe2025: 0.44,
+            verdict: 'REJECTED',
+            rejectionReason: '2026 年收益由正转负 (-3.75%)，严重迟滞。',
+        },
+        {
+            variantName: '变体 4: 仅保留 MA200 单均线',
+            return2026Pct: 1.41,
+            maxDD2025Pct: -7.46,
+            sharpe2025: 0.79,
+            verdict: 'REJECTED',
+            rejectionReason: '表现与基准完全一致，未产生任何增量价值。',
+        },
+    ],
+};
+
+
 
 
 
