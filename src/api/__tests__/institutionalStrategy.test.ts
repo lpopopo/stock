@@ -118,6 +118,23 @@ import {
     DEFAULT_RISK_PARITY_ASSETS,
     evaluateDynamicRiskParity,
     PHASE35_DYNAMIC_RISK_PARITY_FRAMEWORK,
+    DEFAULT_PEGGING_REQUESTS,
+    calculateSmartPeggingOrder,
+    simulateAutoSyncToAiMemory,
+    PHASE36_SMART_EXECUTION_FRAMEWORK,
+    DEFAULT_DEALER_GAMMA_STRIKES,
+    evaluateDealerNetGamma,
+    PHASE37_DEALER_GAMMA_GEX_FRAMEWORK,
+    DEFAULT_CROWDING_ASSETS,
+    evaluateFactorCrowdingAndLiquidity,
+    PHASE38_FACTOR_CROWDING_FRAMEWORK,
+    DEFAULT_TRANSCRIPT_CASES,
+    evaluateEarningsTranscriptNlpAlpha,
+    PHASE39_EARNINGS_TRANSCRIPT_NLP_FRAMEWORK,
+    DEFAULT_LADDER_WEIGHTS,
+    DEFAULT_LENDING_HOLDINGS,
+    evaluateTreasuryLadderAndLending,
+    PHASE40_TREASURY_LADDER_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -3032,5 +3049,128 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         expect(surgeRes.rollingInterAssetCorrelationAvg).toBeGreaterThan(0.60);
 
         expect(PHASE35_DYNAMIC_RISK_PARITY_FRAMEWORK.releaseDate).toBe('2026-09-22');
+    });
+
+    it('Test 85: Phase 36 — 智能贴盘限价测算准确性 (买一 100.60 / 卖一 100.61 必成交限价推导)', () => {
+        expect(DEFAULT_PEGGING_REQUESTS.length).toBe(3);
+        const sgovReq = DEFAULT_PEGGING_REQUESTS[0]; // SGOV BUY 21 shares
+        const rec = calculateSmartPeggingOrder(sgovReq);
+
+        expect(rec.recommendedPrice).toBe(100.61);
+        expect(rec.fillProbabilityPct).toBe(100);
+        expect(rec.peggingStrategy).toContain('主动对撞');
+        expect(rec.rationale).toContain('对撞卖一 Ask ($100.61) 可 100% 秒级即时撮合');
+        expect(rec.ticketText).toContain('【实盘挂单交易小票】');
+        expect(rec.ticketText).toContain('SGOV');
+        expect(rec.ticketText).toContain('21 股');
+    });
+
+    it('Test 86: Phase 36 — 交易小票生成与 AI-Memory 无感自动化同步入账', () => {
+        const sgovReq = DEFAULT_PEGGING_REQUESTS[0];
+        const syncRes = simulateAutoSyncToAiMemory(sgovReq, 100.605, 3756.49, 6026.83);
+
+        expect(syncRes.success).toBe(true);
+        expect(syncRes.postTradeCash).toBeCloseTo(1643.79, 1);
+        expect(syncRes.tradeFile).toContain('real-sgov-buy.md');
+        expect(syncRes.portfolioFile).toContain('portfolio-summary.md');
+        expect(syncRes.summaryAppended).toBe(true);
+        expect(PHASE36_SMART_EXECUTION_FRAMEWORK.coreModules.length).toBe(4);
+    });
+
+    it('Test 87: Phase 37 — 期权做市商净 GEX 正负体制判定与 Call Wall / Put Wall 锚定', () => {
+        expect(DEFAULT_DEALER_GAMMA_STRIKES.length).toBe(6);
+        const gexRes = evaluateDealerNetGamma({
+            underlyingSymbol: 'SPY',
+            currentPrice: 773.50,
+            strikes: DEFAULT_DEALER_GAMMA_STRIKES,
+            is0DteExpiringToday: false,
+            timeToCloseMinutes: 240,
+        });
+
+        expect(gexRes.totalNetGexDollarMillions).toBeGreaterThan(0);
+        expect(gexRes.gammaRegime).toBe('positive_gamma');
+        expect(gexRes.volatilityBias).toBe('compression');
+        expect(gexRes.callWallStrike).toBe(775);
+        expect(gexRes.putWallStrike).toBe(765);
+        expect(gexRes.gammaFlipStrike).toBe(770);
+        expect(gexRes.tacticalImplication).toContain('Positive Gamma');
+    });
+
+    it('Test 88: Phase 37 — 0DTE 零日期权尾盘行权冲刺与盘口磁吸概率', () => {
+        const gexRes = evaluateDealerNetGamma({
+            underlyingSymbol: 'SPY',
+            currentPrice: 774.80,
+            strikes: DEFAULT_DEALER_GAMMA_STRIKES,
+            is0DteExpiringToday: true,
+            timeToCloseMinutes: 45, // 尾盘冲刺
+        });
+
+        // 距 Call Wall $775 仅 0.2 美元且临近收盘，磁吸概率应显著飙升 (>70%)
+        expect(gexRes.pinProbabilityPct).toBeGreaterThan(70.0);
+        expect(PHASE37_DEALER_GAMMA_GEX_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 89: Phase 38 — 风格因子拥挤度 Z-Score 超过 +2.0σ 触发警报与移动止盈收紧', () => {
+        expect(DEFAULT_CROWDING_ASSETS.length).toBe(4);
+        const crowdingRes = evaluateFactorCrowdingAndLiquidity(DEFAULT_CROWDING_ASSETS);
+
+        expect(crowdingRes.assets.length).toBe(4);
+        const alabAsset = crowdingRes.assets.find(a => a.symbol === 'ALAB')!;
+        expect(alabAsset.crowdingZScore).toBeGreaterThanOrEqual(2.0);
+        expect(alabAsset.crowdingAlertLevel).toBe('HIGH_CROWDING_RISK');
+        expect(alabAsset.trailingStopAdjustment).toContain('极高拥挤报警');
+        expect(crowdingRes.liquidationWarningMessage).toContain('警戒线');
+    });
+
+    it('Test 90: Phase 38 — ADV 10% 极限出清天数 (Days to Liquidate) 与冲击损耗测算', () => {
+        const crowdingRes = evaluateFactorCrowdingAndLiquidity(DEFAULT_CROWDING_ASSETS);
+        const mrvlAsset = crowdingRes.assets.find(a => a.symbol === 'MRVL')!;
+
+        // 4 股 MRVL 相对 2150万股 ADV，出清所需天数在毫秒级 (< 0.001 天)
+        expect(mrvlAsset.daysToLiquidateAt10PctAdv).toBeLessThan(0.01);
+        expect(mrvlAsset.estimatedLiquidationSlippageBps).toBeGreaterThan(0);
+        expect(PHASE38_FACTOR_CROWDING_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 91: Phase 39 — 财报电话会逐字稿高管置信度打分与回避性惩罚', () => {
+        expect(DEFAULT_TRANSCRIPT_CASES.length).toBe(2);
+        const nvdaTranscript = DEFAULT_TRANSCRIPT_CASES[0];
+        const res = evaluateEarningsTranscriptNlpAlpha(nvdaTranscript);
+
+        expect(res.symbol).toBe('NVDA');
+        expect(res.executiveConfidenceScore).toBeGreaterThanOrEqual(80);
+        expect(res.overallSentimentRating).toBe('STRONG_BULLISH');
+        expect(res.suggestedPreEarningsDisposition).toContain('高管底气充沛');
+    });
+
+    it('Test 92: Phase 39 — 跨式期权隐含跳空定价与财报日前 48 小时应激预警', () => {
+        const mrvlTranscript = DEFAULT_TRANSCRIPT_CASES[1];
+        const res = evaluateEarningsTranscriptNlpAlpha(mrvlTranscript);
+
+        expect(res.symbol).toBe('MRVL');
+        expect(res.gapRiskAssessment).toContain('高跳空暴击风险');
+        expect(res.straddlePricingArbitrage.length).toBeGreaterThan(20);
+        expect(PHASE39_EARNINGS_TRANSCRIPT_NLP_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 93: Phase 40 — SGOV + BIL + USFR 三阶超短国债现金阶梯平滑降息冲击', () => {
+        const ladderRes = evaluateTreasuryLadderAndLending(3756.49, DEFAULT_LADDER_WEIGHTS, DEFAULT_LENDING_HOLDINGS);
+
+        expect(ladderRes.ladderAssets.length).toBe(3);
+        expect(ladderRes.weightedCurrentYieldPct).toBeGreaterThan(5.0);
+        // 验证降息 50bp 和 100bp 下平滑后的收益率依然维持在 4.5% / 4.0% 以上
+        expect(ladderRes.weightedYieldDrop50bpPct).toBeGreaterThan(4.5);
+        expect(ladderRes.weightedYieldDrop100bpPct).toBeGreaterThan(4.0);
+        expect(ladderRes.annualInterestIncomeUsd).toBeGreaterThan(180);
+    });
+
+    it('Test 94: Phase 40 — 蓝筹底仓证券出借 (Securities Lending) 无风险利息增厚', () => {
+        const ladderRes = evaluateTreasuryLadderAndLending(3756.49, DEFAULT_LADDER_WEIGHTS, DEFAULT_LENDING_HOLDINGS);
+
+        expect(ladderRes.lendingStocks.length).toBe(4);
+        expect(ladderRes.totalLendingIncomeUsd).toBeGreaterThan(20);
+        expect(ladderRes.combinedEnhancedYieldPct).toBeGreaterThan(ladderRes.weightedCurrentYieldPct);
+        expect(ladderRes.strategySummary).toContain('证券借贷计划');
+        expect(PHASE40_TREASURY_LADDER_FRAMEWORK.coreModules.length).toBe(3);
     });
 });

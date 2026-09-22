@@ -141,6 +141,20 @@ import {
     evaluateTaxLossHarvesting,
     evaluateGlobalCentralBankLiquidity,
     evaluateDynamicRiskParity,
+    DEFAULT_PEGGING_REQUESTS,
+    calculateSmartPeggingOrder,
+    simulateAutoSyncToAiMemory,
+    type SmartPeggingRequest,
+    DEFAULT_DEALER_GAMMA_STRIKES,
+    evaluateDealerNetGamma,
+    DEFAULT_CROWDING_ASSETS,
+    evaluateFactorCrowdingAndLiquidity,
+    type FactorCrowdingAsset,
+    DEFAULT_TRANSCRIPT_CASES,
+    evaluateEarningsTranscriptNlpAlpha,
+    DEFAULT_LADDER_WEIGHTS,
+    DEFAULT_LENDING_HOLDINGS,
+    evaluateTreasuryLadderAndLending,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -160,6 +174,11 @@ type SubTabType =
     | 'tax-loss-harvesting'
     | 'central-bank-liquidity'
     | 'dynamic-risk-parity'
+    | 'smart-execution-copilot'
+    | 'gamma-dex-radar'
+    | 'factor-crowding-blackhole'
+    | 'transcript-nlp-alpha'
+    | 'treasury-ladder-lending'
     | 'live-shadow'
     | 'fear-matrix'
     | 'breadth'
@@ -724,6 +743,38 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
         stressCorrelationSurge: riskParitySurge,
     }), [shrinkageDelta, riskParitySurge]);
 
+    // Phase 36: 券商自适应挂单助手与无感记账闭环
+    const [peggingOrder, setPeggingOrder] = useState<SmartPeggingRequest>(DEFAULT_PEGGING_REQUESTS[0]);
+    const [peggingCopied, setPeggingCopied] = useState<boolean>(false);
+    const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+    const peggingResult = useMemo(() => calculateSmartPeggingOrder(peggingOrder), [peggingOrder]);
+
+    // Phase 37: 期权做市商净伽马敞口 GEX 与 0DTE 尾盘磁吸雷达
+    const [gammaSpotPrice, setGammaSpotPrice] = useState<number>(772.50);
+    const [gammaIs0Dte, setGammaIs0Dte] = useState<boolean>(true);
+    const [gammaMinutesToClose, setGammaMinutesToClose] = useState<number>(90);
+    const dealerGexResult = useMemo(() => evaluateDealerNetGamma({
+        underlyingSymbol: 'SPY',
+        currentPrice: gammaSpotPrice,
+        strikes: DEFAULT_DEALER_GAMMA_STRIKES,
+        is0DteExpiringToday: gammaIs0Dte,
+        timeToCloseMinutes: gammaMinutesToClose,
+    }), [gammaSpotPrice, gammaIs0Dte, gammaMinutesToClose]);
+
+    // Phase 38: 风格因子拥挤度 Z-Score 与流动性黑洞出清测算器
+    const [crowdingAssets] = useState<FactorCrowdingAsset[]>(DEFAULT_CROWDING_ASSETS);
+    const crowdingResult = useMemo(() => evaluateFactorCrowdingAndLiquidity(crowdingAssets), [crowdingAssets]);
+
+    // Phase 39: 财报电话会逐字稿大模型情绪 Alpha 引擎
+    const [selectedTranscriptIdx, setSelectedTranscriptIdx] = useState<number>(0);
+    const currentTranscriptInput = DEFAULT_TRANSCRIPT_CASES[selectedTranscriptIdx] || DEFAULT_TRANSCRIPT_CASES[0];
+    const transcriptAlphaResult = useMemo(() => evaluateEarningsTranscriptNlpAlpha(currentTranscriptInput), [currentTranscriptInput]);
+
+    // Phase 40: 降息周期多期限国债阶梯与证券融券出借收益增强
+    const [ladderCashNav, setLadderCashNav] = useState<number>(3756.49);
+    const [ladderWeights, setLadderWeights] = useState(DEFAULT_LADDER_WEIGHTS);
+    const ladderLendingResult = useMemo(() => evaluateTreasuryLadderAndLending(ladderCashNav, ladderWeights, DEFAULT_LENDING_HOLDINGS), [ladderCashNav, ladderWeights]);
+
     const [backtestSandboxParams, setBacktestSandboxParams] = useState<V9BacktestSandboxParams>({
         coreWeightPct: 70,
         stockSleeveWeightPct: 30,
@@ -1064,6 +1115,36 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('dynamic-risk-parity')}
                 >
                     ⚖️ 动态风险平价ERC与协方差收缩 (Phase 35)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'smart-execution-copilot' ? 'active' : ''}`}
+                    onClick={() => setSubTab('smart-execution-copilot')}
+                >
+                    ⚡ 券商自适应挂单与无感记账 (Phase 36)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'gamma-dex-radar' ? 'active' : ''}`}
+                    onClick={() => setSubTab('gamma-dex-radar')}
+                >
+                    🧲 期权做市商GEX与尾盘磁吸 (Phase 37)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'factor-crowding-blackhole' ? 'active' : ''}`}
+                    onClick={() => setSubTab('factor-crowding-blackhole')}
+                >
+                    🌪️ 风格因子拥挤度与出清测算 (Phase 38)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'transcript-nlp-alpha' ? 'active' : ''}`}
+                    onClick={() => setSubTab('transcript-nlp-alpha')}
+                >
+                    🎙️ 业绩电话会逐字稿LLM情绪 (Phase 39)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'treasury-ladder-lending' ? 'active' : ''}`}
+                    onClick={() => setSubTab('treasury-ladder-lending')}
+                >
+                    🪜 降息国债阶梯与证券出借增厚 (Phase 40)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -8100,6 +8181,755 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                         </div>
                         <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                             💡 <strong>动态风险平价诊断结论</strong>：{riskParityResult.diagnosticSummary}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 36 智能券商自适应挂单助手与无感记账闭环 */}
+            {subTab === 'smart-execution-copilot' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">⚡</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 36</span>
+                                    <h4>智能券商自适应挂单助手与无感记账闭环 (Smart Pegging Execution Copilot)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    无开放 API 券商专属撮合策略 · 买一/卖一/中位数智能贴盘建议 · 剪贴板一键小票生成 · 无缝回写入账 AI-Memory 资产总账
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* 交互调节与标的预设面板 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🎛️</span>
+                            <span className="gates-card-title">实盘标的快速预设与参数自适应调节</span>
+                            <span className="gates-badge badge-pass">
+                                撮合方式：{peggingResult.peggingStrategy}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginTop: '10px' }}>
+                            <button
+                                className={`gates-preset-btn ${peggingOrder.symbol === 'SGOV' ? 'active' : ''}`}
+                                onClick={() => setPeggingOrder(DEFAULT_PEGGING_REQUESTS[0])}
+                            >
+                                🟢 SGOV 实盘回放 (买入 21 股 @ 100.605)
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${peggingOrder.symbol === 'SPY' ? 'active' : ''}`}
+                                onClick={() => setPeggingOrder(DEFAULT_PEGGING_REQUESTS[1])}
+                            >
+                                🔵 SPY 宽基指数暗池中位数 (买入 2 股)
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${peggingOrder.symbol === 'MRVL' ? 'active' : ''}`}
+                                onClick={() => setPeggingOrder(DEFAULT_PEGGING_REQUESTS[2])}
+                            >
+                                🟠 MRVL 卖一被动排队吃溢价 (卖出 1 股)
+                            </button>
+                        </div>
+
+                        {/* 自定义挂单参数网格 */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginTop: '14px' }}>
+                            <div>
+                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>标的代码</label>
+                                <input
+                                    type="text"
+                                    value={peggingOrder.symbol}
+                                    onChange={e => setPeggingOrder({ ...peggingOrder, symbol: e.target.value.toUpperCase() })}
+                                    style={{ width: '100%', padding: '6px 8px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>交易方向</label>
+                                <select
+                                    value={peggingOrder.direction}
+                                    onChange={e => setPeggingOrder({ ...peggingOrder, direction: e.target.value as 'BUY' | 'SELL' })}
+                                    style={{ width: '100%', padding: '6px 8px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
+                                >
+                                    <option value="BUY">买入 (BUY)</option>
+                                    <option value="SELL">卖出 (SELL)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>目标股数</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={peggingOrder.targetShares}
+                                    onChange={e => setPeggingOrder({ ...peggingOrder, targetShares: Math.max(1, parseInt(e.target.value) || 1) })}
+                                    style={{ width: '100%', padding: '6px 8px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>买一价 (Bid 1)</label>
+                                <input
+                                    type="number"
+                                    step="0.001"
+                                    value={peggingOrder.bidPrice}
+                                    onChange={e => setPeggingOrder({ ...peggingOrder, bidPrice: parseFloat(e.target.value) || 0 })}
+                                    style={{ width: '100%', padding: '6px 8px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>卖一价 (Ask 1)</label>
+                                <input
+                                    type="number"
+                                    step="0.001"
+                                    value={peggingOrder.askPrice}
+                                    onChange={e => setPeggingOrder({ ...peggingOrder, askPrice: parseFloat(e.target.value) || 0 })}
+                                    style={{ width: '100%', padding: '6px 8px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>贴盘时效策略</label>
+                                <select
+                                    value={peggingOrder.urgency}
+                                    onChange={e => setPeggingOrder({ ...peggingOrder, urgency: e.target.value as any })}
+                                    style={{ width: '100%', padding: '6px 8px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
+                                >
+                                    <option value="urgent_taker">🚀 立即吃单 (对撞对手价)</option>
+                                    <option value="midpoint">⚖️ 中位数盘口 (暗池省半点差)</option>
+                                    <option value="passive_maker">🛡️ 被动排队 (贴在己方一档)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* KPI 英雄网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>算法推荐最优挂单限价</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#58a6ff', marginTop: '4px' }}>
+                                ${peggingResult.recommendedPrice.toFixed(3)}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--gain-color)', marginTop: '2px' }}>订单类型: {peggingResult.orderType} 限价单</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>预期成交把握度</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: peggingResult.fillProbabilityPct >= 80 ? 'var(--gain-color)' : '#f59e0b', marginTop: '4px' }}>
+                                {peggingResult.fillProbabilityPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{peggingResult.fillProbabilityPct === 100 ? '✅ 立即秒级成交' : '需等待盘口撮合'}</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>盘口滑点优化/摩擦节约</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                +{peggingResult.priceAdvantageBps} bps
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>盘口买卖价差: ${(peggingOrder.askPrice - peggingOrder.bidPrice).toFixed(3)}</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>预估成交总金额</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#fff', marginTop: '4px' }}>
+                                ${(peggingOrder.targetShares * peggingResult.recommendedPrice).toFixed(2)}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>预估券商佣金: ~$1.00</div>
+                        </div>
+                    </div>
+
+                    {/* 小票复制与无感记账两栏网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '18px' }}>
+                        {/* 栏 1: 券商挂单执行小票 */}
+                        <div className="gates-eval-card">
+                            <div className="gates-card-header">
+                                <span className="gates-card-icon">📋</span>
+                                <span className="gates-card-title">实盘挂单交易小票 (点击复制)</span>
+                                <button
+                                    className="gates-preset-btn active"
+                                    onClick={() => {
+                                        navigator.clipboard?.writeText(peggingResult.ticketText);
+                                        setPeggingCopied(true);
+                                        setTimeout(() => setPeggingCopied(false), 2500);
+                                    }}
+                                    style={{ marginLeft: 'auto', fontSize: '11px' }}
+                                >
+                                    {peggingCopied ? '✅ 已复制到剪贴板！' : '📋 复制下单小票'}
+                                </button>
+                            </div>
+                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '12px', whiteSpace: 'pre-wrap', lineHeight: '1.6', marginTop: '10px', color: '#e6edf3' }}>
+                                {peggingResult.ticketText}
+                            </div>
+                            <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                💡 <strong>贴盘决策逻辑</strong>：{peggingResult.rationale}
+                            </div>
+                        </div>
+
+                        {/* 栏 2: AI-Memory 资产总账无感回写 */}
+                        <div className="gates-eval-card">
+                            <div className="gates-card-header">
+                                <span className="gates-card-icon">💾</span>
+                                <span className="gates-card-title">AI-Memory 资产总账自动化回写闭环</span>
+                                <span className="gates-badge badge-pass">无感记账</span>
+                            </div>
+                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                                当您在券商 App 完成下单成交后，点击下方按钮模拟一键生成流水并在 AI-Memory 中完成交易日志归档、持仓总账与 Git 增量提交闭环。
+                            </p>
+                            <div style={{ marginTop: '14px' }}>
+                                <button
+                                    className="gates-preset-btn active"
+                                    style={{ width: '100%', padding: '10px', textAlign: 'center', background: '#238636', borderColor: '#2ea043', fontWeight: 'bold' }}
+                                    onClick={() => {
+                                        const syncRes = simulateAutoSyncToAiMemory(peggingOrder, peggingResult.recommendedPrice);
+                                        setSyncFeedback(syncRes.auditMessage);
+                                    }}
+                                >
+                                    📥 模拟一键入账 AI-Memory (更新日记与组合总账)
+                                </button>
+                            </div>
+                            {syncFeedback && (
+                                <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(35, 134, 54, 0.15)', border: '1px solid rgba(46, 160, 67, 0.4)', borderRadius: '6px', fontSize: '12px', color: '#7ee787' }}>
+                                    {syncFeedback}
+                                </div>
+                            )}
+                            <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                                🔌 <strong>开放 API 网关预留</strong>：底层架构已预留 Broker REST/WebSocket 标准适配器接口。未来券商开放 API 后，仅需在环境变量中填入密钥，本助手即可从“辅助复制”无缝升级为“算法全自动路由执行”。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 37 期权做市商净伽马敞口 GEX 与 0DTE 尾盘磁吸雷达 */}
+            {subTab === 'gamma-dex-radar' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">🧲</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 37</span>
+                                    <h4>期权做市商净伽马敞口 GEX 与 0DTE 波动率磁吸雷达 (Dealer Net GEX Radar)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    标的现价 vs Gamma Flip 临界线 · 做市商正负伽马对冲惯性追踪 · Call Wall / Put Wall 压制与支撑箱体 · 0DTE 尾盘行权冲刺磁吸概率
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* 交互调节面板 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🎛️</span>
+                            <span className="gates-card-title">标的现价模拟与 0DTE 尾盘倒计时</span>
+                            <span className={`gates-badge ${dealerGexResult.gammaRegime === 'positive_gamma' ? 'badge-pass' : 'badge-danger'}`}>
+                                {dealerGexResult.gammaRegime === 'positive_gamma' ? '🟢 做市商处于 Positive Gamma' : '🔴 做市商处于 Negative Gamma'}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', marginTop: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>标的现价 (Spot):</span>
+                                <input
+                                    type="range" min="755" max="785" step="0.5" value={gammaSpotPrice}
+                                    onChange={e => setGammaSpotPrice(parseFloat(e.target.value))}
+                                    style={{ width: '130px' }}
+                                />
+                                <strong style={{ fontSize: '14px', color: '#58a6ff' }}>${gammaSpotPrice.toFixed(1)}</strong>
+                            </div>
+                            <button
+                                className={`gates-preset-btn ${gammaIs0Dte ? 'active' : ''}`}
+                                onClick={() => setGammaIs0Dte(!gammaIs0Dte)}
+                            >
+                                {gammaIs0Dte ? '🎯 当日属于 0DTE 到期日' : '⚪ 普通非到期交易日'}
+                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>距离美股收盘:</span>
+                                <input
+                                    type="range" min="15" max="240" step="15" value={gammaMinutesToClose}
+                                    onChange={e => setGammaMinutesToClose(parseInt(e.target.value))}
+                                    style={{ width: '100px' }}
+                                />
+                                <strong style={{ fontSize: '13px', color: '#f59e0b' }}>{gammaMinutesToClose} 分钟</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* KPI 英雄网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>做市商净伽马敞口 (Net GEX)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: dealerGexResult.totalNetGexDollarMillions >= 0 ? 'var(--gain-color)' : 'var(--loss-color)', marginTop: '4px' }}>
+                                {dealerGexResult.totalNetGexDollarMillions >= 0 ? `+$${dealerGexResult.totalNetGexDollarMillions}M` : `-$${Math.abs(dealerGexResult.totalNetGexDollarMillions)}M`}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>波动偏向: {dealerGexResult.volatilityBias === 'compression' ? '平抑压制 (Compression)' : '单边放大 (Expansion)'}</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Gamma Flip (多空反转线)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#f59e0b', marginTop: '4px' }}>
+                                ${dealerGexResult.gammaFlipStrike}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{gammaSpotPrice > dealerGexResult.gammaFlipStrike ? '现价在翻转线上方 (正伽马区)' : '现价跌破翻转线 (负伽马区)'}</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Call Wall 阻力压制线</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--loss-color)', marginTop: '4px' }}>
+                                ${dealerGexResult.callWallStrike}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>距现价: {dealerGexResult.currentPriceDistanceToCallWallPct > 0 ? `+${dealerGexResult.currentPriceDistanceToCallWallPct}%` : `${dealerGexResult.currentPriceDistanceToCallWallPct}%`}</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Put Wall 下方支撑线</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                ${dealerGexResult.putWallStrike}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>距现价: -{dealerGexResult.currentPriceDistanceToPutWallPct}%</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>0DTE 尾盘磁吸概率 (Pinning)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: dealerGexResult.pinProbabilityPct > 60 ? '#f59e0b' : '#58a6ff', marginTop: '4px' }}>
+                                {dealerGexResult.pinProbabilityPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{dealerGexResult.pinProbabilityPct > 60 ? '🧲 尾盘将强烈向行权价收敛' : '常态自由博弈'}</div>
+                        </div>
+                    </div>
+
+                    {/* 期权行权价 GEX 阶梯分布表 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📊</span>
+                            <span className="gates-card-title">全市场期权行权价伽马分布与做市商对冲力道</span>
+                            <span className="gates-badge badge-pass">SPY 标的实测</span>
+                        </div>
+                        <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                            <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>行权价 (Strike)</th>
+                                        <th style={{ padding: '8px' }}>看涨期权持仓 (Call OI)</th>
+                                        <th style={{ padding: '8px' }}>看跌期权持仓 (Put OI)</th>
+                                        <th style={{ padding: '8px' }}>净伽马值 (Net GEX $M)</th>
+                                        <th style={{ padding: '8px' }}>做市商对冲属性</th>
+                                        <th style={{ padding: '8px' }}>关键位置锚定</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {DEFAULT_DEALER_GAMMA_STRIKES.map(s => {
+                                        const isNear = Math.abs(s.strike - gammaSpotPrice) <= 2.5;
+                                        return (
+                                            <tr key={s.strike} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: isNear ? 'rgba(88, 166, 255, 0.08)' : 'transparent' }}>
+                                                <td style={{ padding: '8px', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                                                    ${s.strike} {isNear ? '🎯 (现价附近)' : ''}
+                                                </td>
+                                                <td style={{ padding: '8px' }}>{s.callOpenInterest.toLocaleString()}</td>
+                                                <td style={{ padding: '8px' }}>{s.putOpenInterest.toLocaleString()}</td>
+                                                <td style={{ padding: '8px', fontWeight: 'bold', color: s.netGexDollarMillions >= 0 ? 'var(--gain-color)' : 'var(--loss-color)' }}>
+                                                    {s.netGexDollarMillions >= 0 ? `+${s.netGexDollarMillions}` : s.netGexDollarMillions} M
+                                                </td>
+                                                <td style={{ padding: '8px' }}>
+                                                    {s.netGexDollarMillions >= 0 ? '逢涨卖出 / 逢跌买入 (平抑)' : '追涨买入 / 杀跌卖出 (助推)'}
+                                                </td>
+                                                <td style={{ padding: '8px' }}>
+                                                    {s.isCallWall && <span style={{ padding: '2px 6px', background: 'rgba(239, 68, 68, 0.2)', color: 'var(--loss-color)', borderRadius: '4px', fontWeight: 'bold' }}>🧱 Call Wall (天花板)</span>}
+                                                    {s.isPutWall && <span style={{ padding: '2px 6px', background: 'rgba(34, 197, 94, 0.2)', color: 'var(--gain-color)', borderRadius: '4px', fontWeight: 'bold' }}>🛡️ Put Wall (防守底)</span>}
+                                                    {s.isGammaFlip && <span style={{ padding: '2px 6px', background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', borderRadius: '4px', fontWeight: 'bold' }}>⚖️ Gamma Flip (多空临界)</span>}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            💡 <strong>做市商伽马战术启示</strong>：{dealerGexResult.tacticalImplication}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 38 风格因子拥挤度 Z-Score 与流动性黑洞出清测算器 */}
+            {subTab === 'factor-crowding-blackhole' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">🌪️</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 38</span>
+                                    <h4>多因子拥挤度 Z-Score 与流动性黑洞出清测算器 (Factor Crowding & Liquidity)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    做空比例 + 借券费率 + 13F机构抱团重叠度复合评分 · &gt;+2.0σ 极度拥挤自动收紧止盈 · ADV 10% 极限出清天数与冲击损耗测算
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* KPI 英雄网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>组合监控资产拥挤度均值</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: crowdingResult.portfolioThemeCrowdingAvg > 1.5 ? 'var(--loss-color)' : '#58a6ff', marginTop: '4px' }}>
+                                +{crowdingResult.portfolioThemeCrowdingAvg} σ
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>标准分复合打分 (Z-Score)</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>最极度拥挤风险标的</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--loss-color)', marginTop: '4px' }}>
+                                {crowdingResult.worstCrowdedAsset}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>机构持股重叠与做空费率双高</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>极度拥挤报警触发数 (&gt;+2.0σ)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: crowdingResult.assets.filter(a => a.crowdingAlertLevel === 'HIGH_CROWDING_RISK').length > 0 ? 'var(--loss-color)' : 'var(--gain-color)', marginTop: '4px' }}>
+                                {crowdingResult.assets.filter(a => a.crowdingAlertLevel === 'HIGH_CROWDING_RISK').length} 支标的
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>触发止盈收紧防范踩踏</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>流动性黑洞出清风险状态</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                极速可出清 (&lt;0.01天)
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>轻量仓位无大单冲击滑点</div>
+                        </div>
+                    </div>
+
+                    {/* 标的因子拥挤度与出清测算明细表 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📋</span>
+                            <span className="gates-card-title">重点标的风格因子拥挤度与流动性测算全貌</span>
+                            <span className="gates-badge badge-pass">多维指标融合</span>
+                        </div>
+                        <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                            <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>标的代码</th>
+                                        <th style={{ padding: '8px' }}>主题赛道</th>
+                                        <th style={{ padding: '8px' }}>空头占比 (SI %)</th>
+                                        <th style={{ padding: '8px' }}>借券成本 (bps)</th>
+                                        <th style={{ padding: '8px' }}>13F持仓重叠度</th>
+                                        <th style={{ padding: '8px' }}>拥挤 Z-Score</th>
+                                        <th style={{ padding: '8px' }}>风险等级</th>
+                                        <th style={{ padding: '8px' }}>持仓股数</th>
+                                        <th style={{ padding: '8px' }}>ADV 10% 出清天数</th>
+                                        <th style={{ padding: '8px' }}>动态止盈处置指令</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {crowdingResult.assets.map(a => (
+                                        <tr key={a.symbol} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', fontFamily: 'monospace' }}>{a.symbol}</td>
+                                            <td style={{ padding: '8px' }}>{a.theme}</td>
+                                            <td style={{ padding: '8px' }}>{a.shortInterestFloatPct}%</td>
+                                            <td style={{ padding: '8px' }}>{a.borrowFeeBps} bps</td>
+                                            <td style={{ padding: '8px' }}>+{a.mutualFundOverlapZScore} σ</td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', color: a.crowdingZScore >= 2.0 ? 'var(--loss-color)' : a.crowdingZScore >= 1.2 ? '#f59e0b' : 'var(--gain-color)' }}>
+                                                +{a.crowdingZScore} σ
+                                            </td>
+                                            <td style={{ padding: '8px' }}>
+                                                {a.crowdingAlertLevel === 'HIGH_CROWDING_RISK' && <span style={{ padding: '2px 6px', background: 'rgba(239, 68, 68, 0.2)', color: 'var(--loss-color)', borderRadius: '4px', fontWeight: 'bold' }}>⚠️ 极度拥挤</span>}
+                                                {a.crowdingAlertLevel === 'ELEVATED' && <span style={{ padding: '2px 6px', background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', borderRadius: '4px' }}>中度拥挤</span>}
+                                                {a.crowdingAlertLevel === 'SAFE' && <span style={{ padding: '2px 6px', background: 'rgba(34, 197, 94, 0.2)', color: 'var(--gain-color)', borderRadius: '4px' }}>安全</span>}
+                                            </td>
+                                            <td style={{ padding: '8px' }}>{a.positionShares} 股</td>
+                                            <td style={{ padding: '8px', fontFamily: 'monospace' }}>{a.daysToLiquidateAt10PctAdv} 天</td>
+                                            <td style={{ padding: '8px', fontSize: '11px', color: a.crowdingZScore >= 2.0 ? 'var(--loss-color)' : 'var(--text-secondary)' }}>
+                                                {a.trailingStopAdjustment}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            💡 <strong>流动性出清与拥挤度风控警报</strong>：{crowdingResult.liquidationWarningMessage}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 39 财报电话会逐字稿大模型情绪 Alpha 引擎 */}
+            {subTab === 'transcript-nlp-alpha' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">🎙️</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 39</span>
+                                    <h4>财报电话会逐字稿大模型情绪 Alpha 引擎 (Transcript NLP Alpha)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    高管情绪置信度打分 (Confidence Score) · 供应链与 Capex 瓶颈逆风指数 (Headwind Index) · 跨式期权隐含跳空先验评估
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* 标的切换面板 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🎛️</span>
+                            <span className="gates-card-title">已完成大模型深度解析的财报电话会样本</span>
+                            <span className="gates-badge badge-pass">
+                                综合评级：{transcriptAlphaResult.overallSentimentRating}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginTop: '10px' }}>
+                            {DEFAULT_TRANSCRIPT_CASES.map((tc, idx) => (
+                                <button
+                                    key={tc.symbol}
+                                    className={`gates-preset-btn ${selectedTranscriptIdx === idx ? 'active' : ''}`}
+                                    onClick={() => setSelectedTranscriptIdx(idx)}
+                                >
+                                    {tc.symbol === 'NVDA' ? '🟢 NVDA (Q2 FY2027 破局主升浪)' : '🟠 MRVL (Q2 FY2027 光互连与企业网逆风)'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* KPI 英雄网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>管理层情绪置信度得分</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: transcriptAlphaResult.executiveConfidenceScore >= 80 ? 'var(--gain-color)' : '#f59e0b', marginTop: '4px' }}>
+                                {transcriptAlphaResult.executiveConfidenceScore} / 100
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>问答防守/回避扣分: -{transcriptAlphaResult.qaTonePenalty}</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>供应链与 Capex 瓶颈逆风指数</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: transcriptAlphaResult.bottleneckHeadwindIndex > 40 ? 'var(--loss-color)' : 'var(--gain-color)', marginTop: '4px' }}>
+                                {transcriptAlphaResult.bottleneckHeadwindIndex} / 100
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{transcriptAlphaResult.bottleneckHeadwindIndex > 40 ? '⚠️ 存在供应链瓶颈制约' : '✅ 产能开工平稳放量'}</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>期权跨式隐含跳空幅度</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#58a6ff', marginTop: '4px' }}>
+                                ±{currentTranscriptInput.impliedMovePct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>历史实际均值: ±{currentTranscriptInput.historicalAvgMovePct}%</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>财报前夜建议战术处置</div>
+                            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', marginTop: '4px' }}>
+                                {transcriptAlphaResult.overallSentimentRating === 'STRONG_BULLISH' ? '坚守持仓享受主升' : '提前锁定浮盈收紧仓位'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>结合 Phase 11 T+2 冷却期</div>
+                        </div>
+                    </div>
+
+                    {/* 逐字稿精要与跳空先验评估两栏 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '18px' }}>
+                        <div className="gates-eval-card">
+                            <div className="gates-card-header">
+                                <span className="gates-card-icon">📝</span>
+                                <span className="gates-card-title">电话会高管发言逐字稿 NLP 摘要 ({currentTranscriptInput.symbol})</span>
+                            </div>
+                            <div style={{ marginTop: '10px', fontSize: '12px', lineHeight: '1.6' }}>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <strong style={{ color: '#58a6ff' }}>CEO 发言与前景定调：</strong>
+                                    <div style={{ color: '#e6edf3', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '4px', marginTop: '4px' }}>
+                                        "{currentTranscriptInput.ceoRemarksText}"
+                                    </div>
+                                </div>
+                                <div>
+                                    <strong style={{ color: '#58a6ff' }}>CFO 财务指引与利润率：</strong>
+                                    <div style={{ color: '#e6edf3', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '4px', marginTop: '4px' }}>
+                                        "{currentTranscriptInput.cfoGuidanceText}"
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="gates-eval-card">
+                            <div className="gates-card-header">
+                                <span className="gates-card-icon">⚖️</span>
+                                <span className="gates-card-title">期权波动率套利与业绩跳空先验诊断</span>
+                            </div>
+                            <div style={{ marginTop: '10px', fontSize: '12px', lineHeight: '1.6' }}>
+                                <div style={{ marginBottom: '10px', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }}>
+                                    <strong>🎯 期权跨式定价：</strong>{transcriptAlphaResult.straddlePricingArbitrage}
+                                </div>
+                                <div style={{ marginBottom: '10px', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }}>
+                                    <strong>⚡ 跳空暴击风险：</strong>{transcriptAlphaResult.gapRiskAssessment}
+                                </div>
+                                <div style={{ padding: '8px', background: 'rgba(35, 134, 54, 0.15)', borderRadius: '4px', color: '#7ee787' }}>
+                                    <strong>🛡️ 落地应对指令：</strong>{transcriptAlphaResult.suggestedPreEarningsDisposition}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 40 降息周期多期限国债阶梯与证券融券出借收益增强 */}
+            {subTab === 'treasury-ladder-lending' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-title-row">
+                            <span className="six-gates-icon">🪜</span>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="six-gates-phase-label">Phase 40</span>
+                                    <h4>降息周期多期限国债阶梯与证券融券出借收益增强 (Treasury Ladder & Lending)</h4>
+                                </div>
+                                <span className="six-gates-subtitle">
+                                    50% SGOV + 30% BIL + 20% USFR 三阶超短国债现金阶梯 · 美联储降息收益衰减平滑 · 核心蓝筹底仓证券出借 (Securities Lending) 纯无风险增厚
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                    </div>
+
+                    {/* 交互调节面板 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🎛️</span>
+                            <span className="gates-card-title">国债现金池规模与阶梯配置比例快速预设</span>
+                            <span className="gates-badge badge-pass">
+                                综合增厚年化收益: {ladderLendingResult.combinedEnhancedYieldPct}%
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', marginTop: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>国债与现金底仓规模 (USD):</span>
+                                <input
+                                    type="number"
+                                    step="100"
+                                    value={ladderCashNav}
+                                    onChange={e => setLadderCashNav(Math.max(100, parseFloat(e.target.value) || 100))}
+                                    style={{ width: '110px', padding: '4px 8px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
+                                />
+                            </div>
+                            <button
+                                className={`gates-preset-btn ${ladderWeights.sgov === 50 ? 'active' : ''}`}
+                                onClick={() => setLadderWeights(DEFAULT_LADDER_WEIGHTS)}
+                            >
+                                🟢 标准 50/30/20 平滑阶梯 (50% SGOV + 30% BIL + 20% USFR)
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${ladderWeights.sgov === 100 ? 'active' : ''}`}
+                                onClick={() => setLadderWeights({ sgov: 100, bil: 0, usfr: 0 })}
+                            >
+                                ⚪ 纯 100% SGOV 超短国债方案
+                            </button>
+                            <button
+                                className={`gates-preset-btn ${ladderWeights.usfr === 40 ? 'active' : ''}`}
+                                onClick={() => setLadderWeights({ sgov: 40, bil: 20, usfr: 40 })}
+                            >
+                                🔵 强化浮息防守方案 (40% USFR)
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* KPI 英雄网格 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>当前国债阶梯综合年化收益</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                {ladderLendingResult.weightedCurrentYieldPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>年化利息现金流入: ${ladderLendingResult.annualInterestIncomeUsd}</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>美联储降息 50bp 预期收益</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#58a6ff', marginTop: '4px' }}>
+                                {ladderLendingResult.weightedYieldDrop50bpPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>阶梯资产有效减缓利息骤降</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>美联储降息 100bp 预期收益</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#f59e0b', marginTop: '4px' }}>
+                                {ladderLendingResult.weightedYieldDrop100bpPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>仍显著超越银行活期基准</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>证券出借 (Lending) 额外年化收益</div>
+                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                +${ladderLendingResult.totalLendingIncomeUsd}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>无风险闲置股票融券增厚</div>
+                        </div>
+                    </div>
+
+                    {/* 阶梯配置表与证券出借表明细 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '18px' }}>
+                        {/* 阶梯配置表 */}
+                        <div className="gates-eval-card">
+                            <div className="gates-card-header">
+                                <span className="gates-card-icon">🏛️</span>
+                                <span className="gates-card-title">超短国债资产阶梯配置分布</span>
+                            </div>
+                            <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                                <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                            <th style={{ padding: '6px' }}>代码</th>
+                                            <th style={{ padding: '6px' }}>资产全称</th>
+                                            <th style={{ padding: '6px' }}>久期</th>
+                                            <th style={{ padding: '6px' }}>当前收益</th>
+                                            <th style={{ padding: '6px' }}>配置权重</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {ladderLendingResult.ladderAssets.map(a => (
+                                            <tr key={a.code} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                                <td style={{ padding: '6px', fontWeight: 'bold', fontFamily: 'monospace' }}>{a.code}</td>
+                                                <td style={{ padding: '6px' }}>{a.name}</td>
+                                                <td style={{ padding: '6px' }}>{a.durationYears} 年</td>
+                                                <td style={{ padding: '6px', color: 'var(--gain-color)' }}>{a.currentSecYieldPct}%</td>
+                                                <td style={{ padding: '6px', fontWeight: 'bold', color: '#58a6ff' }}>{a.ladderWeightPct}%</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* 证券借贷增厚表 */}
+                        <div className="gates-eval-card">
+                            <div className="gates-card-header">
+                                <span className="gates-card-icon">📈</span>
+                                <span className="gates-card-title">底仓股票全额出借增厚 (Fully Paid Lending)</span>
+                            </div>
+                            <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                                <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                            <th style={{ padding: '6px' }}>标的代码</th>
+                                            <th style={{ padding: '6px' }}>股数</th>
+                                            <th style={{ padding: '6px' }}>市价</th>
+                                            <th style={{ padding: '6px' }}>年化费率</th>
+                                            <th style={{ padding: '6px' }}>年化收益</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {ladderLendingResult.lendingStocks.map(s => (
+                                            <tr key={s.symbol} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                                <td style={{ padding: '6px', fontWeight: 'bold', fontFamily: 'monospace' }}>{s.symbol}</td>
+                                                <td style={{ padding: '6px' }}>{s.shares} 股</td>
+                                                <td style={{ padding: '6px' }}>${s.price}</td>
+                                                <td style={{ padding: '6px', color: '#f59e0b' }}>{s.borrowFeeAnnualPct}%</td>
+                                                <td style={{ padding: '6px', fontWeight: 'bold', color: 'var(--gain-color)' }}>+${s.annualLendingIncomeUsd}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            💡 <strong>国债阶梯与出借增厚战略结论</strong>：{ladderLendingResult.strategySummary}
                         </div>
                     </div>
                 </div>

@@ -9899,3 +9899,650 @@ export const PHASE35_DYNAMIC_RISK_PARITY_FRAMEWORK = {
     ],
 };
 
+// ============================================================================
+// Phase 36: 智能券商自适应挂单助手与无感记账闭环 (Smart Pegging Execution Copilot & AI-Memory Auto-Sync)
+// ============================================================================
+
+export type OrderUrgency = 'urgent_taker' | 'passive_maker' | 'midpoint';
+
+export interface SmartPeggingRequest {
+    symbol: string;
+    direction: 'BUY' | 'SELL';
+    targetShares: number;
+    bidPrice: number;
+    askPrice: number;
+    bidVolume?: number;
+    askVolume?: number;
+    urgency: OrderUrgency;
+    feeEstimateUsd?: number;
+}
+
+export interface SmartPeggingRecommendation {
+    recommendedPrice: number;
+    peggingStrategy: string;
+    priceAdvantageBps: number;
+    fillProbabilityPct: number;
+    orderType: 'LIMIT' | 'MARKET';
+    rationale: string;
+    ticketText: string;
+}
+
+export interface AiMemorySyncResult {
+    success: boolean;
+    tradeFile: string;
+    portfolioFile: string;
+    summaryAppended: boolean;
+    postTradeCash: number;
+    postTradeNav: number;
+    auditMessage: string;
+}
+
+export const DEFAULT_PEGGING_REQUESTS: SmartPeggingRequest[] = [
+    {
+        symbol: 'SGOV',
+        direction: 'BUY',
+        targetShares: 21,
+        bidPrice: 100.60,
+        askPrice: 100.61,
+        bidVolume: 393400,
+        askVolume: 108200,
+        urgency: 'urgent_taker',
+        feeEstimateUsd: 1.00,
+    },
+    {
+        symbol: 'SPY',
+        direction: 'BUY',
+        targetShares: 2,
+        bidPrice: 773.50,
+        askPrice: 773.70,
+        bidVolume: 4000,
+        askVolume: 3500,
+        urgency: 'midpoint',
+        feeEstimateUsd: 1.00,
+    },
+    {
+        symbol: 'MRVL',
+        direction: 'SELL',
+        targetShares: 1,
+        bidPrice: 263.50,
+        askPrice: 264.40,
+        bidVolume: 1200,
+        askVolume: 1500,
+        urgency: 'passive_maker',
+        feeEstimateUsd: 1.00,
+    },
+];
+
+export function calculateSmartPeggingOrder(request: SmartPeggingRequest): SmartPeggingRecommendation {
+    const { symbol, direction, targetShares, bidPrice, askPrice, urgency, feeEstimateUsd = 1.00 } = request;
+    const spread = Number((askPrice - bidPrice).toFixed(3));
+    let recommendedPrice = bidPrice;
+    let peggingStrategy = '';
+    let fillProbabilityPct = 100;
+    let priceAdvantageBps = 0;
+    let rationale = '';
+
+    if (direction === 'BUY') {
+        if (urgency === 'urgent_taker') {
+            // 对撞卖一，确保秒级成交（解决 100.60 排队不成交痛点）
+            recommendedPrice = askPrice;
+            peggingStrategy = '卖一主动对撞 (Taker Crossing)';
+            fillProbabilityPct = 100;
+            priceAdvantageBps = 0;
+            rationale = `买卖价差仅 $${spread}，对撞卖一 Ask ($${askPrice}) 可 100% 秒级即时撮合，杜绝买一排队滞留！`;
+        } else if (urgency === 'passive_maker') {
+            // 贴在买一排队
+            recommendedPrice = bidPrice;
+            peggingStrategy = '买一被动排队 (Maker Joining)';
+            fillProbabilityPct = 40;
+            priceAdvantageBps = Number(((spread / askPrice) * 10000).toFixed(1));
+            rationale = `贴在买一 Bid ($${bidPrice}) 排队，争取节省 $${spread} 价差，但若做市商不砸盘可能长期不成交。`;
+        } else {
+            // 中位数价
+            recommendedPrice = Number(((bidPrice + askPrice) / 2).toFixed(2));
+            peggingStrategy = '中位数盘口捕捉 (Midpoint Peg)';
+            fillProbabilityPct = 75;
+            priceAdvantageBps = Number((((askPrice - recommendedPrice) / askPrice) * 10000).toFixed(1));
+            rationale = `挂在中位数价 ($${recommendedPrice})，在暗池与做市商内部撮合，兼顾省摩擦与成交速度。`;
+        }
+    } else {
+        // SELL
+        if (urgency === 'urgent_taker') {
+            recommendedPrice = bidPrice;
+            peggingStrategy = '买一主动砸盘 (Taker Crossing)';
+            fillProbabilityPct = 100;
+            priceAdvantageBps = 0;
+            rationale = `对撞买一 Bid ($${bidPrice}) 瞬间变现离场，防范后续回落。`;
+        } else if (urgency === 'passive_maker') {
+            recommendedPrice = askPrice;
+            peggingStrategy = '卖一被动排队 (Maker Joining)';
+            fillProbabilityPct = 40;
+            priceAdvantageBps = Number(((spread / bidPrice) * 10000).toFixed(1));
+            rationale = `挂在卖一 Ask ($${askPrice}) 耐心等待买方吃单，多赚 $${spread} 溢价。`;
+        } else {
+            recommendedPrice = Number(((bidPrice + askPrice) / 2).toFixed(2));
+            peggingStrategy = '中位数盘口捕捉 (Midpoint Peg)';
+            fillProbabilityPct = 75;
+            priceAdvantageBps = Number((((recommendedPrice - bidPrice) / bidPrice) * 10000).toFixed(1));
+            rationale = `挂在中位数价 ($${recommendedPrice}) 顺势落袋。`;
+        }
+    }
+
+    const estimatedTotal = Number((targetShares * recommendedPrice).toFixed(2));
+    const ticketText = `【实盘挂单交易小票】
+- 标的代码：${symbol}
+- 操作方向：${direction === 'BUY' ? '买入 (BUY)' : '卖出 (SELL)'}
+- 执行股数：${targetShares} 股 (整股/碎股)
+- 建议挂单方式：限价单 (Limit Order)
+- 建议挂单价格：USD ${recommendedPrice}
+- 预估成交金额：USD ${estimatedTotal} (预估佣金/费率: ~$${feeEstimateUsd})
+- 预期成交把握度：${fillProbabilityPct}%
+- 策略算法建议：${rationale}`;
+
+    return {
+        recommendedPrice,
+        peggingStrategy,
+        priceAdvantageBps,
+        fillProbabilityPct,
+        orderType: 'LIMIT',
+        rationale,
+        ticketText,
+    };
+}
+
+export function simulateAutoSyncToAiMemory(
+    request: SmartPeggingRequest,
+    actualFillPrice: number,
+    currentCash: number = 3756.49,
+    currentNav: number = 6026.83
+): AiMemorySyncResult {
+    const tradeAmount = Number((request.targetShares * actualFillPrice).toFixed(2));
+    const postTradeCash = request.direction === 'BUY'
+        ? Number((currentCash - tradeAmount).toFixed(2))
+        : Number((currentCash + tradeAmount).toFixed(2));
+    const todayStr = '2026-09-22';
+
+    return {
+        success: true,
+        tradeFile: `domains/quant-strategy/memory/trades/${todayStr}-real-${request.symbol.toLowerCase()}-${request.direction.toLowerCase()}.md`,
+        portfolioFile: `domains/quant-strategy/memory/portfolio/${todayStr}-portfolio-summary.md`,
+        summaryAppended: true,
+        postTradeCash,
+        postTradeNav: currentNav,
+        auditMessage: `【AI-Memory 无感记账完成】已自动生成 ${request.symbol} ${request.direction} ${request.targetShares}股 @ $${actualFillPrice} 交易凭证，工作现金更新为 USD ${postTradeCash}，时间轴摘要已持久化同步。`,
+    };
+}
+
+export const PHASE36_SMART_EXECUTION_FRAMEWORK = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 36 智能券商自适应挂单助手与无感记账闭环',
+    coreModules: [
+        '盘口智能嗅探与自适应贴盘定价算法 (Smart Pegging Engine)',
+        '无 API 券商交易小票格式化与剪贴板快速通道',
+        '成交回执一键自动入账与 AI-Memory 状态机同步',
+        '未来可插拔式 Broker API 标准网关底座预留',
+    ],
+};
+
+// ============================================================================
+// Phase 37: 期权做市商净伽马敞口 GEX 与 0DTE 波动率磁吸雷达
+// ============================================================================
+
+export interface DealerGammaStrike {
+    strike: number;
+    callOpenInterest: number;
+    putOpenInterest: number;
+    netGexDollarMillions: number;
+    isCallWall?: boolean;
+    isPutWall?: boolean;
+    isGammaFlip?: boolean;
+}
+
+export interface DealerGammaInput {
+    underlyingSymbol: string;
+    currentPrice: number;
+    strikes: DealerGammaStrike[];
+    is0DteExpiringToday: boolean;
+    timeToCloseMinutes: number;
+}
+
+export interface DealerGammaEvaluation {
+    totalNetGexDollarMillions: number;
+    gammaRegime: 'positive_gamma' | 'negative_gamma';
+    volatilityBias: 'compression' | 'expansion';
+    callWallStrike: number;
+    putWallStrike: number;
+    gammaFlipStrike: number;
+    pinProbabilityPct: number;
+    currentPriceDistanceToCallWallPct: number;
+    currentPriceDistanceToPutWallPct: number;
+    tacticalImplication: string;
+}
+
+export const DEFAULT_DEALER_GAMMA_STRIKES: DealerGammaStrike[] = [
+    { strike: 760, callOpenInterest: 5200, putOpenInterest: 48000, netGexDollarMillions: -420, isPutWall: false },
+    { strike: 765, callOpenInterest: 8400, putOpenInterest: 65000, netGexDollarMillions: -680, isPutWall: true },
+    { strike: 770, callOpenInterest: 22000, putOpenInterest: 25000, netGexDollarMillions: -30, isGammaFlip: true },
+    { strike: 773.5, callOpenInterest: 45000, putOpenInterest: 18000, netGexDollarMillions: +380 },
+    { strike: 775, callOpenInterest: 82000, putOpenInterest: 9200, netGexDollarMillions: +850, isCallWall: true },
+    { strike: 780, callOpenInterest: 41000, putOpenInterest: 4500, netGexDollarMillions: +360 },
+];
+
+export function evaluateDealerNetGamma(input: DealerGammaInput): DealerGammaEvaluation {
+    const { currentPrice, strikes, is0DteExpiringToday, timeToCloseMinutes } = input;
+    const totalGex = strikes.reduce((sum, s) => sum + s.netGexDollarMillions, 0);
+    const gammaRegime: 'positive_gamma' | 'negative_gamma' = totalGex >= 0 ? 'positive_gamma' : 'negative_gamma';
+    const volatilityBias = gammaRegime === 'positive_gamma' ? 'compression' : 'expansion';
+
+    // Find Call Wall (max call OI) and Put Wall (max put OI)
+    const callWall = [...strikes].sort((a, b) => b.callOpenInterest - a.callOpenInterest)[0]?.strike || 775;
+    const putWall = [...strikes].sort((a, b) => b.putOpenInterest - a.putOpenInterest)[0]?.strike || 765;
+    const gammaFlip = strikes.find(s => s.isGammaFlip)?.strike || 770;
+
+    const distToCallWall = Number((((callWall - currentPrice) / currentPrice) * 100).toFixed(2));
+    const distToPutWall = Number((((currentPrice - putWall) / currentPrice) * 100).toFixed(2));
+
+    // 0DTE pin probability
+    let pinProb = 35.0;
+    if (is0DteExpiringToday) {
+        if (timeToCloseMinutes <= 120 && Math.abs(distToCallWall) < 1.0) {
+            pinProb = 78.5;
+        } else if (timeToCloseMinutes <= 180) {
+            pinProb = 58.0;
+        }
+    }
+
+    const tacticalImplication = gammaRegime === 'positive_gamma'
+        ? `【做市商处于 Positive Gamma (+$${totalGex}M)】做市商逆势对冲（逢高卖空/逢低买入），日内波动率被强烈压抑在 [${putWall}, ${callWall}] 支撑阻力箱体内，适合高抛低吸，警惕触及 Call Wall ($${callWall}) 时冲高回落！`
+        : `【做市商处于 Negative Gamma ($${totalGex}M)】做市商顺势对冲（追涨杀跌），行情容易发生单边破位加速，日内波动放大，严禁逆势扛单！`;
+
+    return {
+        totalNetGexDollarMillions: totalGex,
+        gammaRegime,
+        volatilityBias,
+        callWallStrike: callWall,
+        putWallStrike: putWall,
+        gammaFlipStrike: gammaFlip,
+        pinProbabilityPct: pinProb,
+        currentPriceDistanceToCallWallPct: distToCallWall,
+        currentPriceDistanceToPutWallPct: distToPutWall,
+        tacticalImplication,
+    };
+}
+
+export const PHASE37_DEALER_GAMMA_GEX_FRAMEWORK = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 37 期权做市商净伽马敞口 GEX 与 0DTE 波动率磁吸雷达',
+    coreModules: [
+        '期权做市商净伽马 (Net Dealer GEX) 正负体制识别引擎',
+        'Call Wall / Put Wall / Gamma Flip 关键支撑阻力锚定',
+        '0DTE 零日期权尾盘行权冲刺与盘口磁吸 (Pinning) 概率预测',
+    ],
+};
+
+// ============================================================================
+// Phase 38: 风格因子拥挤度 Z-Score 与流动性黑洞出清测算器
+// ============================================================================
+
+export interface FactorCrowdingAsset {
+    symbol: string;
+    theme: string;
+    shortInterestFloatPct: number;
+    borrowFeeBps: number;
+    institutionalOwnershipPct: number;
+    mutualFundOverlapZScore: number;
+    advShares: number;
+    positionShares: number;
+    positionCurrentPrice: number;
+}
+
+export interface FactorCrowdingEvaluation {
+    assets: Array<FactorCrowdingAsset & {
+        crowdingZScore: number;
+        crowdingAlertLevel: 'SAFE' | 'ELEVATED' | 'HIGH_CROWDING_RISK';
+        daysToLiquidateAt10PctAdv: number;
+        estimatedLiquidationSlippageBps: number;
+        trailingStopAdjustment: string;
+    }>;
+    portfolioThemeCrowdingAvg: number;
+    worstCrowdedAsset: string;
+    liquidationWarningMessage: string;
+}
+
+export const DEFAULT_CROWDING_ASSETS: FactorCrowdingAsset[] = [
+    {
+        symbol: 'MRVL',
+        theme: 'AI 数据中心光互连/定制芯片',
+        shortInterestFloatPct: 4.8,
+        borrowFeeBps: 35,
+        institutionalOwnershipPct: 88.5,
+        mutualFundOverlapZScore: 2.3,
+        advShares: 21500000,
+        positionShares: 4,
+        positionCurrentPrice: 264.40,
+    },
+    {
+        symbol: 'ALAB',
+        theme: '光互连传输芯片',
+        shortInterestFloatPct: 9.2,
+        borrowFeeBps: 220,
+        institutionalOwnershipPct: 76.0,
+        mutualFundOverlapZScore: 2.8,
+        advShares: 4200000,
+        positionShares: 0,
+        positionCurrentPrice: 363.46,
+    },
+    {
+        symbol: 'QCOM',
+        theme: '边缘推理/移动算力',
+        shortInterestFloatPct: 1.8,
+        borrowFeeBps: 25,
+        institutionalOwnershipPct: 74.2,
+        mutualFundOverlapZScore: 1.1,
+        advShares: 18500000,
+        positionShares: 2,
+        positionCurrentPrice: 195.10,
+    },
+    {
+        symbol: 'SO',
+        theme: '公用事业高股息防守',
+        shortInterestFloatPct: 1.9,
+        borrowFeeBps: 20,
+        institutionalOwnershipPct: 62.4,
+        mutualFundOverlapZScore: -0.6,
+        advShares: 7800000,
+        positionShares: 0,
+        positionCurrentPrice: 85.53,
+    },
+];
+
+export function evaluateFactorCrowdingAndLiquidity(assets: FactorCrowdingAsset[] = DEFAULT_CROWDING_ASSETS): FactorCrowdingEvaluation {
+    const processed = assets.map(a => {
+        // Z-Score composite: 45% mutual fund overlap + 35% borrow fee penalty + 20% short interest
+        const z = Number(((a.mutualFundOverlapZScore * 0.45) + ((a.borrowFeeBps / 100) * 0.35) + ((a.shortInterestFloatPct / 5) * 0.20)).toFixed(2));
+        let alertLevel: 'SAFE' | 'ELEVATED' | 'HIGH_CROWDING_RISK' = 'SAFE';
+        let trailingStopAdjustment = '维持基准移动止盈';
+
+        if (z >= 2.0) {
+            alertLevel = 'HIGH_CROWDING_RISK';
+            trailingStopAdjustment = '【极高拥挤报警】强制收紧止盈至前日收盘价上方，严禁追加同主题仓位';
+        } else if (z >= 1.2) {
+            alertLevel = 'ELEVATED';
+            trailingStopAdjustment = '【中度拥挤】锁定已达标浮盈，建议轻度防守';
+        }
+
+        // Days to liquidate at 10% of ADV
+        const adv10Pct = a.advShares * 0.10;
+        const daysToLiquidate = Number((a.positionShares / adv10Pct).toFixed(4));
+        const slippageBps = Number((Math.sqrt(a.positionShares / a.advShares) * 15.0).toFixed(2));
+
+        return {
+            ...a,
+            crowdingZScore: z,
+            crowdingAlertLevel: alertLevel,
+            daysToLiquidateAt10PctAdv: daysToLiquidate,
+            estimatedLiquidationSlippageBps: slippageBps,
+            trailingStopAdjustment,
+        };
+    });
+
+    const avgCrowding = Number((processed.reduce((s, p) => s + p.crowdingZScore, 0) / processed.length).toFixed(2));
+    const worst = [...processed].sort((a, b) => b.crowdingZScore - a.crowdingZScore)[0]?.symbol || 'N/A';
+    const hasHighRisk = processed.some(p => p.crowdingAlertLevel === 'HIGH_CROWDING_RISK');
+
+    return {
+        assets: processed,
+        portfolioThemeCrowdingAvg: avgCrowding,
+        worstCrowdedAsset: worst,
+        liquidationWarningMessage: hasHighRisk
+            ? `⚠️ 侦测到标的 (${worst}) 因子拥挤度突破 +2.0σ 警戒线！量化多头重叠高度饱和，突发变盘时易触发流动性黑洞挤兑，请严格落实止盈收紧策略。`
+            : '✅ 监控标的因子拥挤度处于可控健康区间，无严重机构抱团踩踏风险。',
+    };
+}
+
+export const PHASE38_FACTOR_CROWDING_FRAMEWORK = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 38 风格因子拥挤度 Z-Score 与流动性黑洞出清测算器',
+    coreModules: [
+        '做空余量 (Short Interest) 与借券成本 (Borrow Fee) 复合拥挤度度量',
+        '机构 13F 抱团重叠度与动量残差偏度 Z-Score 预警',
+        'ADV 10% 极限出清承载力 (Days to Liquidate) 与冲击损耗测算',
+    ],
+};
+
+// ============================================================================
+// Phase 39: 财报电话会逐字稿大模型情绪 Alpha 引擎 (Transcript NLP Alpha)
+// ============================================================================
+
+export interface EarningsTranscriptInput {
+    symbol: string;
+    quarter: string;
+    ceoRemarksText: string;
+    cfoGuidanceText: string;
+    qaDefensiveToneScore: number; // 0 to 100, higher means more defensive/evasive
+    impliedMovePct: number;        // Straddle implied jump
+    historicalAvgMovePct: number;  // Historical actual jump
+    capexCapexGrowthGuidancePct: number;
+}
+
+export interface EarningsTranscriptEvaluation {
+    symbol: string;
+    executiveConfidenceScore: number; // 0 to 100
+    bottleneckHeadwindIndex: number;   // 0 to 100
+    qaTonePenalty: number;
+    overallSentimentRating: 'STRONG_BULLISH' | 'CONSTRUCTIVE' | 'CAUTION_MIXED' | 'HIGH_VOLATILITY_RISK';
+    straddlePricingArbitrage: string;
+    gapRiskAssessment: string;
+    suggestedPreEarningsDisposition: string;
+}
+
+export const DEFAULT_TRANSCRIPT_CASES: EarningsTranscriptInput[] = [
+    {
+        symbol: 'NVDA',
+        quarter: 'Q2 FY2027',
+        ceoRemarksText: 'Blackwell and Rubin architecture demand is extraordinary, software monetization multiplying.',
+        cfoGuidanceText: 'Gross margins expected to sustain at 75%+, supply chain constraints easing progressively.',
+        qaDefensiveToneScore: 15,
+        impliedMovePct: 7.8,
+        historicalAvgMovePct: 6.5,
+        capexCapexGrowthGuidancePct: 45.0,
+    },
+    {
+        symbol: 'MRVL',
+        quarter: 'Q2 FY2027',
+        ceoRemarksText: 'Custom silicon and electro-optics ramp proceeding rapidly with hyperscalers.',
+        cfoGuidanceText: 'Enterprise networking experiencing mild cyclical headwinds, balanced by cloud AI.',
+        qaDefensiveToneScore: 28,
+        impliedMovePct: 9.5,
+        historicalAvgMovePct: 8.2,
+        capexCapexGrowthGuidancePct: 28.0,
+    },
+];
+
+export function evaluateEarningsTranscriptNlpAlpha(input: EarningsTranscriptInput = DEFAULT_TRANSCRIPT_CASES[0]): EarningsTranscriptEvaluation {
+    const { symbol, qaDefensiveToneScore, impliedMovePct, historicalAvgMovePct, capexCapexGrowthGuidancePct } = input;
+
+    // Confidence index
+    const rawConf = 65 + (capexCapexGrowthGuidancePct * 0.6) - (qaDefensiveToneScore * 0.4);
+    const executiveConfidenceScore = Number(Math.min(98, Math.max(20, rawConf)).toFixed(1));
+
+    // Headwind / bottleneck index
+    const bottleneckHeadwindIndex = Number(Math.min(90, Math.max(10, (qaDefensiveToneScore * 0.7) + (100 - executiveConfidenceScore) * 0.3)).toFixed(1));
+    const qaTonePenalty = Number((qaDefensiveToneScore * 0.5).toFixed(1));
+
+    let overallSentimentRating: 'STRONG_BULLISH' | 'CONSTRUCTIVE' | 'CAUTION_MIXED' | 'HIGH_VOLATILITY_RISK' = 'CONSTRUCTIVE';
+    if (executiveConfidenceScore >= 85) overallSentimentRating = 'STRONG_BULLISH';
+    else if (executiveConfidenceScore < 50) overallSentimentRating = 'HIGH_VOLATILITY_RISK';
+    else if (qaDefensiveToneScore > 40) overallSentimentRating = 'CAUTION_MIXED';
+
+    const straddleRatio = Number((impliedMovePct / historicalAvgMovePct).toFixed(2));
+    const straddlePricingArbitrage = straddleRatio > 1.25
+        ? `期权跨式隐含波动率定价过高 (${impliedMovePct}% vs 历史均值 ${historicalAvgMovePct}%)，买方保费极贵，建议提前买入虚值 Put 对冲或通过阶梯止盈收紧仓位。`
+        : `期权隐含跳空幅度和历史波动相符 (${impliedMovePct}% vs ${historicalAvgMovePct}%)，定价合理。`;
+
+    const gapRiskAssessment = impliedMovePct >= 9.0
+        ? '高跳空暴击风险（单日预期跳空 >=9%），财报日前强制执行 Phase 11 T+2 冷静期准备，严禁财报前夜加杠杆。'
+        : '中等跳空风险，正常执行移动止损保护。';
+
+    const suggestedPreEarningsDisposition = overallSentimentRating === 'STRONG_BULLISH'
+        ? '高管底气充沛，Capex 与利润率指引坚挺，持仓享受主升浪，按基准止损线护航。'
+        : '管理层在问答环节表现出回避与防御姿态，建议财报日前减仓 30%~50% 规避业绩靴子落地的不确定性。';
+
+    return {
+        symbol,
+        executiveConfidenceScore,
+        bottleneckHeadwindIndex,
+        qaTonePenalty,
+        overallSentimentRating,
+        straddlePricingArbitrage,
+        gapRiskAssessment,
+        suggestedPreEarningsDisposition,
+    };
+}
+
+export const PHASE39_EARNINGS_TRANSCRIPT_NLP_FRAMEWORK = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 39 财报电话会逐字稿大模型情绪 Alpha 引擎',
+    coreModules: [
+        'SEC 10-Q/10-K 原文与高管电话会 Q&A 情绪置信度评分',
+        '供应链交付与 Capex 瓶颈预警敏感词热度挖掘 (Headwind Index)',
+        '期权跨式隐含跳空溢价 vs 历史跳空真实应激先验评估',
+    ],
+};
+
+// ============================================================================
+// Phase 40: 降息周期多期限国债阶梯与证券融券出借收益增强
+// ============================================================================
+
+export interface TreasuryLadderAsset {
+    code: string;
+    name: string;
+    durationYears: number;
+    currentSecYieldPct: number;
+    fedRateDrop50bpExpectedYieldPct: number;
+    fedRateDrop100bpExpectedYieldPct: number;
+    ladderWeightPct: number;
+}
+
+export interface SecuritiesLendingStock {
+    symbol: string;
+    shares: number;
+    price: number;
+    borrowFeeAnnualPct: number;
+    utilizationPct: number;
+    annualLendingIncomeUsd: number;
+}
+
+export interface TreasuryLadderEvaluation {
+    ladderAssets: TreasuryLadderAsset[];
+    weightedCurrentYieldPct: number;
+    weightedYieldDrop50bpPct: number;
+    weightedYieldDrop100bpPct: number;
+    annualInterestIncomeUsd: number;
+    lendingStocks: SecuritiesLendingStock[];
+    totalLendingIncomeUsd: number;
+    combinedEnhancedYieldPct: number;
+    strategySummary: string;
+}
+
+export const DEFAULT_LADDER_WEIGHTS = {
+    sgov: 50.0, // 0~3M
+    bil: 30.0,  // 1~3M
+    usfr: 20.0, // Floating Rate Note
+};
+
+export const DEFAULT_LENDING_HOLDINGS = [
+    { symbol: 'QCOM', shares: 2, price: 195.10, borrowFeeAnnualPct: 1.8 },
+    { symbol: 'SO', shares: 20, price: 85.50, borrowFeeAnnualPct: 0.9 },
+    { symbol: 'CVX', shares: 10, price: 203.70, borrowFeeAnnualPct: 1.2 },
+    { symbol: 'MRVL', shares: 4, price: 264.40, borrowFeeAnnualPct: 2.4 },
+];
+
+export function evaluateTreasuryLadderAndLending(
+    cashAmountUsd: number = 3756.49,
+    weights = DEFAULT_LADDER_WEIGHTS,
+    holdings = DEFAULT_LENDING_HOLDINGS
+): TreasuryLadderEvaluation {
+    const ladderAssets: TreasuryLadderAsset[] = [
+        {
+            code: 'SGOV',
+            name: '0-3月超短国债 ETF',
+            durationYears: 0.1,
+            currentSecYieldPct: 5.05,
+            fedRateDrop50bpExpectedYieldPct: 4.55,
+            fedRateDrop100bpExpectedYieldPct: 4.05,
+            ladderWeightPct: weights.sgov,
+        },
+        {
+            code: 'BIL',
+            name: '1-3月短期国库券 ETF',
+            durationYears: 0.15,
+            currentSecYieldPct: 4.98,
+            fedRateDrop50bpExpectedYieldPct: 4.58,
+            fedRateDrop100bpExpectedYieldPct: 4.12,
+            ladderWeightPct: weights.bil,
+        },
+        {
+            code: 'USFR',
+            name: '浮动利率国债 ETF (FRN)',
+            durationYears: 0.02,
+            currentSecYieldPct: 5.20,
+            fedRateDrop50bpExpectedYieldPct: 4.70,
+            fedRateDrop100bpExpectedYieldPct: 4.20,
+            ladderWeightPct: weights.usfr,
+        },
+    ];
+
+    const totalWeight = ladderAssets.reduce((sum, a) => sum + a.ladderWeightPct, 0);
+    const weightedCurrentYieldPct = Number((ladderAssets.reduce((sum, a) => sum + a.currentSecYieldPct * (a.ladderWeightPct / totalWeight), 0)).toFixed(2));
+    const weightedYieldDrop50bpPct = Number((ladderAssets.reduce((sum, a) => sum + a.fedRateDrop50bpExpectedYieldPct * (a.ladderWeightPct / totalWeight), 0)).toFixed(2));
+    const weightedYieldDrop100bpPct = Number((ladderAssets.reduce((sum, a) => sum + a.fedRateDrop100bpExpectedYieldPct * (a.ladderWeightPct / totalWeight), 0)).toFixed(2));
+
+    const annualInterestIncomeUsd = Number(((cashAmountUsd * weightedCurrentYieldPct) / 100).toFixed(2));
+
+    // Securities lending enhancement
+    const processedLending: SecuritiesLendingStock[] = holdings.map(h => {
+        const value = h.shares * h.price;
+        const fee = h.borrowFeeAnnualPct || 1.2;
+        const utilization = 0.65; // average market utilization rate
+        const income = Number(((value * (fee / 100) * utilization)).toFixed(2));
+        return {
+            symbol: h.symbol,
+            shares: h.shares,
+            price: h.price,
+            borrowFeeAnnualPct: fee,
+            utilizationPct: 65.0,
+            annualLendingIncomeUsd: income,
+        };
+    });
+
+    const totalLendingIncomeUsd = Number((processedLending.reduce((sum, l) => sum + l.annualLendingIncomeUsd, 0)).toFixed(2));
+    const combinedTotalGainUsd = annualInterestIncomeUsd + totalLendingIncomeUsd;
+    const combinedEnhancedYieldPct = Number(((combinedTotalGainUsd / cashAmountUsd) * 100).toFixed(2));
+
+    const strategySummary = `三阶国债阶梯 (50% SGOV + 30% BIL + 20% USFR) 可将当前现金利息锁定在 ${weightedCurrentYieldPct}%，在美联储降息 50bp/100bp 路径下将收益平滑在 ${weightedYieldDrop50bpPct}% / ${weightedYieldDrop100bpPct}%。叠加券商证券借贷计划，每年可为账户额外贡献 $${totalLendingIncomeUsd} 的无风险现金收益。`;
+
+    return {
+        ladderAssets,
+        weightedCurrentYieldPct,
+        weightedYieldDrop50bpPct,
+        weightedYieldDrop100bpPct,
+        annualInterestIncomeUsd,
+        lendingStocks: processedLending,
+        totalLendingIncomeUsd,
+        combinedEnhancedYieldPct,
+        strategySummary,
+    };
+}
+
+export const PHASE40_TREASURY_LADDER_FRAMEWORK = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 40 降息周期多期限国债阶梯与证券融券出借收益增强',
+    coreModules: [
+        'SGOV + BIL + USFR 三阶超短国债现金阶梯 (Treasury Ladder) 模型',
+        '美联储降息路径下的现金收益衰减平滑模拟器',
+        '优质底仓证券出借 (Securities Lending) 纯无风险利息增厚引擎',
+    ],
+};
+
+
