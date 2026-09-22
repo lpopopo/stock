@@ -32,6 +32,7 @@ import {
     THEMATIC_CONCENTRATION_TIERS,
     ECONOMIC_FEE_GATE_PROTOCOL,
     POSITION_RECLASSIFICATION_INVARIANCE,
+    V8_V9_UNIFIED_OPERATING_MODEL,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -772,6 +773,48 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         expect(POSITION_RECLASSIFICATION_INVARIANCE.unbreakableInvariants.length).toBe(4);
         expect(POSITION_RECLASSIFICATION_INVARIANCE.unbreakableInvariants.some(a => a.includes('前瞻生效'))).toBe(true);
         expect(POSITION_RECLASSIFICATION_INVARIANCE.unbreakableInvariants.some(a => a.includes('永久固化'))).toBe(true);
+    });
+
+    it('32. should verify V8 and V9 unified operating model, core_priority law, and 5-tier arbitration hierarchy', () => {
+        expect(V8_V9_UNIFIED_OPERATING_MODEL.supremePriorityRule).toBe('core_priority');
+        expect(V8_V9_UNIFIED_OPERATING_MODEL.architecturePhilosophy).toContain('内置指数防御内核');
+        expect(V8_V9_UNIFIED_OPERATING_MODEL.architecturePhilosophy).toContain('总指挥组合管理器');
+        expect(V8_V9_UNIFIED_OPERATING_MODEL.priorityRuleExplanation).toContain('核心优先法则');
+
+        // 验证 5 级绝对仲裁层级完整性
+        expect(V8_V9_UNIFIED_OPERATING_MODEL.priorityHierarchy.length).toBe(5);
+        const levels = V8_V9_UNIFIED_OPERATING_MODEL.priorityHierarchy.map(t => t.priorityLevel);
+        expect(levels).toEqual([1, 2, 3, 4, 5]);
+
+        const p1 = V8_V9_UNIFIED_OPERATING_MODEL.priorityHierarchy.find(t => t.priorityLevel === 1)!;
+        expect(p1.componentName).toContain('巨灾与流动性熔断层');
+        expect(p1.priorityDirective).toContain('绝对最高优先级');
+
+        const p2 = V8_V9_UNIFIED_OPERATING_MODEL.priorityHierarchy.find(t => t.priorityLevel === 2)!;
+        expect(p2.componentName).toContain('V8 内置宽基指数防御核心');
+        expect(p2.budgetCeilingPct).toBe(70.0);
+
+        const p3 = V8_V9_UNIFIED_OPERATING_MODEL.priorityHierarchy.find(t => t.priorityLevel === 3)!;
+        expect(p3.componentName).toContain('V9 Rule E 个股高弹性卫星袖');
+        expect(p3.budgetCeilingPct).toBe(30.0);
+
+        const p5 = V8_V9_UNIFIED_OPERATING_MODEL.priorityHierarchy.find(t => t.priorityLevel === 5)!;
+        expect(p5.componentName).toContain('SGOV 自动清扫');
+
+        // 验证四级市场风险天花板矩阵
+        expect(V8_V9_UNIFIED_OPERATING_MODEL.regimeCeilings.length).toBe(4);
+        const normal = V8_V9_UNIFIED_OPERATING_MODEL.regimeCeilings.find(c => c.regime === 'normal')!;
+        expect(normal.coreCeilingPct).toBe(70.0);
+        expect(normal.stockCeilingPct).toBe(25.0);
+        expect(normal.minCashPct).toBe(5.0);
+
+        const panic = V8_V9_UNIFIED_OPERATING_MODEL.regimeCeilings.find(c => c.regime === 'panic')!;
+        expect(panic.coreCeilingPct).toBe(35.0);
+        expect(panic.stockCeilingPct).toBe(0.0);
+        expect(panic.minCashPct).toBe(65.0);
+
+        // 验证标准仲裁步序流
+        expect(V8_V9_UNIFIED_OPERATING_MODEL.arbitrationFlowchartSummary.length).toBe(6);
     });
 });
 

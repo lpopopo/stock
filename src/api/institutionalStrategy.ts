@@ -263,6 +263,133 @@ export const V9_STRATEGY_CONFIG = {
     alphaRule: '严守自然垄断底部品种与高胜率重入六门过滤',
 };
 
+export interface UnifiedStrategyTier {
+    priorityLevel: number;
+    componentName: string;
+    moduleRole: string;
+    budgetCeilingPct: number;
+    decisionRule: string;
+    priorityDirective: string;
+}
+
+export interface FearRegimeCeiling {
+    regime: 'normal' | 'elevated' | 'stress' | 'panic';
+    nameCn: string;
+    vixCondition: string;
+    coreCeilingPct: number;
+    stockCeilingPct: number;
+    minCashPct: number;
+    arbitrationRationale: string;
+}
+
+export interface V8V9UnifiedOperatingModel {
+    unifiedStrategyName: string;
+    architecturePhilosophy: string;
+    supremePriorityRule: 'core_priority';
+    priorityRuleExplanation: string;
+    priorityHierarchy: UnifiedStrategyTier[];
+    regimeCeilings: FearRegimeCeiling[];
+    arbitrationFlowchartSummary: string[];
+}
+
+/**
+ * V8 与 V9 统一融合操作系统架构与最高优先级仲裁法则 (源自 AI-Memory STRATEGY_OPERATING_MODEL.md)
+ */
+export const V8_V9_UNIFIED_OPERATING_MODEL: V8V9UnifiedOperatingModel = {
+    unifiedStrategyName: 'V9 统一组合母策略 (内置 V8 指数防御核心 + V9 个股弹性卫星 + SGOV 现金清扫)',
+    architecturePhilosophy: 'V8 与 V9 绝非相互竞争的割裂策略，而是同属于一个有机统一的母体——V8 是承载 70% 风险预算的内置指数防御内核 (Embedded Index Core)，负责大盘贝塔捕捉与熊市抗震；V9 是总指挥组合管理器 (Unified Portfolio Manager)，外挂 30% 个股弹性卫星袖 (Rule E Alpha Sleeve) 与 SGOV 动态闲置现金自动清扫。',
+    supremePriorityRule: 'core_priority',
+    priorityRuleExplanation: '核心优先法则 (core_priority)：当宏观环境恶化、Fear Gate 升高或资金预算发生冲突时，系统无条件优先保全证据最完备的大盘指数核心，最先被削减、压缩或全面冻结的是个股卫星袖子。',
+    priorityHierarchy: [
+        {
+            priorityLevel: 1,
+            componentName: '巨灾与流动性熔断层 (Disaster & Liquidity Breaker)',
+            moduleRole: '生命线硬防线',
+            budgetCeilingPct: 0,
+            decisionRule: 'VIX >= 35 或 Fear Gate 进入 Panic，或存在未执行的盘后止损动作。',
+            priorityDirective: '【绝对最高优先级】一票否决全部新开仓，强制锁定核心减半与个股清仓，任何收益追求无条件让位于账户生存。',
+        },
+        {
+            priorityLevel: 2,
+            componentName: 'V8 内置宽基指数防御核心 (Embedded V8 Index Core)',
+            moduleRole: '底盘压舱石 (SPY / QQQ)',
+            budgetCeilingPct: 70.0,
+            decisionRule: '月度审核 SPY/QQQ 是否站上 MA150 / MA200，牛市持仓、熊市清仓为现金。',
+            priorityDirective: '【核心底盘优先】优先占用最高 70% 风险预算，享有资本分配的第一索偿权，不轻易为个股让渡额度。',
+        },
+        {
+            priorityLevel: 3,
+            componentName: 'V9 Rule E 个股高弹性卫星袖 (Stock Alpha Sleeve)',
+            moduleRole: '弹性阿尔法倍增器 (自然垄断/AI瓶颈标的)',
+            budgetCeilingPct: 30.0,
+            decisionRule: '在剩余可用预算内，通过六维自检器与日 K 企稳放量信号选拔标的，执行 8% 黄金定寸。',
+            priorityDirective: '【从属弹性配置】受制于核心预算，当 Fear Gate 预警时预算率先从 25% 压缩至 5% 甚至 0%。',
+        },
+        {
+            priorityLevel: 4,
+            componentName: '微观执行约束与阻尼阀 (Thematic Tiers & Economic Fee Gate)',
+            moduleRole: '执行纪律过滤器',
+            budgetCeilingPct: 0,
+            decisionRule: '单一大主题 <= 55%，单日同主题净增 <= 15%，最小开仓 $200，双边费率 <= 1.0%。',
+            priorityDirective: '【准入拦截】个股即便选拔入围，触碰浓度梯次或费率拖累时立即 fail-closed 阻断买入（卖出平仓无条件豁免）。',
+        },
+        {
+            priorityLevel: 5,
+            componentName: '闲置现金 SGOV 自动清扫 (Residual Cash Sweep)',
+            moduleRole: '无风险收益增厚器 (0~3月超短美债)',
+            budgetCeilingPct: 65.0,
+            decisionRule: '前序模块未占用的所有闲置资金，每日 15:58 自动清扫至 SGOV。',
+            priorityDirective: '【垫底流动性吸收】永不留零息闲置，实现年化 5.25% 无额外风险收益增厚，建仓时 T+0/T+1 闪电释放买力。',
+        },
+    ],
+    regimeCeilings: [
+        {
+            regime: 'normal',
+            nameCn: '🟢 Normal 正常态',
+            vixCondition: 'VIX < 20 · 升水结构 Contango',
+            coreCeilingPct: 70.0,
+            stockCeilingPct: 25.0,
+            minCashPct: 5.0,
+            arbitrationRationale: '全面进攻配置：指数核心配满 70%，个股袖子开放至 25%（可容纳 3 只 8% 黄金仓位个股），保留 5% 缓冲现金。',
+        },
+        {
+            regime: 'elevated',
+            nameCn: '🟡 Elevated 预警态',
+            vixCondition: '20 <= VIX < 30 · 期限结构平坦',
+            coreCeilingPct: 70.0,
+            stockCeilingPct: 5.0,
+            minCashPct: 25.0,
+            arbitrationRationale: 'core_priority 显现：指数核心依然保持 70% 不变，而个股袖子从 25% 剧烈压缩至 5%（仅保留 1 只高确定性标的），现金强行拉升至 25%。',
+        },
+        {
+            regime: 'stress',
+            nameCn: '🟠 Stress 承压态',
+            vixCondition: 'VIX 异动 · 广度深度背离',
+            coreCeilingPct: 55.0,
+            stockCeilingPct: 0.0,
+            minCashPct: 45.0,
+            arbitrationRationale: '个股全面冻结：个股袖子额度彻底清零 (0%)，指数核心降额至 55%，现金储备激增至 45%，启动 SGOV 大额生息。',
+        },
+        {
+            regime: 'panic',
+            nameCn: '🔴 Panic 恐慌熔断态',
+            vixCondition: 'VIX >= 30~35 或 贴水倒挂 Backwardation',
+            coreCeilingPct: 35.0,
+            stockCeilingPct: 0.0,
+            minCashPct: 65.0,
+            arbitrationRationale: '终极防灾风暴：核心强制减半至 35%，个股绝对禁绝 (0%)，现金储备推至 65%，保全 26 年历史穿越生存底盘。',
+        },
+    ],
+    arbitrationFlowchartSummary: [
+        '第一步：检测市场风控状态 (Panic/Stress/Elevated/Normal) 确定当前三栏天花板',
+        '第二步：核对是否存在未报备完成的盘后止损/减半动作；若有，fail-closed 冻结一切新增开仓',
+        '第三步：按 V8 MA150/MA200 信号计算指数核心 SPY/QQQ 目标仓位 (0~70%)，优先占用风险资本',
+        '第四步：在剩余个股天花板额度内 (0~25%)，经六维自检器与 8% 黄金定寸筛选个股入场候选',
+        '第五步：检验个股是否满足主题浓度四级防御梯次 (<=55%) 及小微账户经济费率门槛 (<=1.0%)',
+        '第六步：每日 15:58 将全部未分配闲置现金清扫至 SGOV，锁定 5.25% 无风险利息增厚',
+    ],
+};
+
 /**
  * 恐惧之门 (Fear Gate) 期限结构定义
  */

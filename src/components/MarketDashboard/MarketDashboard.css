@@ -9675,6 +9675,220 @@
   color: #cbd5e1;
 }
 
+/* ==========================================================================
+   V8 & V9 Unified Strategy & Core Priority Arbitration Styles
+   ========================================================================== */
+
+.unified-priority-banner {
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 16px;
+}
+
+.priority-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #eab308;
+}
+
+.priority-desc {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+
+.sub-section-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f0f6fc;
+  margin: 20px 0 10px;
+}
+
+.priority-hierarchy-section,
+.regime-ceilings-section,
+.arbitration-flow-section {
+  margin-top: 16px;
+}
+
+.priority-table-wrap {
+  overflow-x: auto;
+}
+
+.priority-hierarchy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.priority-hierarchy-table th {
+  background: rgba(255, 255, 255, 0.04);
+  color: #8b949e;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-default, #30363d);
+  white-space: nowrap;
+}
+
+.priority-hierarchy-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e6edf3;
+  vertical-align: middle;
+}
+
+.p-level-pill {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.lvl-1 {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.lvl-2 {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+
+.lvl-3 {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.lvl-4 {
+  background: rgba(234, 179, 8, 0.2);
+  color: #eab308;
+}
+
+.lvl-5 {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+}
+
+.comp-name {
+  color: #f0f6fc;
+}
+
+.comp-role {
+  font-size: 0.72rem;
+}
+
+.regime-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.regime-ceiling-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.regime-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.regime-name {
+  color: #f0f6fc;
+}
+
+.regime-cond {
+  font-size: 0.7rem;
+  color: #8b949e;
+}
+
+.regime-alloc-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.alloc-pill {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.7rem;
+}
+
+.alloc-pill .lbl {
+  color: #8b949e;
+  font-size: 0.65rem;
+}
+
+.alloc-pill .val {
+  font-weight: 700;
+}
+
+.pill-core .val {
+  color: #38bdf8;
+}
+
+.pill-stock .val {
+  color: #10b981;
+}
+
+.pill-cash .val {
+  color: #eab308;
+}
+
+.regime-rationale {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: #8b949e;
+}
+
+.flow-steps-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flow-step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+}
+
+.step-idx {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+}
+
+
 
 
 

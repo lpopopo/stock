@@ -31,6 +31,7 @@ import {
     THEMATIC_CONCENTRATION_TIERS,
     ECONOMIC_FEE_GATE_PROTOCOL,
     POSITION_RECLASSIFICATION_INVARIANCE,
+    V8_V9_UNIFIED_OPERATING_MODEL,
     type BottomReboundStock,
     type TradeChecklistInput,
     type TradeChecklistResult,
@@ -2842,6 +2843,93 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                 <span className="lbl">安全垫原则</span>
                                 <span className="val">{V9_STRATEGY_CONFIG.cashBufferRule}</span>
                             </div>
+                        </div>
+
+                        {/* 核心统合原则与 core_priority 仲裁公理 */}
+                        <div className="unified-priority-banner">
+                            <div className="priority-tag-row">
+                                <span className="priority-badge">⭐ 最高仲裁法则：core_priority (核心绝对优先)</span>
+                            </div>
+                            <p className="priority-desc">{V8_V9_UNIFIED_OPERATING_MODEL.priorityRuleExplanation}</p>
+                        </div>
+
+                        {/* 五级绝对优先级仲裁层级表 */}
+                        <div className="priority-hierarchy-section">
+                            <h5 className="sub-section-title">📊 五级绝对策略优先级仲裁序列 (Arbitration Hierarchy)</h5>
+                            <div className="priority-table-wrap">
+                                <table className="priority-hierarchy-table">
+                                    <thead>
+                                        <tr>
+                                            <th>优先级</th>
+                                            <th>系统模块与定位</th>
+                                            <th>预算天花板</th>
+                                            <th>触发判定条件</th>
+                                            <th>机构决策指令与优先级含义</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {V8_V9_UNIFIED_OPERATING_MODEL.priorityHierarchy.map((tier) => (
+                                            <tr key={tier.priorityLevel} className={`priority-row-lvl-${tier.priorityLevel}`}>
+                                                <td className="font-mono font-bold text-center">
+                                                    <span className={`p-level-pill lvl-${tier.priorityLevel}`}>P{tier.priorityLevel}</span>
+                                                </td>
+                                                <td>
+                                                    <div className="comp-name font-bold">{tier.componentName}</div>
+                                                    <div className="comp-role text-muted">{tier.moduleRole}</div>
+                                                </td>
+                                                <td className="font-mono font-bold text-center">
+                                                    {tier.budgetCeilingPct > 0 ? `${tier.budgetCeilingPct.toFixed(0)}%` : '动态/拦截'}
+                                                </td>
+                                                <td className="rules-cell">{tier.decisionRule}</td>
+                                                <td className="directives-cell">{tier.priorityDirective}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* 四级市场风险状态下的资本天花板矩阵 */}
+                        <div className="regime-ceilings-section">
+                            <h5 className="sub-section-title">🛡️ 四级市场状态动态资本天花板矩阵 (Dynamic Capital Ceilings)</h5>
+                            <div className="regime-cards-grid">
+                                {V8_V9_UNIFIED_OPERATING_MODEL.regimeCeilings.map((c) => (
+                                    <div key={c.regime} className={`regime-ceiling-card card-${c.regime}`}>
+                                        <div className="regime-card-top">
+                                            <span className="regime-name font-bold">{c.nameCn}</span>
+                                            <span className="regime-cond font-mono">{c.vixCondition}</span>
+                                        </div>
+                                        <div className="regime-alloc-row font-mono">
+                                            <div className="alloc-pill pill-core">
+                                                <span className="lbl">指数核心</span>
+                                                <span className="val">{c.coreCeilingPct}%</span>
+                                            </div>
+                                            <div className="alloc-pill pill-stock">
+                                                <span className="lbl">个股卫星</span>
+                                                <span className="val">{c.stockCeilingPct}%</span>
+                                            </div>
+                                            <div className="alloc-pill pill-cash">
+                                                <span className="lbl">缓冲现金</span>
+                                                <span className="val">{c.minCashPct}%</span>
+                                            </div>
+                                        </div>
+                                        <p className="regime-rationale">{c.arbitrationRationale}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 仲裁状态机执行步序流 */}
+                        <div className="arbitration-flow-section">
+                            <h5 className="sub-section-title">🔄 生产决策状态机标准仲裁步序 (Deterministic Flow)</h5>
+                            <ol className="flow-steps-list">
+                                {V8_V9_UNIFIED_OPERATING_MODEL.arbitrationFlowchartSummary.map((step, idx) => (
+                                    <li key={idx} className="flow-step-item">
+                                        <span className="step-idx font-mono">0{idx + 1}</span>
+                                        <span className="step-text">{step}</span>
+                                    </li>
+                                ))}
+                            </ol>
                         </div>
                     </div>
 
