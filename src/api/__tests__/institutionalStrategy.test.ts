@@ -51,6 +51,10 @@ import {
     evaluatePanicToRepairMonitor,
     evaluateCitadelClearingClock,
     PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    evaluateSixGatesReentry,
+    evaluateMarginalRiskContribution,
+    evaluateDollarDiscreteLotExecution,
+    PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -1609,7 +1613,231 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         expect(PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.semiconductorTurnCase.scenario).toContain('HYG/LQD');
         expect(PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.panicToRepairCase.scenario).toContain('轧空');
     });
+
+    it('46. should evaluate Unified Six-Gates Reentry Evaluator: Golden Path pass and individual gate blockers', () => {
+        // 1. 黄金路径全通测试 (Golden Path): 6重刚性门控全绿灯，准确向下整股计算推荐 6 股
+        const goldenInput = {
+            candidateId: 'cand-glw-01',
+            symbol: 'GLW',
+            nameCn: '康宁',
+            tradePrice: 100.0,
+            ma50Price: 95.0,
+            hasRsException: false,
+            hasAuthenticatedEvent: true,
+            isEventWithdrawn: false,
+            macroRegime: 'normal' as const,
+            vixValue: 18.5,
+            portfolioTotalStockWeightPct: 20.0,
+            targetCandidateWeightPct: 8.0,
+            singleStockCapPct: 15.0,
+            totalStockCapPct: 30.0,
+            themeWeightPct: 30.0,
+            themeCapPct: 55.0,
+            unboundedCoreOrderPending: false,
+            episodeAvailableCash: 700.0,
+            portfolioNav: 8200.0,
+            stopLossPrice: 92.0,
+            maxAllowedPrice: 105.0,
+            slippageBps: 10,
+            commissionPerOrder: 1.0,
+        };
+        const goldenRes = evaluateSixGatesReentry(goldenInput);
+        expect(goldenRes.eligible).toBe(true);
+        expect(goldenRes.allBlockers.length).toBe(0);
+        expect(goldenRes.gates.informationGate.passed).toBe(true);
+        expect(goldenRes.gates.trendGate.passed).toBe(true);
+        expect(goldenRes.gates.marketFearGate.passed).toBe(true);
+        expect(goldenRes.gates.capacityGuardGate.passed).toBe(true);
+        expect(goldenRes.gates.episodeBudgetGate.passed).toBe(true);
+        expect(goldenRes.gates.exitPlanGate.passed).toBe(true);
+        expect(goldenRes.recommendedShares).toBe(6);
+        expect(goldenRes.riskPerShareR).toBe(8.0);
+        expect(goldenRes.totalRiskDollars).toBe(48.0); // 6 * 8 = $48
+        expect(goldenRes.riskPctOfNav).toBeCloseTo(0.585, 2); // 48 / 8200 = 0.585% <= 1.0%
+
+        // 2. Gate 1 阻断：缺失不可变事件官方凭证
+        const g1Fail = evaluateSixGatesReentry({
+            ...goldenInput,
+            hasAuthenticatedEvent: false,
+        });
+        expect(g1Fail.eligible).toBe(false);
+        expect(g1Fail.gates.informationGate.passed).toBe(false);
+        expect(g1Fail.allBlockers.some(b => b.includes('unauthenticated_event_id'))).toBe(true);
+
+        // 3. Gate 2 阻断：破位 MA50 且无 RS 背离例外
+        const g2Fail = evaluateSixGatesReentry({
+            ...goldenInput,
+            tradePrice: 90.0,
+            ma50Price: 95.0,
+            hasRsException: false,
+        });
+        expect(g2Fail.eligible).toBe(false);
+        expect(g2Fail.gates.trendGate.passed).toBe(false);
+        expect(g2Fail.allBlockers.some(b => b.includes('trend_below_ma50'))).toBe(true);
+
+        // 4. Gate 2 豁免：破位 MA50 但具有认证的 RS 企稳背离资格
+        const g2RsPass = evaluateSixGatesReentry({
+            ...goldenInput,
+            tradePrice: 90.0,
+            ma50Price: 95.0,
+            hasRsException: true,
+            stopLossPrice: 85.0,
+        });
+        expect(g2RsPass.gates.trendGate.passed).toBe(true);
+
+        // 5. Gate 3 阻断：宏观恐慌熔断 (Panic)
+        const g3Fail = evaluateSixGatesReentry({
+            ...goldenInput,
+            macroRegime: 'panic',
+        });
+        expect(g3Fail.eligible).toBe(false);
+        expect(g3Fail.gates.marketFearGate.passed).toBe(false);
+        expect(g3Fail.allBlockers.some(b => b.includes('market_panic_regime'))).toBe(true);
+
+        // 6. Gate 4 阻断：存在未定界核心指数再平衡 (核心优先最高排他)
+        const g4Fail = evaluateSixGatesReentry({
+            ...goldenInput,
+            unboundedCoreOrderPending: true,
+        });
+        expect(g4Fail.eligible).toBe(false);
+        expect(g4Fail.gates.capacityGuardGate.passed).toBe(false);
+        expect(g4Fail.allBlockers.some(b => b.includes('unbounded_core_order_blocks_stock_add'))).toBe(true);
+
+        // 7. Gate 5 阻断：专款回笼资金不足以买 1 整股
+        const g5Fail = evaluateSixGatesReentry({
+            ...goldenInput,
+            episodeAvailableCash: 50.0, // 现价 $100，买不起 1 股
+        });
+        expect(g5Fail.eligible).toBe(false);
+        expect(g5Fail.gates.episodeBudgetGate.passed).toBe(false);
+        expect(g5Fail.allBlockers.some(b => b.includes('below_whole_share_affordability'))).toBe(true);
+
+        // 8. Gate 6 阻断：止损倒挂 (止损价 >= 现价)
+        const g6Fail = evaluateSixGatesReentry({
+            ...goldenInput,
+            stopLossPrice: 102.0, // 现价 100，止损倒挂
+        });
+        expect(g6Fail.eligible).toBe(false);
+        expect(g6Fail.gates.exitPlanGate.passed).toBe(false);
+        expect(g6Fail.allBlockers.some(b => b.includes('stop_price_at_or_above_current_price'))).toBe(true);
+    });
+
+    it('47. should audit Marginal Contribution to Risk (MCR), variance concentration, and validate internal rebalance over short hedge', () => {
+        // 对标 AI-Memory 2026-09-20 真实实证审计案例
+        const diagInput = {
+            portfolioNav: 5875.91,
+            cashAmount: 3756.49,
+            cashWeightPct: 63.93,
+            holdings: [
+                { symbol: 'GLW', shares: 2, price: 150.12, marketValue: 300.24, weightPct: 5.11, volatilityAnnualizedPct: 32.5, correlationWithPortfolio: 0.72, varianceContributionPct: 13.70 },
+                { symbol: 'MXL', shares: 6, price: 81.08, marketValue: 486.48, weightPct: 8.28, volatilityAnnualizedPct: 48.2, correlationWithPortfolio: 0.85, varianceContributionPct: 34.74 },
+                { symbol: 'MRVL', shares: 4, price: 244.29, marketValue: 977.16, weightPct: 16.63, volatilityAnnualizedPct: 52.1, correlationWithPortfolio: 0.91, varianceContributionPct: 46.79 },
+                { symbol: 'QCOM', shares: 2, price: 177.77, marketValue: 355.54, weightPct: 6.05, volatilityAnnualizedPct: 28.4, correlationWithPortfolio: 0.65, varianceContributionPct: 4.78 },
+            ],
+            currentPortfolioAnnualizedVolPct: 28.84,
+            correlationWithSMH: 0.88,
+            betaToSpyQqq: 1.25,
+        };
+
+        const result = evaluateMarginalRiskContribution(diagInput);
+
+        // 验证风险集中度诊断：MRVL + MXL 市值仅 24.91%，方差贡献超 81%
+        expect(result.top2Symbols).toEqual(['MRVL', 'MXL']);
+        expect(result.top2VarianceConcentrationPct).toBeCloseTo(81.53, 2);
+        expect(result.isSevereRiskConcentrated).toBe(true);
+        expect(result.governingVerdict).toBe('rebalance_internally_first');
+        expect(result.verdictTitle).toContain('优先处理内部风险集中');
+
+        // 验证同额 10% NAV 调整情景对比
+        expect(result.scenarios.length).toBe(4);
+        const trimScenario = result.scenarios.find(s => s.scenarioName.includes('按比例减持 10% NAV'))!;
+        expect(trimScenario.volReductionPct).toBeGreaterThan(7.0); // 降低 8% 样本波动
+        expect(trimScenario.squeezeRisk).toBe('none');
+
+        const shortQqqScenario = result.scenarios.find(s => s.scenarioName.includes('做空 QQQ'))!;
+        expect(shortQqqScenario.volReductionPct).toBeCloseTo(1.58, 2); // 仅微降 1.58%
+        expect(shortQqqScenario.squeezeRisk).toBe('high');
+        expect(shortQqqScenario.feasibilityVerdict).toContain('不推荐');
+    });
+
+    it('48. should verify dollar discrete lot execution, unfilled order ledger persistence, and fee deficit absorption', () => {
+        // 1. 买入零股申请 (< 1 股) -> 拒绝执行，记录未成交账本
+        const zeroBuyRes = evaluateDollarDiscreteLotExecution({
+            orderId: 'ord-buy-001',
+            timestamp: '2026-09-22 10:00:00',
+            symbol: 'NVDA',
+            action: 'BUY',
+            requestedShares: 0.45,
+            quotePrice: 120.0,
+            availableCash: 500.0,
+            heldShares: 0,
+        });
+        expect(zeroBuyRes.executed).toBe(false);
+        expect(zeroBuyRes.filledShares).toBe(0);
+        expect(zeroBuyRes.unfilledRecord?.reasonCode).toBe('zero_share_lot');
+        expect(zeroBuyRes.netCashImpact).toBe(0);
+
+        // 2. 买入整股合规成交 (申请 2 股，现价 $100，滑点 10bp 即 $100.10，佣金 $1.0)
+        const validBuyRes = evaluateDollarDiscreteLotExecution({
+            orderId: 'ord-buy-002',
+            timestamp: '2026-09-22 10:05:00',
+            symbol: 'GLW',
+            action: 'BUY',
+            requestedShares: 2.2, // 理论 2.2 股 -> 整股取整 2 股
+            quotePrice: 100.0,
+            availableCash: 500.0,
+            heldShares: 0,
+        });
+        expect(validBuyRes.executed).toBe(true);
+        expect(validBuyRes.filledShares).toBe(2);
+        expect(validBuyRes.unfilledShares).toBeCloseTo(0.2, 2);
+        expect(validBuyRes.effectivePrice).toBeCloseTo(100.10, 2);
+        expect(validBuyRes.commissionFee).toBe(1.0);
+        expect(validBuyRes.netCashImpact).toBeCloseTo(-201.20, 2); // -(2 * 100.10 + 1)
+        expect(validBuyRes.newCashBalance).toBeCloseTo(298.80, 2);
+        expect(validBuyRes.newHeldShares).toBe(2);
+
+        // 3. 卖出零股残差 (0.6 股) -> 不报单，记入未成交账本，不清除持仓
+        const zeroSellRes = evaluateDollarDiscreteLotExecution({
+            orderId: 'ord-sell-001',
+            timestamp: '2026-09-22 10:10:00',
+            symbol: 'MRVL',
+            action: 'SELL',
+            requestedShares: 0.6,
+            quotePrice: 80.0,
+            availableCash: 298.80,
+            heldShares: 4,
+        });
+        expect(zeroSellRes.executed).toBe(false);
+        expect(zeroSellRes.filledShares).toBe(0);
+        expect(zeroSellRes.unfilledRecord?.reasonCode).toBe('fractional_share_unsupported');
+        expect(zeroSellRes.newHeldShares).toBe(4); // 严密保护持仓不被错误扣减
+
+        // 4. 卖出整股合规回笼资金 (卖出 2 股，单价 $50，滑点 10bp 即 $49.95，佣金 $1.0)
+        const validSellRes = evaluateDollarDiscreteLotExecution({
+            orderId: 'ord-sell-002',
+            timestamp: '2026-09-22 10:15:00',
+            symbol: 'MRVL',
+            action: 'SELL',
+            requestedShares: 2,
+            quotePrice: 50.0,
+            availableCash: 298.80,
+            heldShares: 4,
+        });
+        expect(validSellRes.executed).toBe(true);
+        expect(validSellRes.filledShares).toBe(2);
+        expect(validSellRes.commissionFee).toBe(1.0);
+        expect(validSellRes.netCashImpact).toBeCloseTo(98.90, 2); // 2 * 49.95 - 1 = 98.90
+        expect(validSellRes.newCashBalance).toBeCloseTo(397.70, 2);
+        expect(validSellRes.newHeldShares).toBe(2);
+
+        // 5. 验证 Phase 15 综合元数据
+        expect(PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.sixGatesReentryCase.scenario).toContain('GLW');
+        expect(PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK.caseStudies.marginalRiskVarianceCase.scenario).toContain('MRVL+MXL');
+    });
 });
+
 
 
 

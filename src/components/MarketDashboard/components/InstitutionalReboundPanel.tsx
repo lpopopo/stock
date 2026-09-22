@@ -67,6 +67,13 @@ import {
     type SemiconductorCreditTurnInput,
     type PanicToRepairInput,
     type CitadelClearingClockInput,
+    evaluateSixGatesReentry,
+    evaluateMarginalRiskContribution,
+    evaluateDollarDiscreteLotExecution,
+    PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    type CandidateReentryInput,
+    type MarginalRiskDiagnosticInput,
+    type DollarOrderExecutionInput,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -95,6 +102,7 @@ type SubTabType =
     | 'calendar-vol-damping'
     | 'discrete-execution-capex'
     | 'turn-state-machine'
+    | 'six-gates-reentry'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -277,6 +285,66 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     const turnResult = evaluateSemiconductorCreditTurnStateMachine(turnInput);
     const panicRepairResult = evaluatePanicToRepairMonitor(panicRepairInput);
     const citadelResult = evaluateCitadelClearingClock(citadelInput);
+
+    // Phase 15: 统一六门控重入评估器、边际风险方差审计与美元整股执行交互状态
+    const [sixGatesInput, setSixGatesInput] = useState<CandidateReentryInput>({
+        candidateId: 'cand-glw-01',
+        symbol: 'GLW',
+        nameCn: '康宁',
+        tradePrice: 100.0,
+        ma50Price: 95.0,
+        hasRsException: false,
+        hasAuthenticatedEvent: true,
+        isEventWithdrawn: false,
+        macroRegime: 'normal',
+        vixValue: 18.5,
+        portfolioTotalStockWeightPct: 20.0,
+        targetCandidateWeightPct: 8.0,
+        singleStockCapPct: 15.0,
+        totalStockCapPct: 30.0,
+        themeWeightPct: 30.0,
+        themeCapPct: 55.0,
+        unboundedCoreOrderPending: false,
+        episodeAvailableCash: 700.0,
+        portfolioNav: 8200.0,
+        stopLossPrice: 92.0,
+        maxAllowedPrice: 105.0,
+        slippageBps: 10,
+        commissionPerOrder: 1.0,
+    });
+
+    const [marginalRiskInput, setMarginalRiskInput] = useState<MarginalRiskDiagnosticInput>({
+        portfolioNav: 5875.91,
+        cashAmount: 3756.49,
+        cashWeightPct: 63.93,
+        holdings: [
+            { symbol: 'GLW', shares: 2, price: 150.12, marketValue: 300.24, weightPct: 5.11, volatilityAnnualizedPct: 32.5, correlationWithPortfolio: 0.72, varianceContributionPct: 13.70 },
+            { symbol: 'MXL', shares: 6, price: 81.08, marketValue: 486.48, weightPct: 8.28, volatilityAnnualizedPct: 48.2, correlationWithPortfolio: 0.85, varianceContributionPct: 34.74 },
+            { symbol: 'MRVL', shares: 4, price: 244.29, marketValue: 977.16, weightPct: 16.63, volatilityAnnualizedPct: 52.1, correlationWithPortfolio: 0.91, varianceContributionPct: 46.79 },
+            { symbol: 'QCOM', shares: 2, price: 177.77, marketValue: 355.54, weightPct: 6.05, volatilityAnnualizedPct: 28.4, correlationWithPortfolio: 0.65, varianceContributionPct: 4.78 },
+        ],
+        currentPortfolioAnnualizedVolPct: 28.84,
+        correlationWithSMH: 0.88,
+        betaToSpyQqq: 1.25,
+    });
+
+    const [orderExecutionInput, setOrderExecutionInput] = useState<DollarOrderExecutionInput>({
+        orderId: 'ord-sim-01',
+        timestamp: '2026-09-22 10:30:00',
+        symbol: 'GLW',
+        action: 'BUY',
+        requestedShares: 6.0,
+        quotePrice: 100.0,
+        availableCash: 700.0,
+        heldShares: 0,
+        commissionPerOrder: 1.0,
+        slippageBps: 10,
+    });
+
+    // 计算 Phase 15 实时结果
+    const sixGatesResult = evaluateSixGatesReentry(sixGatesInput);
+    const marginalRiskResult = evaluateMarginalRiskContribution(marginalRiskInput);
+    const orderExecutionResult = evaluateDollarDiscreteLotExecution(orderExecutionInput);
 
     // 六维实战决策自检器交互表单状态
     const [checklistInput, setChecklistInput] = useState<TradeChecklistInput>({
@@ -517,6 +585,12 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('turn-state-machine')}
                 >
                     🔄 半导体信贷四阶状态机 (Phase 14)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'six-gates-reentry' ? 'active' : ''}`}
+                    onClick={() => setSubTab('six-gates-reentry')}
+                >
+                    🛡️ 统一六门控与风险方差 (Phase 15)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -4255,6 +4329,625 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     </div>
                 </div>
             )}
+
+            {/* 视图：Phase 15 统一六门控重入评估器、边际风险方差审计与美元整股执行账本 */}
+            {subTab === 'six-gates-reentry' && (
+                <div className="rebound-turn-state-view">
+                    {/* Header 概览卡片 */}
+                    <div className="turn-state-header-card">
+                        <div className="state-top-row">
+                            <div className="state-title-wrap">
+                                <span className="state-icon">🛡️</span>
+                                <div>
+                                    <h4>统一六门控重入评估器、边际风险方差审计与美元整股执行账本 (Phase 15)</h4>
+                                    <span className="as-of-date">
+                                        科研基石：{PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK.name} ({PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate}) · <code>six_gates_evaluator.py</code> · <code>risk_diagnostic.py</code> · <code>dollar_execution.py</code>
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="state-status-wrap">
+                                <span className="state-sub-pill">六重刚性前置审查</span>
+                                <span className="state-sub-pill">方差集中度警戒 (80% 方差陷阱)</span>
+                                <span className="state-sub-pill">整股未成交持久化账本</span>
+                            </div>
+                        </div>
+
+                        {/* KPI 核心度量看板 */}
+                        <div className="turn-state-kpi-grid">
+                            <div className="turn-kpi-card">
+                                <span className="kpi-lbl">当前标的六门控状态</span>
+                                <div className="kpi-val-row">
+                                    <span
+                                        className="kpi-val font-mono"
+                                        style={{ color: sixGatesResult.eligible ? '#10b981' : '#ef4444' }}
+                                    >
+                                        {sixGatesResult.eligible ? '✅ 全绿灯达标' : '🚫 门控拦截'}
+                                    </span>
+                                    <span className="kpi-tag font-mono">
+                                        {sixGatesResult.eligible ? '6/6 通过' : `${sixGatesResult.allBlockers.length} 项违规`}
+                                    </span>
+                                </div>
+                                <span className="kpi-sub">
+                                    {sixGatesResult.eligible ? '批准整股授权开仓' : '严格禁止主观抄底'}
+                                </span>
+                            </div>
+
+                            <div className="turn-kpi-card">
+                                <span className="kpi-lbl">推荐买入整股数 (含滑点佣金)</span>
+                                <div className="kpi-val-row">
+                                    <span className="kpi-val font-mono text-cyan">
+                                        {sixGatesResult.recommendedShares} 股
+                                    </span>
+                                    <span className="kpi-tag font-mono">
+                                        ${sixGatesResult.recommendedAmount.toFixed(2)}
+                                    </span>
+                                </div>
+                                <span className="kpi-sub">
+                                    专款专资 ${sixGatesInput.episodeAvailableCash.toFixed(2)} · 下向整股取整
+                                </span>
+                            </div>
+
+                            <div className="turn-kpi-card">
+                                <span className="kpi-lbl">单笔单股风险 R 与总风险敞口</span>
+                                <div className="kpi-val-row">
+                                    <span className="kpi-val font-mono text-gold">
+                                        R = ${sixGatesResult.riskPerShareR.toFixed(2)}
+                                    </span>
+                                    <span className="kpi-tag font-mono">
+                                        ${sixGatesResult.totalRiskDollars.toFixed(2)} ({sixGatesResult.riskPctOfNav.toFixed(2)}% NAV)
+                                    </span>
+                                </div>
+                                <span className="kpi-sub">
+                                    单笔风险强制锁定在总净值 &le; 1.0% 内
+                                </span>
+                            </div>
+
+                            <div className="turn-kpi-card">
+                                <span className="kpi-lbl">组合前两大标的方差集中度</span>
+                                <div className="kpi-val-row">
+                                    <span
+                                        className="kpi-val font-mono"
+                                        style={{ color: marginalRiskResult.isSevereRiskConcentrated ? '#f59e0b' : '#10b981' }}
+                                    >
+                                        {marginalRiskResult.top2VarianceConcentrationPct.toFixed(1)}%
+                                    </span>
+                                    <span className="kpi-tag font-mono">
+                                        {marginalRiskResult.top2Symbols.join(' + ')}
+                                    </span>
+                                </div>
+                                <span className="kpi-sub">
+                                    警戒线 &ge; 70% · 市值权重仅 {(marginalRiskResult.holdingsAudit.slice(0, 2).reduce((s, h) => s + h.weightPct, 0)).toFixed(1)}%
+                                </span>
+                            </div>
+
+                            <div className="turn-kpi-card">
+                                <span className="kpi-lbl">治理铁律与外部对冲许可</span>
+                                <div className="kpi-val-row">
+                                    <span
+                                        className="kpi-val font-mono"
+                                        style={{ color: marginalRiskResult.governingVerdict === 'rebalance_internally_first' ? '#f59e0b' : '#10b981' }}
+                                    >
+                                        {marginalRiskResult.governingVerdict === 'rebalance_internally_first' ? '优先内部去杠杆' : '允许外部对冲'}
+                                    </span>
+                                </div>
+                                <span className="kpi-sub">
+                                    {marginalRiskResult.governingVerdict === 'rebalance_internally_first' ? '内部过度集中前禁开空头' : '风险预算均衡'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 卡片 1: 统一六门控重入审查评估器 */}
+                    <div className="turn-section-card">
+                        <div className="card-section-title">
+                            <span className="sec-icon">1️⃣</span>
+                            <div>
+                                <h5>统一六门控重入审查评估器 (Unified Six-Gates Reentry Evaluator)</h5>
+                                <span className="sec-desc">
+                                    对标 <code>six_gates_evaluator.py</code>：解决“止损或减仓后如何安全接回”的难题，六重刚性门控全绿灯方可整股执行。
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* 预设案卷加载 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 快速加载实盘案卷：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setSixGatesInput({
+                                    candidateId: 'cand-glw-01',
+                                    symbol: 'GLW',
+                                    nameCn: '康宁',
+                                    tradePrice: 100.0,
+                                    ma50Price: 95.0,
+                                    hasRsException: false,
+                                    hasAuthenticatedEvent: true,
+                                    isEventWithdrawn: false,
+                                    macroRegime: 'normal',
+                                    vixValue: 18.5,
+                                    portfolioTotalStockWeightPct: 20.0,
+                                    targetCandidateWeightPct: 8.0,
+                                    singleStockCapPct: 15.0,
+                                    totalStockCapPct: 30.0,
+                                    themeWeightPct: 30.0,
+                                    themeCapPct: 55.0,
+                                    unboundedCoreOrderPending: false,
+                                    episodeAvailableCash: 700.0,
+                                    portfolioNav: 8200.0,
+                                    stopLossPrice: 92.0,
+                                    maxAllowedPrice: 105.0,
+                                    slippageBps: 10,
+                                    commissionPerOrder: 1.0,
+                                })}
+                            >
+                                📘 加载 黄金路径全通案例 (GLW 企稳 · 六门控全绿 · 推荐 6 股)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setSixGatesInput({
+                                    ...sixGatesInput,
+                                    symbol: 'SPY_WAIT',
+                                    unboundedCoreOrderPending: true,
+                                })}
+                            >
+                                📘 加载 未定界核心调仓排他拦截 (Gate 4 冲突阻断)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setSixGatesInput({
+                                    ...sixGatesInput,
+                                    symbol: 'MXL_BROKEN',
+                                    tradePrice: 72.0,
+                                    ma50Price: 78.0,
+                                    hasRsException: false,
+                                })}
+                            >
+                                📘 加载 均线破位无背离拦截 (Gate 2 阻断)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setSixGatesInput({
+                                    ...sixGatesInput,
+                                    symbol: 'LOW_CASH',
+                                    episodeAvailableCash: 45.0,
+                                })}
+                            >
+                                📘 加载 专款不足买 1 整股拦截 (Gate 5 阻断)
+                            </button>
+                        </div>
+
+                        {/* 交互参数表单 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>标的代码 (Symbol)</label>
+                                <input
+                                    type="text"
+                                    value={sixGatesInput.symbol}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, symbol: e.target.value.toUpperCase() })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>交易现价 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={sixGatesInput.tradePrice}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, tradePrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>MA50 均线价 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={sixGatesInput.ma50Price}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, ma50Price: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>相对强弱背离豁免 (RS Exception)</label>
+                                <select
+                                    value={sixGatesInput.hasRsException ? 'true' : 'false'}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, hasRsException: e.target.value === 'true' })}
+                                >
+                                    <option value="false">否 (无背离认证)</option>
+                                    <option value="true">是 (通过量化认证的企稳背离)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>一手事件登记凭证 (Gate 1)</label>
+                                <select
+                                    value={sixGatesInput.hasAuthenticatedEvent ? 'true' : 'false'}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, hasAuthenticatedEvent: e.target.value === 'true' })}
+                                >
+                                    <option value="true">合规登记 (Authenticated)</option>
+                                    <option value="false">无官方证据 (Unauthenticated)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>宏观体制与 VIX (Gate 3)</label>
+                                <select
+                                    value={sixGatesInput.macroRegime}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, macroRegime: e.target.value as any })}
+                                >
+                                    <option value="normal">Normal (常态允许)</option>
+                                    <option value="elevated">Elevated (中度警惕)</option>
+                                    <option value="stress">Stress (高压降速)</option>
+                                    <option value="panic">Panic (极度恐慌熔断)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>VIX 波动率 (熔断线 35.0)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={sixGatesInput.vixValue}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, vixValue: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>未定界核心调仓待执行 (Gate 4 排他)</label>
+                                <select
+                                    value={sixGatesInput.unboundedCoreOrderPending ? 'true' : 'false'}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, unboundedCoreOrderPending: e.target.value === 'true' })}
+                                >
+                                    <option value="false">无核心调仓冲突</option>
+                                    <option value="true">存在未定界大盘调仓 (排他拦截)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>专款回笼可用资金 ($) (Gate 5)</label>
+                                <input
+                                    type="number"
+                                    step="10"
+                                    value={sixGatesInput.episodeAvailableCash}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, episodeAvailableCash: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>正向硬止损价 ($) (Gate 6)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={sixGatesInput.stopLossPrice}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, stopLossPrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>防追高上限价 ($) (Gate 6)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={sixGatesInput.maxAllowedPrice}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, maxAllowedPrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>账户总净值 NAV ($)</label>
+                                <input
+                                    type="number"
+                                    step="100"
+                                    value={sixGatesInput.portfolioNav}
+                                    onChange={(e) => setSixGatesInput({ ...sixGatesInput, portfolioNav: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 六门控动态核验网格 */}
+                        <div className="checks-checklist-grid">
+                            {Object.values(sixGatesResult.gates).map((gate) => (
+                                <div
+                                    key={gate.gateIndex}
+                                    className={`check-card ${gate.passed ? 'check-pass' : 'check-fail'}`}
+                                >
+                                    <div className="check-card-header">
+                                        <span className="check-num font-mono">Gate {gate.gateIndex}</span>
+                                        <span className="check-title">{gate.gateName}</span>
+                                        <span className={`check-badge ${gate.passed ? 'badge-pass' : 'badge-fail'}`}>
+                                            {gate.statusText}
+                                        </span>
+                                    </div>
+                                    <p className="check-detail">{gate.detail}</p>
+                                    {gate.blockers.length > 0 && (
+                                        <div className="blockers-pill-row">
+                                            {gate.blockers.map((b, i) => (
+                                                <span key={i} className="blocker-pill font-mono">{b}</span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* 门控审查结果 */}
+                        <div className="calculation-result-box">
+                            <div className="result-header-row">
+                                <span className="result-title">综合准入判定：</span>
+                                <span
+                                    className="status-badge-lg font-bold"
+                                    style={{
+                                        background: sixGatesResult.eligible ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                        color: sixGatesResult.verdictColor,
+                                        border: `1px solid ${sixGatesResult.verdictColor}`,
+                                    }}
+                                >
+                                    {sixGatesResult.verdictTitle}
+                                </span>
+                                {sixGatesResult.eligible && (
+                                    <>
+                                        <span className="multiplier-badge font-bold">
+                                            推荐执行: {sixGatesResult.recommendedShares} 整股 (${sixGatesResult.recommendedAmount.toFixed(2)})
+                                        </span>
+                                        <span className="tier-tag">
+                                            有效成交价 (含滑点): ${sixGatesResult.effectivePricePerShare.toFixed(2)}
+                                        </span>
+                                        <span className="tier-tag">
+                                            单笔敞口: ${sixGatesResult.totalRiskDollars.toFixed(2)} ({sixGatesResult.riskPctOfNav.toFixed(2)}% NAV)
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                            <p className="result-directive-msg">{sixGatesResult.actionGuidance}</p>
+                        </div>
+                    </div>
+
+                    {/* 卡片 2: 边际风险方差贡献与做空/减仓同额诊断 */}
+                    <div className="turn-section-card">
+                        <div className="card-section-title">
+                            <span className="sec-icon">2️⃣</span>
+                            <div>
+                                <h5>边际风险方差贡献与做空/减仓同额诊断 (MCR Variance Audit & Short Diagnostics)</h5>
+                                <span className="sec-desc">
+                                    对标 <code>2026-09-20-risk-budget-diagnostic/REVIEW.md</code>：揭示“市值占比 &ne; 风险贡献”认知陷阱。实证证明在内部过度集中时，减仓比外部开空降风险更彻底。
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* 预设案卷加载 */}
+                        <div className="preset-buttons-row">
+                            <span className="preset-lbl">⚡ 切换实盘风险案例：</span>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setMarginalRiskInput({
+                                    portfolioNav: 5875.91,
+                                    cashAmount: 3756.49,
+                                    cashWeightPct: 63.93,
+                                    holdings: [
+                                        { symbol: 'GLW', shares: 2, price: 150.12, marketValue: 300.24, weightPct: 5.11, volatilityAnnualizedPct: 32.5, correlationWithPortfolio: 0.72, varianceContributionPct: 13.70 },
+                                        { symbol: 'MXL', shares: 6, price: 81.08, marketValue: 486.48, weightPct: 8.28, volatilityAnnualizedPct: 48.2, correlationWithPortfolio: 0.85, varianceContributionPct: 34.74 },
+                                        { symbol: 'MRVL', shares: 4, price: 244.29, marketValue: 977.16, weightPct: 16.63, volatilityAnnualizedPct: 52.1, correlationWithPortfolio: 0.91, varianceContributionPct: 46.79 },
+                                        { symbol: 'QCOM', shares: 2, price: 177.77, marketValue: 355.54, weightPct: 6.05, volatilityAnnualizedPct: 28.4, correlationWithPortfolio: 0.65, varianceContributionPct: 4.78 },
+                                    ],
+                                    currentPortfolioAnnualizedVolPct: 28.84,
+                                    correlationWithSMH: 0.88,
+                                    betaToSpyQqq: 1.25,
+                                })}
+                            >
+                                📘 加载 2026-09-20 真实账户案例 (MRVL+MXL 贡献超 81% 方差 · 严禁开空)
+                            </button>
+                            <button
+                                className="preset-btn"
+                                onClick={() => setMarginalRiskInput({
+                                    portfolioNav: 10000.0,
+                                    cashAmount: 4000.0,
+                                    cashWeightPct: 40.0,
+                                    holdings: [
+                                        { symbol: 'GLW', shares: 8, price: 150.0, marketValue: 1200.0, weightPct: 12.0, volatilityAnnualizedPct: 22.0, correlationWithPortfolio: 0.55, varianceContributionPct: 24.0 },
+                                        { symbol: 'QCOM', shares: 7, price: 170.0, marketValue: 1190.0, weightPct: 11.9, volatilityAnnualizedPct: 24.0, correlationWithPortfolio: 0.60, varianceContributionPct: 26.0 },
+                                        { symbol: 'SO', shares: 20, price: 90.0, marketValue: 1800.0, weightPct: 18.0, volatilityAnnualizedPct: 14.0, correlationWithPortfolio: 0.30, varianceContributionPct: 18.0 },
+                                        { symbol: 'SPY', shares: 3, price: 600.0, marketValue: 1800.0, weightPct: 18.0, volatilityAnnualizedPct: 15.0, correlationWithPortfolio: 0.70, varianceContributionPct: 32.0 },
+                                    ],
+                                    currentPortfolioAnnualizedVolPct: 16.5,
+                                    correlationWithSMH: 0.50,
+                                    betaToSpyQqq: 0.85,
+                                })}
+                            >
+                                📘 加载 均衡分散低方差组合 (无单票方差超 35% · 允许战术性宏观对冲)
+                            </button>
+                        </div>
+
+                        {/* 持仓边际风险方差分布表 */}
+                        <div className="overflow-x-auto my-3">
+                            <table className="min-w-full text-xs text-left border border-slate-700 rounded-lg">
+                                <thead className="bg-slate-800 text-slate-300">
+                                    <tr>
+                                        <th className="p-2 border-b border-slate-700">标的代码</th>
+                                        <th className="p-2 border-b border-slate-700">持有股数</th>
+                                        <th className="p-2 border-b border-slate-700">现价</th>
+                                        <th className="p-2 border-b border-slate-700">市值 ($)</th>
+                                        <th className="p-2 border-b border-slate-700">市值占比 (%)</th>
+                                        <th className="p-2 border-b border-slate-700">年化波动率 (%)</th>
+                                        <th className="p-2 border-b border-slate-700">与组合相关性</th>
+                                        <th className="p-2 border-b border-slate-700">边际方差贡献 (MCR %)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {marginalRiskResult.holdingsAudit.map((h) => (
+                                        <tr key={h.symbol} className="hover:bg-slate-850 border-b border-slate-800">
+                                            <td className="p-2 font-bold text-white">{h.symbol}</td>
+                                            <td className="p-2 font-mono">{h.shares} 股</td>
+                                            <td className="p-2 font-mono">${h.price.toFixed(2)}</td>
+                                            <td className="p-2 font-mono">${h.marketValue.toFixed(2)}</td>
+                                            <td className="p-2 font-mono">{h.weightPct.toFixed(2)}%</td>
+                                            <td className="p-2 font-mono">{h.volatilityAnnualizedPct.toFixed(1)}%</td>
+                                            <td className="p-2 font-mono">{h.correlationWithPortfolio.toFixed(2)}</td>
+                                            <td className="p-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`font-mono font-bold ${h.varianceContributionPct > 35 ? 'text-amber-400' : 'text-slate-200'}`}>
+                                                        {h.varianceContributionPct.toFixed(2)}%
+                                                    </span>
+                                                    <div className="w-20 bg-slate-700 rounded-full h-2">
+                                                        <div
+                                                            className={`h-2 rounded-full ${h.varianceContributionPct > 35 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                                            style={{ width: `${Math.min(100, h.varianceContributionPct)}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 同额调整情景对照 (10% NAV) */}
+                        <h6 className="text-sm font-semibold text-slate-200 mt-4 mb-2">⚖️ 同额 10% NAV (约 $588) 调整情景风险量化检验：</h6>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-xs text-left border border-slate-700 rounded-lg">
+                                <thead className="bg-slate-800 text-slate-300">
+                                    <tr>
+                                        <th className="p-2 border-b border-slate-700">情景方案</th>
+                                        <th className="p-2 border-b border-slate-700">操作描述</th>
+                                        <th className="p-2 border-b border-slate-700">预估组合年化波动</th>
+                                        <th className="p-2 border-b border-slate-700">波动压降幅度</th>
+                                        <th className="p-2 border-b border-slate-700">摩擦成本/借券费</th>
+                                        <th className="p-2 border-b border-slate-700">轧空爆仓风险</th>
+                                        <th className="p-2 border-b border-slate-700">量化审计结论</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {marginalRiskResult.scenarios.map((sc, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-850 border-b border-slate-800">
+                                            <td className="p-2 font-bold text-white">{sc.scenarioName}</td>
+                                            <td className="p-2 text-slate-300">{sc.actionDescription}</td>
+                                            <td className="p-2 font-mono font-bold text-slate-100">{sc.projectedVolPct.toFixed(2)}%</td>
+                                            <td className="p-2 font-mono text-emerald-400">-{sc.volReductionPct.toFixed(2)}%</td>
+                                            <td className="p-2 font-mono text-slate-300">{sc.carryingCostEstimate}</td>
+                                            <td className="p-2">
+                                                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                                                    sc.squeezeRisk === 'none' ? 'bg-emerald-900/50 text-emerald-300' :
+                                                    sc.squeezeRisk === 'low' ? 'bg-sky-900/50 text-sky-300' : 'bg-rose-900/50 text-rose-300'
+                                                }`}>
+                                                    {sc.squeezeRisk.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td className="p-2 text-slate-200">{sc.feasibilityVerdict}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="calculation-result-box mt-3">
+                            <div className="result-header-row">
+                                <span className="result-title">机构治理铁律判定：</span>
+                                <span
+                                    className="status-badge-lg font-bold"
+                                    style={{
+                                        background: marginalRiskResult.governingVerdict === 'rebalance_internally_first' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                                        color: marginalRiskResult.verdictColor,
+                                        border: `1px solid ${marginalRiskResult.verdictColor}`,
+                                    }}
+                                >
+                                    {marginalRiskResult.verdictTitle}
+                                </span>
+                            </div>
+                            <p className="result-directive-msg">{marginalRiskResult.auditReport}</p>
+                        </div>
+                    </div>
+
+                    {/* 卡片 3: 美元整股执行引擎与未成交残差持久化账本 */}
+                    <div className="turn-section-card">
+                        <div className="card-section-title">
+                            <span className="sec-icon">3️⃣</span>
+                            <div>
+                                <h5>美元整股执行引擎与未成交持久化账本 (Dollar Lot Execution & Unfilled Ledger)</h5>
+                                <span className="sec-desc">
+                                    对标 <code>DOLLAR_EXECUTION_REVIEW.md</code>：支持整股向下取整、双边 $1 佣金、10/20 bps 滑点扣减与碎股未成交持久化记录。
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* 订单试算表单 */}
+                        <div className="interactive-form-grid">
+                            <div className="form-group">
+                                <label>订单动作 (Action)</label>
+                                <select
+                                    value={orderExecutionInput.action}
+                                    onChange={(e) => setOrderExecutionInput({ ...orderExecutionInput, action: e.target.value as 'BUY' | 'SELL' })}
+                                >
+                                    <option value="BUY">BUY (买入开仓/补仓)</option>
+                                    <option value="SELL">SELL (卖出锁利/止损)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>标的代码 (Symbol)</label>
+                                <input
+                                    type="text"
+                                    value={orderExecutionInput.symbol}
+                                    onChange={(e) => setOrderExecutionInput({ ...orderExecutionInput, symbol: e.target.value.toUpperCase() })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>申请股数 (Requested Shares，支持输入 0.5 股等碎股测试)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={orderExecutionInput.requestedShares}
+                                    onChange={(e) => setOrderExecutionInput({ ...orderExecutionInput, requestedShares: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>市场报价 ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={orderExecutionInput.quotePrice}
+                                    onChange={(e) => setOrderExecutionInput({ ...orderExecutionInput, quotePrice: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>可用现金余额 ($)</label>
+                                <input
+                                    type="number"
+                                    step="10"
+                                    value={orderExecutionInput.availableCash}
+                                    onChange={(e) => setOrderExecutionInput({ ...orderExecutionInput, availableCash: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>当前持仓股数 (Held Shares)</label>
+                                <input
+                                    type="number"
+                                    value={orderExecutionInput.heldShares}
+                                    onChange={(e) => setOrderExecutionInput({ ...orderExecutionInput, heldShares: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 执行账本试算结果 */}
+                        <div className="calculation-result-box">
+                            <div className="result-header-row">
+                                <span className="result-title">执行账务结算：</span>
+                                <span className={`status-badge-lg ${orderExecutionResult.executed ? 'badge-executed' : 'badge-converted'}`}>
+                                    {orderExecutionResult.executed ? 'EXECUTED (成交)' : 'BLOCKED / UNFILLED (未成交)'}
+                                </span>
+                                <span className="multiplier-badge font-bold">
+                                    成交整股: {orderExecutionResult.filledShares} 股 (单价: ${orderExecutionResult.effectivePrice.toFixed(2)})
+                                </span>
+                                <span className="tier-tag">
+                                    佣金: ${orderExecutionResult.commissionFee.toFixed(2)}
+                                </span>
+                                <span className="tier-tag">
+                                    现金变动: {orderExecutionResult.netCashImpact >= 0 ? `+$${orderExecutionResult.netCashImpact.toFixed(2)}` : `-$${(-orderExecutionResult.netCashImpact).toFixed(2)}`}
+                                </span>
+                                <span className="tier-tag font-bold text-cyan">
+                                    结余现金: ${orderExecutionResult.newCashBalance.toFixed(2)} · 结余持仓: {orderExecutionResult.newHeldShares} 股
+                                </span>
+                            </div>
+
+                            <p className="result-directive-msg">{orderExecutionResult.auditLog}</p>
+
+                            {orderExecutionResult.unfilledRecord && (
+                                <div className="mt-3 p-3 bg-rose-950/40 border border-rose-800/60 rounded text-xs text-rose-300">
+                                    <strong>⚠️ 未成交持久化账本登记：</strong> [{orderExecutionResult.unfilledRecord.reasonCode}] {orderExecutionResult.unfilledRecord.reasonText} (绝不伪造零成本完成，绝不屏蔽后续止损)
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
 
             {/* 视图：舆论情绪拥挤度反指雷达 */}
             {subTab === 'crowding-radar' && (

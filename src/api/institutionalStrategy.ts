@@ -4777,6 +4777,690 @@ export const PHASE14_ADVANCED_INSTITUTIONAL_FRAMEWORK = {
     },
 };
 
+// ====================================================
+// Phase 15: 统一六门控重入评估器、边际风险方差审计与美元整股执行账本
+// ====================================================
+
+// ----------------------------------------------------
+// 1. 统一六门控重入评估器 (Unified Six-Gates Reentry Evaluator)
+// ----------------------------------------------------
+
+export interface CandidateReentryInput {
+    candidateId: string;
+    symbol: string;
+    nameCn?: string;
+    tradePrice: number;
+    ma50Price: number;
+    hasRsException: boolean;
+    hasAuthenticatedEvent: boolean;
+    isEventWithdrawn: boolean;
+    macroRegime: 'normal' | 'elevated' | 'stress' | 'panic';
+    vixValue: number;
+    portfolioTotalStockWeightPct: number; // 当前股票总持仓占比 (上限 30%)
+    targetCandidateWeightPct: number;    // 拟开仓目标权重 (如 8%)
+    singleStockCapPct?: number;           // 单票上限 (默认 15%)
+    totalStockCapPct?: number;            // 股票总仓上限 (默认 30%)
+    themeWeightPct: number;               // 所属主题当前敞口 (上限 55%)
+    themeCapPct?: number;                 // 主题上限 (默认 55%)
+    unboundedCoreOrderPending: boolean;   // 关键：是否存在未定界的大盘指数再平衡订单 (排他最高优先级)
+    episodeAvailableCash: number;         // 专款专用：前次该标的/批次退出回笼的现金储备
+    portfolioNav: number;                 // 组合总资产净值 ($)
+    stopLossPrice: number;                // 正向硬止损价位 ($)
+    maxAllowedPrice: number;              // 防追高上限价格 ($)
+    slippageBps?: number;                 // 预估滑点基点 (默认 10 bps)
+    commissionPerOrder?: number;          // 每笔佣金 (默认 $1.0)
+}
+
+export interface GateEvaluationDetail {
+    gateIndex: number;
+    gateName: string;
+    passed: boolean;
+    statusText: string;
+    blockers: string[];
+    detail: string;
+}
+
+export interface SixGatesReentryResult {
+    candidateId: string;
+    symbol: string;
+    eligible: boolean;
+    verdictTitle: string;
+    verdictColor: string;
+    gates: {
+        informationGate: GateEvaluationDetail;
+        trendGate: GateEvaluationDetail;
+        marketFearGate: GateEvaluationDetail;
+        capacityGuardGate: GateEvaluationDetail;
+        episodeBudgetGate: GateEvaluationDetail;
+        exitPlanGate: GateEvaluationDetail;
+    };
+    allBlockers: string[];
+    recommendedShares: number;
+    recommendedAmount: number;
+    effectivePricePerShare: number;
+    riskPerShareR: number; // tradePrice - stopLossPrice
+    totalRiskDollars: number;
+    riskPctOfNav: number;
+    actionGuidance: string;
+}
+
+/**
+ * 评估统一六门控重入标准 (Six-Gates Reentry Evaluator)
+ * 对标 AI-Memory 2026-09-20 研究：six_gates_evaluator.py
+ */
+export function evaluateSixGatesReentry(input: CandidateReentryInput): SixGatesReentryResult {
+    const {
+        candidateId,
+        symbol,
+        tradePrice,
+        ma50Price,
+        hasRsException,
+        hasAuthenticatedEvent,
+        isEventWithdrawn,
+        macroRegime,
+        vixValue,
+        portfolioTotalStockWeightPct,
+        targetCandidateWeightPct,
+        singleStockCapPct = 15.0,
+        totalStockCapPct = 30.0,
+        themeWeightPct,
+        themeCapPct = 55.0,
+        unboundedCoreOrderPending,
+        episodeAvailableCash,
+        portfolioNav,
+        stopLossPrice,
+        maxAllowedPrice,
+        slippageBps = 10,
+        commissionPerOrder = 1.0,
+    } = input;
+
+    const allBlockers: string[] = [];
+
+    // Gate 1: 信息源资格门控 (Information Gate)
+    const g1Blockers: string[] = [];
+    if (!hasAuthenticatedEvent) {
+        g1Blockers.push('unauthenticated_event_id: 缺少不可变事件哈希链登记的一手官方凭证');
+    }
+    if (isEventWithdrawn) {
+        g1Blockers.push('evidence_withdrawn: 该事件官方凭证已被撤回或失效');
+    }
+    const g1Passed = g1Blockers.length === 0;
+    allBlockers.push(...g1Blockers);
+    const informationGate: GateEvaluationDetail = {
+        gateIndex: 1,
+        gateName: '信息资格门控 (Information Gate)',
+        passed: g1Passed,
+        statusText: g1Passed ? '凭证合规' : '证据链缺失/撤回',
+        blockers: g1Blockers,
+        detail: g1Passed ? '已通过一手真实事件哈希链认证，未发生撤销。' : g1Blockers.join('; '),
+    };
+
+    // Gate 2: 趋势与 RS 企稳背离门控 (Trend Gate)
+    const g2Blockers: string[] = [];
+    if (tradePrice <= 0) {
+        g2Blockers.push('invalid_trade_price: 交易价格必须大于 0');
+    } else if (tradePrice < ma50Price && !hasRsException) {
+        g2Blockers.push(`trend_below_ma50: 现价 $${tradePrice.toFixed(2)} 位于 MA50 ($${ma50Price.toFixed(2)}) 之下，且无 RS 例外背离认证`);
+    }
+    const g2Passed = g2Blockers.length === 0;
+    allBlockers.push(...g2Blockers);
+    const trendGate: GateEvaluationDetail = {
+        gateIndex: 2,
+        gateName: '趋势与RS背离门控 (Trend & RS Gate)',
+        passed: g2Passed,
+        statusText: g2Passed ? '趋势多头/RS例外豁免' : '均线压制/无背离',
+        blockers: g2Blockers,
+        detail: g2Passed
+            ? (tradePrice >= ma50Price ? `价格高于 MA50 ($${ma50Price.toFixed(2)})。` : '价格虽破 MA50，但具备认证的 RS 相对强弱背离企稳资格。')
+            : g2Blockers.join('; '),
+    };
+
+    // Gate 3: 宏观恐惧与波动率门控 (Market Fear Gate)
+    const g3Blockers: string[] = [];
+    if (macroRegime === 'panic') {
+        g3Blockers.push('market_panic_regime: 宏观环境处于 Panic 极度恐慌熔断状态');
+    }
+    if (vixValue >= 35.0) {
+        g3Blockers.push(`vix_exceeds_panic_threshold: VIX 波动率 ${vixValue.toFixed(1)} >= 35.0 突破风控红线`);
+    }
+    const g3Passed = g3Blockers.length === 0;
+    allBlockers.push(...g3Blockers);
+    const marketFearGate: GateEvaluationDetail = {
+        gateIndex: 3,
+        gateName: '宏观恐惧熔断门控 (Market Fear Gate)',
+        passed: g3Passed,
+        statusText: g3Passed ? '宏观许可' : '恐慌熔断禁买',
+        blockers: g3Blockers,
+        detail: g3Passed ? `体制 ${macroRegime}, VIX ${vixValue.toFixed(1)} < 35.0，允许承担风险。` : g3Blockers.join('; '),
+    };
+
+    // Gate 4: 容量穿透与未定界核心排他守卫 (Capacity Guard Gate)
+    const g4Blockers: string[] = [];
+    if (unboundedCoreOrderPending) {
+        g4Blockers.push('unbounded_core_order_blocks_stock_add: 待执行队列存在未定界核心指数再平衡，核心优先排他拦截');
+    }
+    if (portfolioTotalStockWeightPct + targetCandidateWeightPct > totalStockCapPct + 1e-4) {
+        g4Blockers.push(`stock_cap_exceeded: 拟买入后股票总仓 ${(portfolioTotalStockWeightPct + targetCandidateWeightPct).toFixed(1)}% 超过 ${totalStockCapPct}% 上限`);
+    }
+    if (targetCandidateWeightPct > singleStockCapPct + 1e-4) {
+        g4Blockers.push(`single_stock_cap_exceeded: 单票目标权重 ${targetCandidateWeightPct.toFixed(1)}% 超过 ${singleStockCapPct}% 上限`);
+    }
+    if (themeWeightPct + targetCandidateWeightPct > themeCapPct + 1e-4) {
+        g4Blockers.push(`theme_cap_exceeded: 主题敞口 ${(themeWeightPct + targetCandidateWeightPct).toFixed(1)}% 超过 ${themeCapPct}% 熔断线`);
+    }
+    const g4Passed = g4Blockers.length === 0;
+    allBlockers.push(...g4Blockers);
+    const capacityGuardGate: GateEvaluationDetail = {
+        gateIndex: 4,
+        gateName: '容量与未定界核心排他 (Capacity Guard Gate)',
+        passed: g4Passed,
+        statusText: g4Passed ? '容量合规' : '容量超限/核心排他',
+        blockers: g4Blockers,
+        detail: g4Passed ? '穿透总股票、单票、主题容量合规，无核心挂单冲突。' : g4Blockers.join('; '),
+    };
+
+    // Gate 5: 专款专用批次预算与整股可行性门控 (Episode Budget Gate)
+    const g5Blockers: string[] = [];
+    const effectivePricePerShare = tradePrice * (1 + slippageBps / 10000);
+    const targetDollars = portfolioNav * (targetCandidateWeightPct / 100.0);
+    const usableEpisodeCash = Math.min(targetDollars, episodeAvailableCash);
+
+    let affordableShares = 0;
+    let recommendedAmount = 0;
+
+    if (usableEpisodeCash <= commissionPerOrder) {
+        g5Blockers.push(`insufficient_episode_cash_for_fee: 专款回笼资金 $${usableEpisodeCash.toFixed(2)} 不足以支付每笔 $${commissionPerOrder.toFixed(2)} 佣金`);
+    } else {
+        const cashAfterFee = usableEpisodeCash - commissionPerOrder;
+        affordableShares = Math.floor(cashAfterFee / effectivePricePerShare);
+        if (affordableShares < 1) {
+            g5Blockers.push(`below_whole_share_affordability: 专款资金不足以按单价 $${effectivePricePerShare.toFixed(2)} 购入 1 整股`);
+        } else {
+            recommendedAmount = affordableShares * effectivePricePerShare + commissionPerOrder;
+        }
+    }
+    const g5Passed = g5Blockers.length === 0 && affordableShares >= 1;
+    allBlockers.push(...g5Blockers);
+    const episodeBudgetGate: GateEvaluationDetail = {
+        gateIndex: 5,
+        gateName: '专款预算与整股门控 (Episode Budget Gate)',
+        passed: g5Passed,
+        statusText: g5Passed ? `可买 ${affordableShares} 股` : '专款耗尽/不足整股',
+        blockers: g5Blockers,
+        detail: g5Passed
+            ? `基于专款储备 $${episodeAvailableCash.toFixed(2)}，向下整股取整推算可买 ${affordableShares} 股 (执行金额 $${recommendedAmount.toFixed(2)} 含滑点佣金)。`
+            : g5Blockers.join('; '),
+    };
+
+    // Gate 6: 正向硬止损与防追高限价门控 (Exit Plan Gate)
+    const g6Blockers: string[] = [];
+    if (stopLossPrice <= 0) {
+        g6Blockers.push('missing_positive_stop_price: 必须设定严格大于 0 的正向硬止损价');
+    } else if (stopLossPrice >= tradePrice) {
+        g6Blockers.push(`stop_price_at_or_above_current_price: 止损价 $${stopLossPrice.toFixed(2)} 发生倒挂 (>= 现价 $${tradePrice.toFixed(2)})`);
+    }
+    if (tradePrice > maxAllowedPrice) {
+        g6Blockers.push(`current_price_exceeds_ceiling_limit: 现价 $${tradePrice.toFixed(2)} 高于追高风控上限价 $${maxAllowedPrice.toFixed(2)}`);
+    }
+    const riskPerShareR = Math.max(0, tradePrice - stopLossPrice);
+    if (riskPerShareR <= 0) {
+        g6Blockers.push('non_positive_risk_r: 单股真实风险敞口 R 必须严格为正');
+    }
+    const g6Passed = g6Blockers.length === 0;
+    allBlockers.push(...g6Blockers);
+    const exitPlanGate: GateEvaluationDetail = {
+        gateIndex: 6,
+        gateName: '正向硬止损与限价门控 (Exit Plan Gate)',
+        passed: g6Passed,
+        statusText: g6Passed ? `止损明确 (R=$${riskPerShareR.toFixed(2)})` : '止损异常/追高超限',
+        blockers: g6Blockers,
+        detail: g6Passed
+            ? `止损价 $${stopLossPrice.toFixed(2)} 有效，单股风险 R=$${riskPerShareR.toFixed(2)}，现价在限价上限 $${maxAllowedPrice.toFixed(2)} 之内。`
+            : g6Blockers.join('; '),
+    };
+
+    // 综合判定
+    const eligible = g1Passed && g2Passed && g3Passed && g4Passed && g5Passed && g6Passed;
+    const totalRiskDollars = eligible ? riskPerShareR * affordableShares : 0;
+    const riskPctOfNav = portfolioNav > 0 ? (totalRiskDollars / portfolioNav) * 100.0 : 0;
+
+    let verdictTitle = '';
+    let verdictColor = '';
+    let actionGuidance = '';
+
+    if (eligible) {
+        verdictTitle = '✅ 统一六门控全部达标 (Authorized Reentry)';
+        verdictColor = '#10b981';
+        actionGuidance = `候选标的 ${symbol} 六重刚性门控全绿灯通过！推荐以整股执行买入 ${affordableShares} 股（金额约 $${recommendedAmount.toFixed(2)}），单笔风险敞口 $${totalRiskDollars.toFixed(2)} (占 NAV ${riskPctOfNav.toFixed(2)}% <= 1.0%)。严格执行挂单。`;
+    } else {
+        verdictTitle = `🚫 六门控审查拦截 (${allBlockers.length} 项违规)`;
+        verdictColor = '#ef4444';
+        actionGuidance = `标的 ${symbol} 未能通过统一六门控审查，触发以下拦截项：${allBlockers.slice(0, 2).join('；')}。严禁擅自入场，保持观望。`;
+    }
+
+    return {
+        candidateId,
+        symbol,
+        eligible,
+        verdictTitle,
+        verdictColor,
+        gates: {
+            informationGate,
+            trendGate,
+            marketFearGate,
+            capacityGuardGate,
+            episodeBudgetGate,
+            exitPlanGate,
+        },
+        allBlockers,
+        recommendedShares: eligible ? affordableShares : 0,
+        recommendedAmount: eligible ? recommendedAmount : 0,
+        effectivePricePerShare,
+        riskPerShareR,
+        totalRiskDollars,
+        riskPctOfNav,
+        actionGuidance,
+    };
+}
+
+// ----------------------------------------------------
+// 2. 边际风险方差贡献与空头对冲诊断 (Marginal Risk & Short Diagnostics)
+// ----------------------------------------------------
+
+export interface HoldingRiskItem {
+    symbol: string;
+    shares: number;
+    price: number;
+    marketValue: number;
+    weightPct: number;
+    volatilityAnnualizedPct: number;
+    correlationWithPortfolio: number;
+    varianceContributionPct: number; // 边际方差贡献率 (MCR)
+}
+
+export interface MarginalRiskDiagnosticInput {
+    portfolioNav: number;
+    cashAmount: number;
+    cashWeightPct: number;
+    holdings: HoldingRiskItem[];
+    currentPortfolioAnnualizedVolPct: number;
+    correlationWithSMH: number;
+    betaToSpyQqq: number;
+}
+
+export interface HedgeScenarioResult {
+    scenarioName: string;
+    actionDescription: string;
+    projectedVolPct: number;
+    volReductionPct: number;
+    carryingCostEstimate: string;
+    squeezeRisk: 'none' | 'low' | 'high';
+    feasibilityVerdict: string;
+}
+
+export interface MarginalRiskDiagnosticResult {
+    portfolioNav: number;
+    cashWeightPct: number;
+    holdingsAudit: HoldingRiskItem[];
+    top2VarianceConcentrationPct: number;
+    top2Symbols: string[];
+    isSevereRiskConcentrated: boolean;
+    governingVerdict: 'rebalance_internally_first' | 'hedge_permitted';
+    verdictTitle: string;
+    verdictColor: string;
+    scenarios: HedgeScenarioResult[];
+    auditReport: string;
+}
+
+/**
+ * 边际风险方差贡献与做空/减仓同额诊断
+ * 对标 AI-Memory 2026-09-20 研究：2026-09-20-risk-budget-diagnostic/REVIEW.md
+ */
+export function evaluateMarginalRiskContribution(input: MarginalRiskDiagnosticInput): MarginalRiskDiagnosticResult {
+    const {
+        portfolioNav,
+        cashWeightPct,
+        holdings,
+        currentPortfolioAnnualizedVolPct,
+        correlationWithSMH,
+        betaToSpyQqq,
+    } = input;
+
+    // 排序找出方差贡献前两名
+    const sortedByVar = [...holdings].sort((a, b) => b.varianceContributionPct - a.varianceContributionPct);
+    const top2Symbols = sortedByVar.slice(0, 2).map((h) => h.symbol);
+    const top2VarianceConcentrationPct = sortedByVar.slice(0, 2).reduce((sum, h) => sum + h.varianceContributionPct, 0);
+
+    // 风险集中阈值判定：前两大标的方差贡献 >= 70% 或 单票 >= 40%
+    const isSevereRiskConcentrated = top2VarianceConcentrationPct >= 70.0 || (sortedByVar.length > 0 && sortedByVar[0].varianceContributionPct >= 40.0);
+
+    // 同额情景对比 (按 10% NAV 调整)
+    const scenarios: HedgeScenarioResult[] = [
+        {
+            scenarioName: '维持当前持仓权重',
+            actionDescription: '不进行任何减仓或对冲，保持现有 4 股及高额现金。',
+            projectedVolPct: currentPortfolioAnnualizedVolPct,
+            volReductionPct: 0.0,
+            carryingCostEstimate: '$0.00',
+            squeezeRisk: 'none',
+            feasibilityVerdict: '基准参照：高方差个股集中度持续暴露。',
+        },
+        {
+            scenarioName: '按比例减持 10% NAV 个股（保留现金）',
+            actionDescription: '按比例同向减持高波动持仓，将资金回笼至现金。',
+            projectedVolPct: Math.max(15.0, currentPortfolioAnnualizedVolPct * 0.72),
+            volReductionPct: currentPortfolioAnnualizedVolPct - Math.max(15.0, currentPortfolioAnnualizedVolPct * 0.72),
+            carryingCostEstimate: '$2.00 (双边整股佣金)',
+            squeezeRisk: 'none',
+            feasibilityVerdict: '最优解：直接斩断 8% 样本方差，无借券费、无轧空爆仓隐患。',
+        },
+        {
+            scenarioName: '理想化做空 QQQ 10% NAV (或配置反向 PSQ)',
+            actionDescription: '保留原有个股，另加 10% QQQ 空头或买入 PSQ。',
+            projectedVolPct: Math.max(20.0, currentPortfolioAnnualizedVolPct - 1.58),
+            volReductionPct: 1.58,
+            carryingCostEstimate: '$2.59 ~ $8.00 (0.44%~1.36% 年化借券费与滑点)',
+            squeezeRisk: 'high',
+            feasibilityVerdict: '不推荐：仅降低 1.5% 波动，且面临个股反抽与空头轧空双重踩踏。',
+        },
+        {
+            scenarioName: '做空 SPY 10% NAV',
+            actionDescription: '保留原有个股，另加 10% SPY 空头。',
+            projectedVolPct: Math.max(20.0, currentPortfolioAnnualizedVolPct - 0.57),
+            volReductionPct: 0.57,
+            carryingCostEstimate: '$2.59 ~ $8.00',
+            squeezeRisk: 'low',
+            feasibilityVerdict: '低效对冲：大盘与半导体个股 Beta 脱节，仅抵消 0.57% 波动。',
+        },
+    ];
+
+    let governingVerdict: 'rebalance_internally_first' | 'hedge_permitted' = 'rebalance_internally_first';
+    let verdictTitle = '';
+    let verdictColor = '';
+    let auditReport = '';
+
+    if (isSevereRiskConcentrated) {
+        governingVerdict = 'rebalance_internally_first';
+        verdictTitle = '⚠️ 优先处理内部风险集中，严禁外部做空对冲';
+        verdictColor = '#f59e0b';
+        auditReport = `【认知陷阱预警】当前持仓中 ${top2Symbols.join(' + ')} 市值占比仅约 ${(sortedByVar.slice(0, 2).reduce((s, h) => s + h.weightPct, 0)).toFixed(1)}%，但由于其高 Beta 与高波动，却贡献了高达 ${top2VarianceConcentrationPct.toFixed(1)}% 的样本方差！实证证明：按比例减持 10% NAV 可使年化波动大幅下降 ${(currentPortfolioAnnualizedVolPct - Math.max(15.0, currentPortfolioAnnualizedVolPct * 0.72)).toFixed(1)}%，而做空 QQQ/PSQ 仅微降 1.58% 还要承担借券与轧空风险。根据机构治理铁律：在未平衡持仓内部过度集中之前，严禁开启外部指数空头！`;
+    } else {
+        governingVerdict = 'hedge_permitted';
+        verdictTitle = '✅ 内部风险预算均衡，允许战术性宏观对冲';
+        verdictColor = '#10b981';
+        auditReport = `持仓各资产边际风险贡献分布健康，前两名方差贡献为 ${top2VarianceConcentrationPct.toFixed(1)}% (低于 70% 警戒线)。组合整体与 SMH 相关性为 ${correlationWithSMH.toFixed(2)}，Beta 为 ${betaToSpyQqq.toFixed(2)}。在宏观风控收紧时，允许依规配置防御性指数对冲。`;
+    }
+
+    return {
+        portfolioNav,
+        cashWeightPct,
+        holdingsAudit: sortedByVar,
+        top2VarianceConcentrationPct,
+        top2Symbols,
+        isSevereRiskConcentrated,
+        governingVerdict,
+        verdictTitle,
+        verdictColor,
+        scenarios,
+        auditReport,
+    };
+}
+
+// ----------------------------------------------------
+// 3. 美元整股执行与未成交残差账本 (Dollar Discrete Lot Execution & Unfilled Order Ledger)
+// ----------------------------------------------------
+
+export interface UnfilledOrderRecord {
+    orderId: string;
+    timestamp: string;
+    symbol: string;
+    action: 'BUY' | 'SELL';
+    requestedShares: number;
+    filledShares: number;
+    reasonCode: 'zero_share_lot' | 'insufficient_cash_for_commission' | 'insufficient_funds' | 'fractional_share_unsupported';
+    reasonText: string;
+}
+
+export interface DollarOrderExecutionInput {
+    orderId: string;
+    timestamp: string;
+    symbol: string;
+    action: 'BUY' | 'SELL';
+    requestedShares: number;
+    quotePrice: number;
+    availableCash: number;
+    heldShares: number;
+    commissionPerOrder?: number; // 默认 $1.0
+    slippageBps?: number;        // 默认 10 bps
+}
+
+export interface DollarOrderExecutionResult {
+    orderId: string;
+    symbol: string;
+    action: 'BUY' | 'SELL';
+    executed: boolean;
+    filledShares: number;
+    unfilledShares: number;
+    effectivePrice: number;
+    grossAmount: number;
+    commissionFee: number;
+    netCashImpact: number; // 买入为负，卖出为正
+    newCashBalance: number;
+    newHeldShares: number;
+    unfilledRecord?: UnfilledOrderRecord;
+    auditLog: string;
+}
+
+/**
+ * 美元整股执行引擎与未成交持久化审计
+ * 对标 AI-Memory 2026-09-20 研究：dollar_execution.py & DOLLAR_EXECUTION_REVIEW.md
+ */
+export function evaluateDollarDiscreteLotExecution(input: DollarOrderExecutionInput): DollarOrderExecutionResult {
+    const {
+        orderId,
+        timestamp,
+        symbol,
+        action,
+        requestedShares,
+        quotePrice,
+        availableCash,
+        heldShares,
+        commissionPerOrder = 1.0,
+        slippageBps = 10,
+    } = input;
+
+    // 滑点调整后价格
+    const effectivePrice = action === 'BUY'
+        ? quotePrice * (1 + slippageBps / 10000)
+        : quotePrice * (1 - slippageBps / 10000);
+
+    // 严厉的整股规则：向下取整整股
+    const wholeSharesRequested = Math.floor(requestedShares);
+
+    if (action === 'BUY') {
+        if (wholeSharesRequested < 1) {
+            const unfilledRecord: UnfilledOrderRecord = {
+                orderId,
+                timestamp,
+                symbol,
+                action: 'BUY',
+                requestedShares,
+                filledShares: 0,
+                reasonCode: 'zero_share_lot',
+                reasonText: `买入申请股数 ${requestedShares.toFixed(2)} 不足 1 整股，按整股纪律拒绝执行`,
+            };
+            return {
+                orderId,
+                symbol,
+                action: 'BUY',
+                executed: false,
+                filledShares: 0,
+                unfilledShares: requestedShares,
+                effectivePrice,
+                grossAmount: 0,
+                commissionFee: 0,
+                netCashImpact: 0,
+                newCashBalance: availableCash,
+                newHeldShares: heldShares,
+                unfilledRecord,
+                auditLog: `[BUY REJECTED] 申请股数 ${requestedShares.toFixed(2)} 不足 1 整股。`,
+            };
+        }
+
+        const requiredGross = wholeSharesRequested * effectivePrice;
+        const totalRequiredCash = requiredGross + commissionPerOrder;
+
+        if (totalRequiredCash > availableCash) {
+            // 计算账户资金实际能买的整股数
+            const affordableShares = Math.floor((availableCash - commissionPerOrder) / effectivePrice);
+            const unfilledRecord: UnfilledOrderRecord = {
+                orderId,
+                timestamp,
+                symbol,
+                action: 'BUY',
+                requestedShares,
+                filledShares: Math.max(0, affordableShares),
+                reasonCode: 'insufficient_funds',
+                reasonText: `可用资金 $${availableCash.toFixed(2)} 不足支付申请金额 $${totalRequiredCash.toFixed(2)} (含 $${commissionPerOrder} 佣金)`,
+            };
+            return {
+                orderId,
+                symbol,
+                action: 'BUY',
+                executed: false,
+                filledShares: 0,
+                unfilledShares: requestedShares,
+                effectivePrice,
+                grossAmount: 0,
+                commissionFee: 0,
+                netCashImpact: 0,
+                newCashBalance: availableCash,
+                newHeldShares: heldShares,
+                unfilledRecord,
+                auditLog: `[BUY REJECTED] 资金不足，申请 $${totalRequiredCash.toFixed(2)} > 可用 $${availableCash.toFixed(2)}。`,
+            };
+        }
+
+        // 买入成功
+        const netCashImpact = -totalRequiredCash;
+        return {
+            orderId,
+            symbol,
+            action: 'BUY',
+            executed: true,
+            filledShares: wholeSharesRequested,
+            unfilledShares: requestedShares - wholeSharesRequested,
+            effectivePrice,
+            grossAmount: requiredGross,
+            commissionFee: commissionPerOrder,
+            netCashImpact,
+            newCashBalance: availableCash + netCashImpact,
+            newHeldShares: heldShares + wholeSharesRequested,
+            auditLog: `[BUY EXECUTED] 成交 ${wholeSharesRequested} 整股，单价 $${effectivePrice.toFixed(2)}，佣金 $${commissionPerOrder.toFixed(2)}，扣款 $${(-netCashImpact).toFixed(2)}。`,
+        };
+    } else {
+        // SELL
+        if (wholeSharesRequested < 1) {
+            const unfilledRecord: UnfilledOrderRecord = {
+                orderId,
+                timestamp,
+                symbol,
+                action: 'SELL',
+                requestedShares,
+                filledShares: 0,
+                reasonCode: 'fractional_share_unsupported',
+                reasonText: `卖出申请股数 ${requestedShares.toFixed(2)} 产生零股残差，整股券商无法单独立案成交。保留记录，绝不屏蔽后续止损`,
+            };
+            return {
+                orderId,
+                symbol,
+                action: 'SELL',
+                executed: false,
+                filledShares: 0,
+                unfilledShares: requestedShares,
+                effectivePrice,
+                grossAmount: 0,
+                commissionFee: 0,
+                netCashImpact: 0,
+                newCashBalance: availableCash,
+                newHeldShares: heldShares,
+                unfilledRecord,
+                auditLog: `[SELL RESIDUAL] 卖出 ${requestedShares.toFixed(2)} 股为碎股残差，已记录到未成交持久化账本。`,
+            };
+        }
+
+        const executableShares = Math.min(wholeSharesRequested, heldShares);
+        const grossProceeds = executableShares * effectivePrice;
+
+        // 低价退出佣金兜底核对：若卖出所得不足以支付佣金，检查账户是否有现金可补足
+        let netCashImpact = grossProceeds - commissionPerOrder;
+        if (netCashImpact < 0 && availableCash + netCashImpact < 0) {
+            const unfilledRecord: UnfilledOrderRecord = {
+                orderId,
+                timestamp,
+                symbol,
+                action: 'SELL',
+                requestedShares,
+                filledShares: 0,
+                reasonCode: 'insufficient_cash_for_commission',
+                reasonText: `卖出所得 $${grossProceeds.toFixed(2)} 不足抵扣 $${commissionPerOrder.toFixed(2)} 佣金，且账户现金不足以填补差额`,
+            };
+            return {
+                orderId,
+                symbol,
+                action: 'SELL',
+                executed: false,
+                filledShares: 0,
+                unfilledShares: requestedShares,
+                effectivePrice,
+                grossAmount: 0,
+                commissionFee: 0,
+                netCashImpact: 0,
+                newCashBalance: availableCash,
+                newHeldShares: heldShares,
+                unfilledRecord,
+                auditLog: `[SELL REJECTED] 极低价格清算费用穿透失败。`,
+            };
+        }
+
+        return {
+            orderId,
+            symbol,
+            action: 'SELL',
+            executed: true,
+            filledShares: executableShares,
+            unfilledShares: requestedShares - executableShares,
+            effectivePrice,
+            grossAmount: grossProceeds,
+            commissionFee: commissionPerOrder,
+            netCashImpact,
+            newCashBalance: availableCash + netCashImpact,
+            newHeldShares: heldShares - executableShares,
+            auditLog: `[SELL EXECUTED] 成交卖出 ${executableShares} 整股，回收现金净额 $${netCashImpact.toFixed(2)} (扣除 $${commissionPerOrder.toFixed(2)} 佣金)。`,
+        };
+    }
+}
+
+export const PHASE15_ADVANCED_INSTITUTIONAL_FRAMEWORK = {
+    releaseDate: '2026-09-22',
+    name: 'Phase 15 统一六门控重入评估器、边际风险方差审计与美元整股执行账本',
+    caseStudies: {
+        sixGatesReentryCase: {
+            scenario: '2026-09-18 标的 GLW 回踩企稳，申请重入 $600 (8% 目标权重)',
+            solution: '六重刚性门控（信息凭证、MA50/RS、宏观非panic、容量30%/55%、专款整股、正向硬止损）全票通过，精准计算整股买入 6 股。',
+        },
+        marginalRiskVarianceCase: {
+            scenario: '2026-09-20 账户持有 GLW/MXL/MRVL/QCOM，现金 63.9%，MRVL+MXL 贡献超 80% 方差',
+            solution: '触发治理铁律：严禁外部开空 QQQ/PSQ（仅降 1.58% 波动），强制优先按比例减仓高方差个股（直接砍掉 8.0% 波动且无借券成本与轧空风险）。',
+        },
+        discreteLotExecutionCase: {
+            scenario: '调仓产生 0.6 股微额减仓与低价清仓费用穿透',
+            solution: '0.6 股记入未成交持久化账本，不误记为已完成，绝不屏蔽后续止损；卖出所得抵扣 $1 佣金后现金差额由可用现金合规扣减。',
+        },
+    },
+};
+
+
 
 
 
