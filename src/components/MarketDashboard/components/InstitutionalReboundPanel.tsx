@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     BOTTOM_REBOUND_100WIN_SUMMARY,
     BOTTOM_REBOUND_UNIVERSE,
@@ -113,6 +113,27 @@ import {
     simulateV9ComprehensiveBacktest,
     PHASE25_STRATEGY_DATA_BACKTEST_FRAMEWORK,
     type V9BacktestSandboxParams,
+    DEFAULT_BRINSON_SEGMENTS,
+    evaluateBrinsonAttribution,
+    evaluateBarraFactorExposure,
+    PHASE26_BRINSON_ATTRIBUTION_FRAMEWORK,
+    simulateMonteCarloFanChart,
+    evaluateCrisisStressTesting,
+    PHASE27_MONTE_CARLO_STRESS_FRAMEWORK,
+    type MonteCarloSimulationInput,
+    evaluateOvernightGapRisk,
+    evaluateVwapExecutionSlippage,
+    PHASE28_GAP_VWAP_SLIPPAGE_FRAMEWORK,
+    type OvernightGapInput,
+    type VwapSlippageInput,
+    generateSignalWebhookCard,
+    dispatchStrategyWebhookAlert,
+    PHASE29_WEBHOOK_ALERTS_FRAMEWORK,
+    type StrategySignalPayload,
+    DEFAULT_PORTFOLIO_PRESETS,
+    evaluatePortfolioHealthCheck,
+    PHASE30_PORTFOLIO_PRESCRIPTION_FRAMEWORK,
+    type PortfolioHoldingItem,
 } from '../../../api/institutionalStrategy';
 
 interface InstitutionalReboundPanelProps {
@@ -122,6 +143,11 @@ interface InstitutionalReboundPanelProps {
 type SubTabType =
     | 'stocks'
     | 'strategy-data-backtest'
+    | 'brinson-attribution'
+    | 'monte-carlo-stress'
+    | 'gap-vwap-microstructure'
+    | 'webhook-alerts'
+    | 'portfolio-health-check'
     | 'live-shadow'
     | 'fear-matrix'
     | 'breadth'
@@ -585,6 +611,63 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     const replayResult = evaluateSemanticReplayAuditor(replayInput);
 
     // Phase 25: 策略全周期数据回测与胜率实证沙盒状态
+    // Phase 26: Brinson 归因与 Barra 风格雷达状态
+    const brinsonSegments = DEFAULT_BRINSON_SEGMENTS;
+    const brinsonResult = useMemo(() => evaluateBrinsonAttribution(brinsonSegments), [brinsonSegments]);
+    const barraExposures = useMemo(() => evaluateBarraFactorExposure(), []);
+
+    // Phase 27: 蒙特卡洛与极端黑天鹅状态
+    const [mcInput, setMcInput] = useState<MonteCarloSimulationInput>({
+        initialNav: 10000,
+        expectedAnnualReturnPct: 17.5,
+        annualVolatilityPct: 11.2,
+        horizonDays: 252,
+    });
+    const mcResult = useMemo(() => simulateMonteCarloFanChart(mcInput), [mcInput]);
+    const crisisScenarios = useMemo(() => evaluateCrisisStressTesting(), []);
+    const [activeCrisisId, setActiveCrisisId] = useState<string>('stagflation_oil_spike');
+
+    // Phase 28: 隔夜跳空与日内 VWAP 微结构
+    const [gapInput, setGapInput] = useState<OvernightGapInput>({
+        symbol: 'MRVL',
+        entryPrice: 100,
+        restingStopPrice: 92,
+        previousClosePrice: 93,
+        marketOpenPrice: 85,
+        shares: 100,
+    });
+    const gapResult = useMemo(() => evaluateOvernightGapRisk(gapInput), [gapInput]);
+
+    const [vwapInput, setVwapInput] = useState<VwapSlippageInput>({
+        orderShares: 50000,
+        averageDailyVolume: 1000000,
+        volatilityAnnualPct: 25.0,
+        tradingHalfDay: 'morning_open',
+    });
+    const vwapResult = useMemo(() => evaluateVwapExecutionSlippage(vwapInput), [vwapInput]);
+
+    // Phase 29: Webhook 实时信标与交互卡片
+    const [webhookPlatform, setWebhookPlatform] = useState<'feishu' | 'wecom' | 'dingtalk' | 'telegram'>('feishu');
+    const [webhookUrl, setWebhookUrl] = useState<string>('https://open.feishu.cn/open-apis/bot/v2/hook/550e8400-e29b-41d4-a716-446655440000');
+    const [webhookSignal, setWebhookSignal] = useState<StrategySignalPayload>({
+        eventId: 'SIG-20260922-088',
+        eventType: 'ENTRY_CONFIRMED',
+        timestamp: '2026-09-22 18:00:00 UTC',
+        symbol: 'SO',
+        currentPrice: 91.24,
+        stopPrice: 84.50,
+        profitPct: 0.0,
+        summary: '南方电力连续 2 日企稳收阳并站上 MA200，触发 V9 8% 帕累托加仓。',
+        actionableAdvice: '建议次日开盘限价单建仓，同步挂单 $84.50 初始防守止损单。',
+        severity: 'SUCCESS',
+    });
+    const webhookCardPreview = useMemo(() => generateSignalWebhookCard(webhookSignal, webhookPlatform), [webhookSignal, webhookPlatform]);
+    const [webhookDispatchStatus, setWebhookDispatchStatus] = useState<string | null>(null);
+
+    // Phase 30: 个人持仓量化体检与调仓处方
+    const [holdings, setHoldings] = useState<PortfolioHoldingItem[]>(DEFAULT_PORTFOLIO_PRESETS['retail_tech_heavy']);
+    const healthResult = useMemo(() => evaluatePortfolioHealthCheck(holdings), [holdings]);
+
     const [backtestSandboxParams, setBacktestSandboxParams] = useState<V9BacktestSandboxParams>({
         coreWeightPct: 70,
         stockSleeveWeightPct: 30,
@@ -865,6 +948,36 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('strategy-data-backtest')}
                 >
                     📊 策略全周期回测与胜率实证 (Phase 25)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'brinson-attribution' ? 'active' : ''}`}
+                    onClick={() => setSubTab('brinson-attribution')}
+                >
+                    ⚖️ Brinson 收益归因与 Barra (Phase 26)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'monte-carlo-stress' ? 'active' : ''}`}
+                    onClick={() => setSubTab('monte-carlo-stress')}
+                >
+                    🎲 蒙特卡洛与黑天鹅应激 (Phase 27)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'gap-vwap-microstructure' ? 'active' : ''}`}
+                    onClick={() => setSubTab('gap-vwap-microstructure')}
+                >
+                    ⚡ 隔夜跳空与日内 VWAP (Phase 28)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'webhook-alerts' ? 'active' : ''}`}
+                    onClick={() => setSubTab('webhook-alerts')}
+                >
+                    📢 实时推送信标与企微卡片 (Phase 29)
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'portfolio-health-check' ? 'active' : ''}`}
+                    onClick={() => setSubTab('portfolio-health-check')}
+                >
+                    🩺 个人持仓体检与调仓处方 (Phase 30)
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -6557,7 +6670,698 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                 </div>
             )}
 
-            {/* 视图：舆论情绪拥挤度反指雷达 */}
+            
+            {/* 视图：Phase 26 Brinson 收益归因与 Barra 风格雷达 */}
+            {subTab === 'brinson-attribution' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-top-row">
+                            <span className="six-gates-phase-label">Phase 26</span>
+                            <span className="six-gates-title">⚖️ Brinson 资产配置与选股多因子收益归因模型 (Brinson-Hood-Beebower & Barra)</span>
+                            <span className="six-gates-asof">{PHASE26_BRINSON_ATTRIBUTION_FRAMEWORK.releaseDate}</span>
+                        </div>
+                        <div className="six-gates-subtitle">
+                            资产配置效应 (Allocation) · 标的选择效应 (Selection) · 交互效应 (Interaction) 三要素解耦 · Barra 6 大核心风格因子 Z-Score 暴露雷达
+                        </div>
+                    </div>
+
+                    {/* KPI 归因卡片 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>组合总回报 (Portfolio)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color, #00c087)', marginTop: '4px' }}>
+                                +{brinsonResult.totalPortfolioReturnPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>基准总回报 +{brinsonResult.totalBenchmarkReturnPct}%</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>总超额收益 (Active Return)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#1890ff', marginTop: '4px' }}>
+                                +{brinsonResult.totalActiveReturnPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>恒等式校验通过: A+S+I</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>资产配置效应 (Allocation)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color, #00c087)', marginTop: '4px' }}>
+                                +{brinsonResult.totalAllocationEffectPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>宏观大类择时贡献</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>个股选择效应 (Selection)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#722ed1', marginTop: '4px' }}>
+                                +{brinsonResult.totalSelectionEffectPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>自然垄断白马超额 Alpha</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>交互效应 (Interaction)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#faad14', marginTop: '4px' }}>
+                                +{brinsonResult.totalInteractionEffectPct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>配置与选股协同乘数</div>
+                        </div>
+                    </div>
+
+                    {/* Card 1: 细分资产段 Brinson 归因明细表 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📋</span>
+                            <span className="gates-card-title">细分资产段 Brinson 收益拆解明细表</span>
+                            <span className="gates-badge badge-pass">
+                                {brinsonResult.identityCheckPassed ? '✅ 恒等式严格闭合' : '⚠️ 存在残差'}
+                            </span>
+                        </div>
+                        <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                            <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>资产分段</th>
+                                        <th style={{ padding: '8px' }}>组合权重</th>
+                                        <th style={{ padding: '8px' }}>基准权重</th>
+                                        <th style={{ padding: '8px' }}>组合收益</th>
+                                        <th style={{ padding: '8px' }}>基准收益</th>
+                                        <th style={{ padding: '8px' }}>配置效应 (A)</th>
+                                        <th style={{ padding: '8px' }}>选股效应 (S)</th>
+                                        <th style={{ padding: '8px' }}>交互效应 (I)</th>
+                                        <th style={{ padding: '8px' }}>总贡献</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {brinsonResult.segments.map(seg => (
+                                        <tr key={seg.segmentId} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <td style={{ padding: '8px', fontWeight: 'bold' }}>{seg.segmentName}</td>
+                                            <td style={{ padding: '8px' }}>{(seg.portfolioWeight * 100).toFixed(0)}%</td>
+                                            <td style={{ padding: '8px' }}>{(seg.benchmarkWeight * 100).toFixed(0)}%</td>
+                                            <td style={{ padding: '8px', color: 'var(--gain-color)' }}>+{seg.portfolioReturn}%</td>
+                                            <td style={{ padding: '8px' }}>+{seg.benchmarkReturn}%</td>
+                                            <td style={{ padding: '8px', color: seg.allocationEffectPct >= 0 ? 'var(--gain-color)' : 'var(--loss-color)' }}>
+                                                {seg.allocationEffectPct > 0 ? `+${seg.allocationEffectPct}` : seg.allocationEffectPct}%
+                                            </td>
+                                            <td style={{ padding: '8px', color: seg.selectionEffectPct >= 0 ? 'var(--gain-color)' : 'var(--loss-color)' }}>
+                                                {seg.selectionEffectPct > 0 ? `+${seg.selectionEffectPct}` : seg.selectionEffectPct}%
+                                            </td>
+                                            <td style={{ padding: '8px', color: seg.interactionEffectPct >= 0 ? 'var(--gain-color)' : 'var(--loss-color)' }}>
+                                                {seg.interactionEffectPct > 0 ? `+${seg.interactionEffectPct}` : seg.interactionEffectPct}%
+                                            </td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold', color: 'var(--gain-color)' }}>
+                                                +{seg.totalSegmentContributionPct}%
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            💡 <strong>归因分析结论</strong>：{brinsonResult.interpretation}
+                        </div>
+                    </div>
+
+                    {/* Card 2: Barra 6 大风格因子暴露雷达 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🧭</span>
+                            <span className="gates-card-title">Barra 6 大核心风格因子暴露雷达 (Barra Risk Factor Exposures)</span>
+                            <span className="gates-badge badge-pass">低波/大盘价值稳健倾斜</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', marginTop: '10px' }}>
+                            {barraExposures.map(f => (
+                                <div key={f.factor} style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <strong style={{ fontSize: '13px' }}>{f.nameCn}</strong>
+                                        <span style={{
+                                            padding: '2px 8px', borderRadius: '4px', fontSize: '11px',
+                                            background: f.exposureCategory === 'overweight' ? 'rgba(0,192,135,0.15)' : f.exposureCategory === 'underweight' ? 'rgba(255,77,79,0.15)' : 'rgba(255,255,255,0.1)',
+                                            color: f.exposureCategory === 'overweight' ? 'var(--gain-color)' : f.exposureCategory === 'underweight' ? 'var(--loss-color)' : 'var(--text-muted)',
+                                        }}>
+                                            {f.exposureCategory === 'overweight' ? '🟢 显著超配' : f.exposureCategory === 'underweight' ? '🔴 显著低配' : '⚪ 中性配置'}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>{f.description}</div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '8px' }}>
+                                        <span>组合 Z-Score: <strong>{f.zScore > 0 ? `+${f.zScore}` : f.zScore}</strong></span>
+                                        <span>基准: {f.benchmarkZScore}</span>
+                                        <span style={{ color: f.activeExposure >= 0 ? 'var(--gain-color)' : 'var(--loss-color)', fontWeight: 'bold' }}>
+                                            主动敞口: {f.activeExposure > 0 ? `+${f.activeExposure}` : f.activeExposure}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 27 前瞻蒙特卡洛概率锥与 4 大黑天鹅压力测试 */}
+            {subTab === 'monte-carlo-stress' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-top-row">
+                            <span className="six-gates-phase-label">Phase 27</span>
+                            <span className="six-gates-title">🎲 前瞻性蒙特卡洛概率锥与 4 大极端黑天鹅压力测试引擎</span>
+                            <span className="six-gates-asof">{PHASE27_MONTE_CARLO_STRESS_FRAMEWORK.releaseDate}</span>
+                        </div>
+                        <div className="six-gates-subtitle">
+                            Merton 跳跃扩散几何布朗运动 (GBM + Jump Diffusion) 10,000 次路径推演 · 5%~95% 扇形概率走廊 (Fan Chart) · 极端尾部 CVaR 99% 在险价值量化
+                        </div>
+                    </div>
+
+                    {/* KPI 风险概览 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>正收益胜率 (Prob of Profit)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gain-color, #00c087)', marginTop: '4px' }}>
+                                {mcResult.probabilityOfPositiveReturn}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>未来 {mcResult.horizonDays} 交易日胜率</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>中位数预期净值 (p50 Median)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#1890ff', marginTop: '4px' }}>
+                                ${mcResult.finalQuantiles.p50_median.toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>始于 $10,000 本金</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>极端最差分位 (p5 Worst 5%)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--loss-color, #ff4d4f)', marginTop: '4px' }}>
+                                ${mcResult.finalQuantiles.p5_extreme_bearish.toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>极度恶劣市况兜底底线</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>VaR 95% 在险价值</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#faad14', marginTop: '4px' }}>
+                                -{mcResult.var95Pct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>95% 置信区间最大损失</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CVaR 99% 条件在险价值 (ES)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--loss-color, #ff4d4f)', marginTop: '4px' }}>
+                                -{mcResult.cvar99Pct}%
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>极端黑天鹅期望下行穿透</div>
+                        </div>
+                    </div>
+
+                    {/* Card 1: 交互式蒙特卡洛参数调节台 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🎛️</span>
+                            <span className="gates-card-title">蒙特卡洛扇形概率走廊参数化调节台</span>
+                            <span className="gates-badge badge-pass">10,000 次跳跃扩散模拟</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginTop: '10px' }}>
+                            <div>
+                                <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>预期年化收益率 ({mcInput.expectedAnnualReturnPct}%)</label>
+                                <input
+                                    type="range" min="5" max="30" step="0.5"
+                                    value={mcInput.expectedAnnualReturnPct}
+                                    onChange={e => setMcInput(p => ({ ...p, expectedAnnualReturnPct: Number(e.target.value) }))}
+                                    style={{ width: '100%', marginTop: '4px' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>组合年化波动率 ({mcInput.annualVolatilityPct}%)</label>
+                                <input
+                                    type="range" min="6" max="25" step="0.5"
+                                    value={mcInput.annualVolatilityPct}
+                                    onChange={e => setMcInput(p => ({ ...p, annualVolatilityPct: Number(e.target.value) }))}
+                                    style={{ width: '100%', marginTop: '4px' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>前瞻模拟期限</label>
+                                <select
+                                    value={mcInput.horizonDays}
+                                    onChange={e => setMcInput(p => ({ ...p, horizonDays: Number(e.target.value) }))}
+                                    style={{ width: '100%', padding: '6px', marginTop: '4px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '4px' }}
+                                >
+                                    <option value="252">未来 1 年 (252 个交易日)</option>
+                                    <option value="504">未来 2 年 (504 个交易日)</option>
+                                    <option value="756">未来 3 年 (756 个交易日)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* 概率走廊分位数表格 */}
+                        <div style={{ overflowX: 'auto', marginTop: '14px' }}>
+                            <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>交易日</th>
+                                        <th style={{ padding: '8px' }}>p5 (极悲观5%)</th>
+                                        <th style={{ padding: '8px' }}>p25 (悲观25%)</th>
+                                        <th style={{ padding: '8px' }}>p50 (中位基准)</th>
+                                        <th style={{ padding: '8px' }}>p75 (乐观75%)</th>
+                                        <th style={{ padding: '8px' }}>p95 (极乐观95%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {mcResult.projectedTrajectory.map(pt => (
+                                        <tr key={pt.day} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <td style={{ padding: '8px', fontWeight: 'bold' }}>Day {pt.day}</td>
+                                            <td style={{ padding: '8px', color: 'var(--loss-color)' }}>${pt.p5.toLocaleString()}</td>
+                                            <td style={{ padding: '8px', color: '#faad14' }}>${pt.p25.toLocaleString()}</td>
+                                            <td style={{ padding: '8px', color: '#1890ff', fontWeight: 'bold' }}>${pt.p50.toLocaleString()}</td>
+                                            <td style={{ padding: '8px', color: 'var(--gain-color)' }}>${pt.p75.toLocaleString()}</td>
+                                            <td style={{ padding: '8px', color: 'var(--gain-color)', fontWeight: 'bold' }}>${pt.p95.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Card 2: 4 大极端黑天鹅应激压力测试 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">🦅</span>
+                            <span className="gates-card-title">4 大宏观黑天鹅极端冲击情景应激穿透</span>
+                            <span className="gates-badge badge-pass">全情景韧性存活</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', marginTop: '10px' }}>
+                            {crisisScenarios.map(sc => (
+                                <div
+                                    key={sc.id}
+                                    onClick={() => setActiveCrisisId(sc.id)}
+                                    style={{
+                                        background: activeCrisisId === sc.id ? 'rgba(88,166,255,0.1)' : 'rgba(255,255,255,0.03)',
+                                        border: activeCrisisId === sc.id ? '1px solid var(--accent-blue)' : '1px solid rgba(255,255,255,0.06)',
+                                        padding: '14px', borderRadius: '8px', cursor: 'pointer',
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <strong style={{ fontSize: '13px' }}>{sc.nameCn}</strong>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>类比: {sc.historicalAnalogue}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '14px', marginTop: '8px', fontSize: '12px' }}>
+                                        <span>V9 预估回撤: <strong style={{ color: 'var(--loss-color)' }}>{sc.v9EstimatedDrawdownPct}%</strong></span>
+                                        <span>SPY 回撤: <span style={{ color: 'var(--text-muted)' }}>{sc.spyEstimatedDrawdownPct}%</span></span>
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--gain-color)', marginTop: '4px' }}>
+                                        SGOV 清扫缓冲增厚: +{sc.sgovBufferAbsorbedPct}% | 存活缓冲: {sc.liquidityBufferDays} 天
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.4 }}>
+                                        🛡️ {sc.defensivePrescription}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 28 隔夜跳空与日内 VWAP 微结构滑点 */}
+            {subTab === 'gap-vwap-microstructure' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-top-row">
+                            <span className="six-gates-phase-label">Phase 28</span>
+                            <span className="six-gates-title">⚡ 隔夜跳空 (Gap-Down Penalty) 与日内微结构滑点惩罚模型</span>
+                            <span className="six-gates-asof">{PHASE28_GAP_VWAP_SLIPPAGE_FRAMEWORK.releaseDate}</span>
+                        </div>
+                        <div className="six-gates-subtitle">
+                            隔夜暴跌开盘直接击穿移动止损线真实穿透损耗 · Almgren-Chriss 最佳执行冲击模型 · 开盘/盘中/尾盘时段流动性曲率修正
+                        </div>
+                    </div>
+
+                    {/* Card 1: 隔夜跳空开盘止损击穿测算台 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📉</span>
+                            <span className="gates-card-title">隔夜跳空开盘击穿止损线测算台 (Gap-Down Breach Calculator)</span>
+                            <span className={`gates-badge ${gapResult.isGapDownBreach ? 'badge-fail' : 'badge-pass'}`}>
+                                {gapResult.isGapDownBreach ? '🚨 发生跳空止损穿透' : '✅ 处于安全止损区间'}
+                            </span>
+                        </div>
+                        <div className="gates-preset-row">
+                            <button className="gates-preset-btn" onClick={() => setGapInput({ symbol: 'MRVL', entryPrice: 100, restingStopPrice: 92, previousClosePrice: 93, marketOpenPrice: 85, shares: 100 })}>
+                                预设 1: 财报暴雷跳空 -8% 击穿止损
+                            </button>
+                            <button className="gates-preset-btn" onClick={() => setGapInput({ symbol: 'SO', entryPrice: 90, restingStopPrice: 84, previousClosePrice: 89, marketOpenPrice: 88.5, shares: 50 })}>
+                                预设 2: 自然垄断白马常态轻微低开
+                            </button>
+                        </div>
+                        <div className="gates-form-grid" style={{ marginTop: '12px' }}>
+                            <div className="gates-form-row">
+                                <label>标的代码</label>
+                                <input type="text" value={gapInput.symbol} onChange={e => setGapInput({ ...gapInput, symbol: e.target.value.toUpperCase() })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>买入成本价 ($)</label>
+                                <input type="number" value={gapInput.entryPrice} onChange={e => setGapInput({ ...gapInput, entryPrice: Number(e.target.value) })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>挂单保护止损价 ($)</label>
+                                <input type="number" value={gapInput.restingStopPrice} onChange={e => setGapInput({ ...gapInput, restingStopPrice: Number(e.target.value) })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>次日跳空开盘价 ($)</label>
+                                <input type="number" value={gapInput.marketOpenPrice} onChange={e => setGapInput({ ...gapInput, marketOpenPrice: Number(e.target.value) })} />
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '14px' }}>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>理论预设止损亏损</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--loss-color)', marginTop: '2px' }}>{gapResult.theoreticalStopLossPct}%</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>实际盘前竞价成交价</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-main)', marginTop: '2px' }}>${gapResult.actualExecutedPrice}</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>实际穿透总亏损率</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--loss-color)', marginTop: '2px' }}>{gapResult.actualLossPct}%</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>止损被动击穿溢出损耗</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#faad14', marginTop: '2px' }}>-${gapResult.dollarStopLeakage} ({gapResult.stopLeakageLossPct}%)</div>
+                            </div>
+                        </div>
+                        <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-secondary)', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
+                            {gapResult.mitigationAdvice}
+                        </div>
+                    </div>
+
+                    {/* Card 2: Almgren-Chriss 日内 VWAP 拆单冲击模型 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">⏱️</span>
+                            <span className="gates-card-title">Almgren-Chriss 日内 VWAP 拆单冲击与最优执行时长测算</span>
+                            <span className="gates-badge badge-pass">执行评级: {vwapResult.executionQualityTier}</span>
+                        </div>
+                        <div className="gates-form-grid" style={{ marginTop: '10px' }}>
+                            <div className="gates-form-row">
+                                <label>计划成交股数 (股)</label>
+                                <input type="number" step="5000" value={vwapInput.orderShares} onChange={e => setVwapInput({ ...vwapInput, orderShares: Number(e.target.value) })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>日均成交量 ADV (股)</label>
+                                <input type="number" step="100000" value={vwapInput.averageDailyVolume} onChange={e => setVwapInput({ ...vwapInput, averageDailyVolume: Number(e.target.value) })} />
+                            </div>
+                            <div className="gates-form-row">
+                                <label>执行时段</label>
+                                <select value={vwapInput.tradingHalfDay} onChange={e => setVwapInput({ ...vwapInput, tradingHalfDay: e.target.value as any })}>
+                                    <option value="morning_open">早盘开盘前 30 分钟 (流动性剧烈/冲击最高)</option>
+                                    <option value="midday_quiet">午间平稳流动性时段 (冲击平缓)</option>
+                                    <option value="market_close">尾盘集合竞价 (成交量放大)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '14px' }}>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>占 ADV 比例</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-main)', marginTop: '2px' }}>{vwapResult.orderSizePctOfAdv}%</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>临时冲击 (Temporary)</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1890ff', marginTop: '2px' }}>+{vwapResult.temporaryImpactBps} bps</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>永久冲击 (Permanent)</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#722ed1', marginTop: '2px' }}>+{vwapResult.permanentImpactBps} bps</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>总预期微结构滑点</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#faad14', marginTop: '2px' }}>+{vwapResult.totalExpectedSlippageBps} bps</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>建议拆单平滑执行时长</div>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--gain-color)', marginTop: '2px' }}>{vwapResult.optimalExecutionHours} 小时</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 29 实时推送信标与企微 Webhook 交互卡片 */}
+            {subTab === 'webhook-alerts' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-top-row">
+                            <span className="six-gates-phase-label">Phase 29</span>
+                            <span className="six-gates-title">📢 策略信号实时推送信标与多渠道 Webhook 交互卡片引擎</span>
+                            <span className="six-gates-asof">{PHASE29_WEBHOOK_ALERTS_FRAMEWORK.releaseDate}</span>
+                        </div>
+                        <div className="six-gates-subtitle">
+                            企稳买入确认 · 阶梯移动止盈锁利 · Fear Gate 恐慌关闸 · 四象限资产调仓 · 支持飞书交互卡片、企微 Markdown 与标准 Webhook 调度
+                        </div>
+                    </div>
+
+                    {/* 配置与模拟面板 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">⚙️</span>
+                            <span className="gates-card-title">实时推送渠道与测试信号配置</span>
+                            <span className="gates-badge badge-pass">支持飞书/企微/钉钉/Telegram</span>
+                        </div>
+                        <div className="gates-preset-row">
+                            <button className="gates-preset-btn" onClick={() => setWebhookSignal({ eventId: 'SIG-001', eventType: 'ENTRY_CONFIRMED', timestamp: new Date().toISOString(), symbol: 'SO', currentPrice: 91.24, stopPrice: 84.50, profitPct: 0.0, summary: '南方电力连续 2 日企稳放量收复 MA200，触发 V9 8% 帕累托买入信号。', actionableAdvice: '挂单次日开盘限价单买入，同步挂单 $84.50 初始保护止损。', severity: 'SUCCESS' })}>
+                                信号 1: 企稳买入确认
+                            </button>
+                            <button className="gates-preset-btn" onClick={() => setWebhookSignal({ eventId: 'SIG-002', eventType: 'RATCHET_TRAILING_LOCK', timestamp: new Date().toISOString(), symbol: 'GLW', currentPrice: 52.40, stopPrice: 47.80, profitPct: 22.4, summary: 'GLW 浮盈达到 +22%，动态移动止损上提锁定 +15% 纯利润。', actionableAdvice: '严禁向下移动止损位，刚性保底离场。', severity: 'WARNING' })}>
+                                信号 2: 阶梯锁利上提
+                            </button>
+                            <button className="gates-preset-btn" onClick={() => setWebhookSignal({ eventId: 'SIG-003', eventType: 'FEAR_GATE_ALARM', timestamp: new Date().toISOString(), regime: 'High Panic', currentPrice: 32.5, summary: 'VIX 突破 30 刚性警戒线，Fear Gate 关闸，全面冻结新增开仓！', actionableAdvice: '冻结买入指令，闲置现金 100% 扫入 SGOV 享受高票息。', severity: 'DANGER' })}>
+                                信号 3: 恐慌之门关闸
+                            </button>
+                        </div>
+                        <div className="gates-form-grid" style={{ marginTop: '12px' }}>
+                            <div className="gates-form-row">
+                                <label>推送平台协议</label>
+                                <select value={webhookPlatform} onChange={e => setWebhookPlatform(e.target.value as any)}>
+                                    <option value="feishu">飞书交互式富文本卡片 (Feishu Card)</option>
+                                    <option value="wecom">企业微信机器人 (WeCom Markdown)</option>
+                                    <option value="dingtalk">钉钉自定义机器人 (DingTalk)</option>
+                                    <option value="telegram">Telegram Bot</option>
+                                </select>
+                            </div>
+                            <div className="gates-form-row" style={{ gridColumn: 'span 2' }}>
+                                <label>Webhook 目标节点 URL</label>
+                                <input type="text" value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} />
+                            </div>
+                        </div>
+                        <div style={{ marginTop: '12px' }}>
+                            <button
+                                className="gates-preset-btn"
+                                style={{ background: 'var(--accent-blue)', color: '#fff', fontWeight: 'bold' }}
+                                onClick={() => {
+                                    const res = dispatchStrategyWebhookAlert(webhookSignal, webhookUrl);
+                                    setWebhookDispatchStatus(res.message);
+                                }}
+                            >
+                                🚀 一键测试推送当前预警信号
+                            </button>
+                            {webhookDispatchStatus && (
+                                <span style={{ marginLeft: '12px', fontSize: '12px', color: 'var(--gain-color)' }}>
+                                    {webhookDispatchStatus}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Card 2: 实时卡片渲染预览 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📱</span>
+                            <span className="gates-card-title">客户端消息实时富文本卡片渲染预览 (Live Preview)</span>
+                            <span className="gates-badge badge-pass">{webhookPlatform.toUpperCase()} 格式</span>
+                        </div>
+                        <div style={{
+                            background: '#1f2430',
+                            border: `2px solid ${webhookCardPreview.cardColor === 'green' ? '#3fb950' : webhookCardPreview.cardColor === 'orange' ? '#faad14' : webhookCardPreview.cardColor === 'red' ? '#f85149' : '#58a6ff'}`,
+                            borderRadius: '8px', padding: '16px', maxWidth: '560px', marginTop: '10px'
+                        }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '8px' }}>
+                                {webhookCardPreview.headerTitle}
+                            </div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+                                {webhookCardPreview.formattedMarkdown}
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                                <button style={{ background: '#3fb950', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>
+                                    一键确认已在实盘执行
+                                </button>
+                                <button style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>
+                                    查看系统深度审计日志
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：Phase 30 个人持仓量化体检与调仓处方 */}
+            {subTab === 'portfolio-health-check' && (
+                <div className="rebound-six-gates-view">
+                    <div className="six-gates-header-card">
+                        <div className="six-gates-top-row">
+                            <span className="six-gates-phase-label">Phase 30</span>
+                            <span className="six-gates-title">🩺 个人持仓“一键量化体检 (0~100分) 与动态调仓处方”生成器</span>
+                            <span className="six-gates-asof">{PHASE30_PORTFOLIO_PRESCRIPTION_FRAMEWORK.releaseDate}</span>
+                        </div>
+                        <div className="six-gates-subtitle">
+                            多资产持仓灵活录入 · 集中度风险、宏观时钟对齐、防震垫厚度、止损覆盖度四维体检 · 对标 V9 帕累托 70/30/SGOV 黄金基准可执行加减仓清单
+                        </div>
+                    </div>
+
+                    {/* 总体健康度评分 Hero */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>综合健康评分 (Health Score)</div>
+                            <div style={{ fontSize: '28px', fontWeight: 'bold', color: healthResult.overallHealthScore >= 80 ? 'var(--gain-color)' : healthResult.overallHealthScore >= 60 ? '#faad14' : 'var(--loss-color)', marginTop: '4px' }}>
+                                {healthResult.overallHealthScore} <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>/ 100</span>
+                            </div>
+                            <div style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '2px' }}>{healthResult.grade}</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>集中度防守分 (上限30分)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-main)', marginTop: '4px' }}>
+                                {healthResult.dimensionScores.concentration} / 30
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>单标的权重不超 25%</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>宏观时钟对齐 (上限25分)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-main)', marginTop: '4px' }}>
+                                {healthResult.dimensionScores.macroAlignment} / 25
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>核心压舱石 &gt;= 60%</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>防震垫与SGOV (上限25分)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-main)', marginTop: '4px' }}>
+                                {healthResult.dimensionScores.defensiveCushion} / 25
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>闲置清扫现金流保障</div>
+                        </div>
+                        <div style={{ background: 'var(--card-bg, #1a1f2c)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color, #2a2e3d)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>止盈止损覆盖 (上限20分)</div>
+                            <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-main)', marginTop: '4px' }}>
+                                {healthResult.dimensionScores.riskGuardCoverage} / 20
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>杜绝裸奔不设止损</div>
+                        </div>
+                    </div>
+
+                    {/* Card 1: 持仓录入与预设 */}
+                    <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">📋</span>
+                            <span className="gates-card-title">当前持仓组合明细 (支持一键切换预设场景)</span>
+                            <div className="gates-preset-row">
+                                <button className="gates-preset-btn" onClick={() => setHoldings(DEFAULT_PORTFOLIO_PRESETS['retail_tech_heavy'])}>
+                                    预设 1: 散户重仓单一科技股 (低分失衡)
+                                </button>
+                                <button className="gates-preset-btn" onClick={() => setHoldings(DEFAULT_PORTFOLIO_PRESETS['balanced_institutional'])}>
+                                    预设 2: 机构均衡 V9 双轨配置 (AAA 满分)
+                                </button>
+                            </div>
+                        </div>
+                        <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                            <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>标的代码</th>
+                                        <th style={{ padding: '8px' }}>标的名称</th>
+                                        <th style={{ padding: '8px' }}>资产类型</th>
+                                        <th style={{ padding: '8px' }}>持仓市值 ($)</th>
+                                        <th style={{ padding: '8px' }}>持仓占比</th>
+                                        <th style={{ padding: '8px' }}>浮盈亏</th>
+                                        <th style={{ padding: '8px' }}>止损单保护</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {holdings.map(h => (
+                                        <tr key={h.symbol} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <td style={{ padding: '8px', fontWeight: 'bold' }}>{h.symbol}</td>
+                                            <td style={{ padding: '8px' }}>{h.name}</td>
+                                            <td style={{ padding: '8px' }}>
+                                                <span style={{
+                                                    padding: '2px 6px', borderRadius: '4px', fontSize: '11px',
+                                                    background: h.assetClass === 'index_core' ? 'rgba(88,166,255,0.15)' : h.assetClass === 'cash_sgov' ? 'rgba(0,192,135,0.15)' : 'rgba(255,255,255,0.1)',
+                                                    color: h.assetClass === 'index_core' ? 'var(--accent-blue)' : h.assetClass === 'cash_sgov' ? 'var(--gain-color)' : 'var(--text-main)',
+                                                }}>
+                                                    {h.assetClass === 'index_core' ? '宽基底仓' : h.assetClass === 'cash_sgov' ? '现金/SGOV' : h.assetClass === 'stock_satellite' ? '卫星白马' : '投机成长'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '8px' }}>${h.marketValue.toLocaleString()}</td>
+                                            <td style={{ padding: '8px', fontWeight: 'bold' }}>{h.weightPct}%</td>
+                                            <td style={{ padding: '8px', color: h.unrealizedGainPct >= 0 ? 'var(--gain-color)' : 'var(--loss-color)' }}>
+                                                {h.unrealizedGainPct > 0 ? `+${h.unrealizedGainPct}` : h.unrealizedGainPct}%
+                                            </td>
+                                            <td style={{ padding: '8px' }}>
+                                                <span style={{ color: h.hasRestingStop ? 'var(--gain-color)' : 'var(--loss-color)', fontWeight: 'bold' }}>
+                                                    {h.hasRestingStop ? '✅ 已设止损' : '⚠️ 裸奔无止损'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 风险告警面板 */}
+                        {healthResult.riskFlags.length > 0 && (
+                            <div className="gates-error-panel" style={{ marginTop: '12px' }}>
+                                <strong>⚠️ 识别到的持仓风险盲区：</strong>
+                                {healthResult.riskFlags.map((rf, i) => (
+                                    <div key={i} className="gates-error-item">· {rf}</div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Card 2: 动态再平衡处方清单 */}
+                    <div className="gates-eval-card">
+                        <div className="gates-card-header">
+                            <span className="gates-card-icon">💊</span>
+                            <span className="gates-card-title">对标 V9 帕累托黄金配置 (70/30/SGOV) 动态调仓实操处方</span>
+                            <span className="gates-badge badge-pass">生成 {healthResult.actionablePrescription.length} 条调仓动作</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                            {healthResult.actionablePrescription.map(p => (
+                                <div key={p.stepNumber} style={{
+                                    background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px',
+                                    borderLeft: `4px solid ${p.priority === 'CRITICAL' ? '#f85149' : p.priority === 'HIGH' ? '#faad14' : '#58a6ff'}`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px'
+                                }}>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{
+                                                background: p.priority === 'CRITICAL' ? 'rgba(248,81,73,0.2)' : p.priority === 'HIGH' ? 'rgba(250,173,20,0.2)' : 'rgba(88,166,255,0.2)',
+                                                color: p.priority === 'CRITICAL' ? '#f85149' : p.priority === 'HIGH' ? '#faad14' : '#58a6ff',
+                                                padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold'
+                                            }}>
+                                                步骤 {p.stepNumber} · {p.priority}
+                                            </span>
+                                            <strong style={{ fontSize: '14px' }}>
+                                                {p.actionType === 'SET_STOP' ? '🛡️ 挂单移动止损' : p.actionType === 'BUY' ? '🛒 增配加仓' : p.actionType === 'SWEEP_SGOV' ? '💵 闲置清扫' : '✂️ 逢高减持'} : {p.symbol}
+                                            </strong>
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                            {p.rationale}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <button style={{
+                                            background: p.actionType === 'BUY' || p.actionType === 'SWEEP_SGOV' ? '#3fb950' : p.actionType === 'SET_STOP' ? '#faad14' : '#1f6feb',
+                                            color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold'
+                                        }}>
+                                            标记已执行
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+{/* 视图：舆论情绪拥挤度反指雷达 */}
             {subTab === 'crowding-radar' && (
                 <div className="rebound-crowding-view">
                     <div className="crowding-header-card">

@@ -84,6 +84,25 @@ import {
     V9_FRICTION_WIN_RATE_MATRIX,
     simulateV9ComprehensiveBacktest,
     PHASE25_STRATEGY_DATA_BACKTEST_FRAMEWORK,
+    DEFAULT_BRINSON_SEGMENTS,
+    evaluateBrinsonAttribution,
+    DEFAULT_BARRA_EXPOSURES,
+    evaluateBarraFactorExposure,
+    PHASE26_BRINSON_ATTRIBUTION_FRAMEWORK,
+    simulateMonteCarloFanChart,
+    DEFAULT_CRISIS_SCENARIOS,
+    evaluateCrisisStressTesting,
+    PHASE27_MONTE_CARLO_STRESS_FRAMEWORK,
+    evaluateOvernightGapRisk,
+    evaluateVwapExecutionSlippage,
+    PHASE28_GAP_VWAP_SLIPPAGE_FRAMEWORK,
+    generateSignalWebhookCard,
+    dispatchStrategyWebhookAlert,
+    PHASE29_WEBHOOK_ALERTS_FRAMEWORK,
+    DEFAULT_PORTFOLIO_PRESETS,
+    evaluatePortfolioHealthCheck,
+    generateRebalancePrescription,
+    PHASE30_PORTFOLIO_PRESCRIPTION_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -2613,5 +2632,213 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
 
         expect(PHASE25_STRATEGY_DATA_BACKTEST_FRAMEWORK.releaseDate).toBe('2026-09-22');
         expect(PHASE25_STRATEGY_DATA_BACKTEST_FRAMEWORK.coreModules.length).toBe(5);
+    });
+
+    it('Test 65: Phase 26 — Brinson BHB 收益归因算法与恒等式解耦校验', () => {
+        const attribution = evaluateBrinsonAttribution();
+        expect(attribution.segments.length).toBe(3);
+        expect(attribution.identityCheckPassed).toBe(true);
+
+        // 验证数学恒等式: Total Active Return ≡ Allocation + Selection + Interaction
+        const expectedActive = attribution.totalAllocationEffectPct + attribution.totalSelectionEffectPct + attribution.totalInteractionEffectPct;
+        expect(Math.abs(attribution.totalActiveReturnPct - expectedActive)).toBeLessThan(0.05);
+
+        // 验证各分项
+        expect(attribution.totalPortfolioReturnPct).toBeGreaterThan(attribution.totalBenchmarkReturnPct);
+        expect(attribution.totalSelectionEffectPct).toBeGreaterThan(0);
+        expect(attribution.interpretation).toContain('超额');
+
+        expect(DEFAULT_BRINSON_SEGMENTS.length).toBeGreaterThan(0);
+        expect(PHASE26_BRINSON_ATTRIBUTION_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 66: Phase 26 — Barra 6 大核心风格因子标准化暴露雷达', () => {
+        expect(DEFAULT_BARRA_EXPOSURES.length).toBe(6);
+        const exposures = evaluateBarraFactorExposure();
+        expect(exposures.length).toBe(6);
+
+        const beta = exposures.find(f => f.factor === 'beta')!;
+        const lowVol = exposures.find(f => f.factor === 'low_volatility')!;
+        const value = exposures.find(f => f.factor === 'value')!;
+
+        expect(beta.exposureCategory).toBe('underweight'); // 0.68 vs 1.00 (-0.32)
+        expect(lowVol.exposureCategory).toBe('overweight'); // 1.40 vs -0.20 (+1.60)
+        expect(value.exposureCategory).toBe('overweight'); // 0.82 vs 0.10 (+0.72)
+    });
+
+    it('Test 67: Phase 27 — 前瞻性蒙特卡洛 10,000 次净值概率锥与极端分位数走廊', () => {
+        const mc = simulateMonteCarloFanChart({
+            initialNav: 10000,
+            expectedAnnualReturnPct: 17.5,
+            annualVolatilityPct: 11.2,
+            horizonDays: 252,
+            numPaths: 10000,
+        });
+
+        expect(mc.totalPaths).toBe(10000);
+        expect(mc.horizonDays).toBe(252);
+        expect(mc.projectedTrajectory.length).toBe(11);
+
+        // 分位数严格单调递增验证: p5 < p25 < p50 < p75 < p95
+        const q = mc.finalQuantiles;
+        expect(q.p5_extreme_bearish).toBeLessThan(q.p25_bearish);
+        expect(q.p25_bearish).toBeLessThan(q.p50_median);
+        expect(q.p50_median).toBeLessThan(q.p75_bullish);
+        expect(q.p75_bullish).toBeLessThan(q.p95_extreme_bullish);
+
+        // 风险指标
+        expect(mc.var95Pct).toBeGreaterThan(0);
+        expect(mc.var99Pct).toBeGreaterThan(mc.var95Pct);
+        expect(mc.cvar99Pct).toBeGreaterThan(mc.var99Pct);
+        expect(mc.probabilityOfPositiveReturn).toBeGreaterThan(70.0);
+    });
+
+    it('Test 68: Phase 27 — 4 大预设宏观黑天鹅极端冲击情景应激穿透', () => {
+        expect(DEFAULT_CRISIS_SCENARIOS.length).toBe(4);
+        const scenarios = evaluateCrisisStressTesting();
+        expect(scenarios.length).toBe(4);
+
+        const stagflation = scenarios.find(s => s.id === 'stagflation_oil_spike')!;
+        const aiFreeze = scenarios.find(s => s.id === 'ai_capex_freezefall')!;
+        const liquidityFreeze = scenarios.find(s => s.id === 'liquidity_freeze_crisis')!;
+        const geoBlockade = scenarios.find(s => s.id === 'geopolitical_capital_blockade')!;
+
+        // 验证组合抗跌性均大幅强于 SPY
+        expect(Math.abs(stagflation.v9EstimatedDrawdownPct)).toBeLessThan(Math.abs(stagflation.spyEstimatedDrawdownPct));
+        expect(Math.abs(aiFreeze.v9EstimatedDrawdownPct)).toBeLessThan(Math.abs(aiFreeze.spyEstimatedDrawdownPct));
+        expect(Math.abs(liquidityFreeze.v9EstimatedDrawdownPct)).toBeLessThan(Math.abs(liquidityFreeze.spyEstimatedDrawdownPct));
+        expect(Math.abs(geoBlockade.v9EstimatedDrawdownPct)).toBeLessThan(Math.abs(geoBlockade.spyEstimatedDrawdownPct));
+
+        // 验证流动性缓冲天数
+        expect(liquidityFreeze.liquidityBufferDays).toBeGreaterThanOrEqual(180);
+        expect(PHASE27_MONTE_CARLO_STRESS_FRAMEWORK.releaseDate).toBe('2026-09-22');
+    });
+
+    it('Test 69: Phase 28 — 隔夜跳空开盘跌破止损线与被动竞价惩罚', () => {
+        // 1. 跳空击穿止损线场景
+        const breachResult = evaluateOvernightGapRisk({
+            symbol: 'MRVL',
+            entryPrice: 100,
+            restingStopPrice: 92, // -8% 止损
+            previousClosePrice: 93,
+            marketOpenPrice: 85,  // 财报暴跌，直接低开 85
+            shares: 100,
+        });
+
+        expect(breachResult.isGapDownBreach).toBe(true);
+        expect(breachResult.stressSlippageMode).toBe('panic_auction_gap');
+        expect(breachResult.actualExecutedPrice).toBeLessThan(85); // 竞价惩罚滑点
+        expect(breachResult.actualLossPct).toBeLessThan(-15.0);
+        expect(breachResult.stopLeakageLossPct).toBeGreaterThan(0);
+        expect(breachResult.dollarStopLeakage).toBeGreaterThan(700);
+
+        // 2. 正常无跳空击穿场景
+        const safeResult = evaluateOvernightGapRisk({
+            symbol: 'SO',
+            entryPrice: 90,
+            restingStopPrice: 84,
+            previousClosePrice: 89,
+            marketOpenPrice: 88.5,
+            shares: 50,
+        });
+        expect(safeResult.isGapDownBreach).toBe(false);
+        expect(safeResult.stopLeakageLossPct).toBe(0.0);
+    });
+
+    it('Test 70: Phase 28 — Almgren-Chriss 日内 VWAP 最优拆单冲击模型', () => {
+        const vwap = evaluateVwapExecutionSlippage({
+            orderShares: 50000,
+            averageDailyVolume: 1000000, // 5% ADV
+            volatilityAnnualPct: 25.0,
+            tradingHalfDay: 'morning_open',
+        });
+
+        expect(vwap.orderSizePctOfAdv).toBe(5.0);
+        expect(vwap.temporaryImpactBps).toBeGreaterThan(0);
+        expect(vwap.permanentImpactBps).toBeGreaterThan(0);
+        expect(vwap.totalExpectedSlippageBps).toBeGreaterThan(vwap.temporaryImpactBps);
+        expect(vwap.executionQualityTier).toBe('HIGH_MARKET_IMPACT');
+        expect(vwap.optimalExecutionHours).toBe(6.5);
+
+        expect(PHASE28_GAP_VWAP_SLIPPAGE_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 71: Phase 29 — 策略信号实时推送信标与飞书/企微 Webhook 交互卡片', () => {
+        const signal = {
+            eventId: 'EVT-20260922-001',
+            eventType: 'ENTRY_CONFIRMED' as const,
+            timestamp: '2026-09-22 17:00:00 UTC',
+            symbol: 'SO',
+            currentPrice: 91.24,
+            stopPrice: 84.50,
+            profitPct: 0.0,
+            summary: '南方电力连续 2 日放量站稳 MA200，触发右侧建仓信号。',
+            actionableAdvice: '开仓 8% 帕累托仓位，同步挂单 $84.50 初始防守止损单。',
+            severity: 'SUCCESS' as const,
+        };
+
+        const feishuCard = generateSignalWebhookCard(signal, 'feishu');
+        expect(feishuCard.platform).toBe('feishu');
+        expect(feishuCard.cardColor).toBe('green');
+        expect(feishuCard.rawPayload.msg_type).toBe('interactive');
+        expect(feishuCard.rawPayload.card.header.title.content).toContain('企稳买入确认');
+
+        const wecomCard = generateSignalWebhookCard(signal, 'wecom');
+        expect(wecomCard.platform).toBe('wecom');
+        expect(wecomCard.rawPayload.msgtype).toBe('markdown');
+    });
+
+    it('Test 72: Phase 29 — Webhook 告警调度与模拟分发测试', () => {
+        const dispatch = dispatchStrategyWebhookAlert({
+            eventId: 'EVT-20260922-002',
+            eventType: 'RATCHET_TRAILING_LOCK',
+            timestamp: '2026-09-22 17:15:00 UTC',
+            symbol: 'GLW',
+            currentPrice: 52.40,
+            stopPrice: 47.80,
+            profitPct: 22.4,
+            summary: 'GLW 浮盈达到 +22%，动态移动止损上提锁定 +15% 纯利润。',
+            actionableAdvice: '严禁将止损线下移，保护利润底线。',
+            severity: 'WARNING',
+        }, 'https://open.feishu.cn/open-apis/bot/v2/hook/mock_token');
+
+        expect(dispatch.success).toBe(true);
+        expect(dispatch.message).toContain('模拟成功');
+        expect(PHASE29_WEBHOOK_ALERTS_FRAMEWORK.releaseDate).toBe('2026-09-22');
+    });
+
+    it('Test 73: Phase 30 — 个人持仓 4 维健康度量化评分模型 (0~100分) 与风险预警', () => {
+        // 1. 测试散户高危重仓科技股预设
+        const retailResult = evaluatePortfolioHealthCheck(DEFAULT_PORTFOLIO_PRESETS['retail_tech_heavy']);
+        expect(retailResult.overallHealthScore).toBeLessThan(75);
+        expect(retailResult.riskFlags.length).toBeGreaterThanOrEqual(3);
+        expect(retailResult.riskFlags.some(f => f.includes('单标的集中度超标'))).toBe(true);
+        expect(retailResult.riskFlags.some(f => f.includes('核心压舱石严重缺失'))).toBe(true);
+
+        // 2. 测试机构均衡配置预设
+        const instResult = evaluatePortfolioHealthCheck(DEFAULT_PORTFOLIO_PRESETS['balanced_institutional']);
+        expect(instResult.overallHealthScore).toBeGreaterThanOrEqual(85);
+        expect(instResult.grade).toMatch(/AAA|AA/);
+        expect(instResult.riskFlags.length).toBe(0);
+    });
+
+    it('Test 74: Phase 30 — 智能再平衡调仓处方生成与优先级序列', () => {
+        const prescription = generateRebalancePrescription(DEFAULT_PORTFOLIO_PRESETS['retail_tech_heavy']);
+        expect(prescription.length).toBeGreaterThan(0);
+
+        // 验证处方包含 CRITICAL 优先级的止损设置
+        const criticalSteps = prescription.filter(p => p.priority === 'CRITICAL');
+        expect(criticalSteps.length).toBeGreaterThan(0);
+        expect(criticalSteps[0].actionType).toBe('SET_STOP');
+
+        // 验证包含宽基指数补齐建议与 SGOV 闲置清扫
+        const buyStep = prescription.find(p => p.actionType === 'BUY');
+        expect(buyStep).toBeDefined();
+        expect(buyStep?.symbol).toContain('SPY');
+
+        const sgovStep = prescription.find(p => p.actionType === 'SWEEP_SGOV');
+        expect(sgovStep).toBeDefined();
+
+        expect(PHASE30_PORTFOLIO_PRESCRIPTION_FRAMEWORK.coreModules.length).toBe(3);
     });
 });
