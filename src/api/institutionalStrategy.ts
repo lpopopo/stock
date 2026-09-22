@@ -2237,4 +2237,202 @@ export const BATCH_TRADE_AUDIT_DATA: BatchAuditRow[] = [
     },
 ];
 
+// ==========================================
+// Phase 6: 量化科研防拟合饱和边界与机构级四项处置规程 (SOP)
+// ==========================================
+
+export interface ResearchProhibition {
+    id: string;
+    title: string;
+    verdict: 'Strictly Rejected' | 'Anti-Fitting Prohibition';
+    description: string;
+    empiricalReason: string;
+    firstPrinciplesLogic: string;
+    affectedBranches: string[];
+}
+
+export interface ResearchSaturationBoundaryData {
+    asOfDate: string;
+    totalBranches: number;
+    closedOrRejectedCount: number;
+    frozenShadowCount: number;
+    saturationThesis: string;
+    prohibitions: ResearchProhibition[];
+    indexVsSingleStockWarning: {
+        title: string;
+        whyIndexSurvives: string;
+        whySingleStockFails: string;
+        hardRule: string;
+    };
+}
+
+/**
+ * 26 年历史 27 条量化科研分支防过拟合 (P-Hacking) 饱和边界
+ */
+export const RESEARCH_SATURATION_BOUNDARY: ResearchSaturationBoundaryData = {
+    asOfDate: '2026-09-20',
+    totalBranches: 27,
+    closedOrRejectedCount: 13,
+    frozenShadowCount: 2,
+    saturationThesis: '历史数据回测已达统计饱和上限：在 27 条科研路径中，历史参数优化（ATR/RS门槛/持有时长）存在严重多重检验拟合偏差。严禁无休止调参，严禁将宽基战法无对冲移植至单票。未来的阿尔法必须源自独立经济学机制（如跨市时滞、云巨头 Capex 传导、现金收益抵扣），而非对过去价格走势的数字游戏。',
+    prohibitions: [
+        {
+            id: 'prohibit-1-param-tweaks',
+            title: '禁区 1: 纯技术指标参数微调 (Parameter Tweaks on Technical Filters)',
+            verdict: 'Strictly Rejected',
+            description: '严禁通过反复修改 ATR 乘数、RSI/RS 阈值、收盘强度 CLV 或均线天数来“拟合”出好看的回测曲线。',
+            empiricalReason: '在 RSR1/RSR2 历史测试中，对参数进行细微调节能轻微提升某个时间段的胜率，但在样本外 (OOS) 和前瞻样本中全部退化，属于典型的数据窥探偏见 (Data-Snooping Bias)。',
+            firstPrinciplesLogic: '如果一个策略的超额收益依赖于将指标从 85 调到 87 才能盈利，说明其缺乏稳健的经济学正期望。',
+            affectedBranches: ['RSR1-ParamSearch', 'RSR2-ATR-Opt', 'CLV-Threshold-Tuning'],
+        },
+        {
+            id: 'prohibit-2-winner-holding',
+            title: '禁区 2: 随意延长持仓观察期 (Winner Holding Period Extensions)',
+            verdict: 'Strictly Rejected',
+            description: '严禁在既定盈利规则外，人为将持仓周期从 10~20 日延长至 30~40 日以图博取更大浮盈。',
+            empiricalReason: '科研报告《objective_frontier_report.md》严谨实证：extend30_any_winner 变体在开发样本中回撤失控，年化夏普比率显著恶化。',
+            firstPrinciplesLogic: '动量爆发通常具备阶段性衰减周期。超期持有会将动量 Alpha 转化为对大盘 Beta 均值回归的无保护暴露。',
+            affectedBranches: ['extend30_any_winner', 'extend40_trend_hold'],
+        },
+        {
+            id: 'prohibit-3-partial-exits',
+            title: '禁区 3: 分批止盈与尾仓追踪变体 (Partial Profit-Taking / Scale-Out)',
+            verdict: 'Strictly Rejected',
+            description: '严禁将“达成目标全额锁利”擅自改造为“卖一半留一半追踪止损”的折中方案。',
+            empiricalReason: '实证测试 partial_half_at_15：虽然最大回撤略微平滑，但整体净复合年化收益率 (CAGR) 从 24.8% 降至 20.6%，且利润因子降低。',
+            firstPrinciplesLogic: '尾仓在趋势末期反复被微幅洗盘止损，侵蚀了前期丰厚利润。全额果断锁利始终占优。',
+            affectedBranches: ['partial_half_at_15', 'scale_out_dynamic_trail'],
+        },
+        {
+            id: 'prohibit-4-single-stock-dip',
+            title: '禁区 4: 将宽基 100% 胜率无止损低吸战法滥用于单票 (Unhedged Single-Stock Dip-Buying)',
+            verdict: 'Strictly Rejected',
+            description: '严禁将适用于 SPY/QQQ 的 H16 100% 胜率低点战法直接搬用到高波动个股（如 GLW, MXL, MRVL, QCOM）。',
+            empiricalReason: '单只股票可能面临永久性破产重组、造假爆雷或技术路线颠覆，最差单笔不利变动 (MAE) 高达 -50%~-80%，将摧毁整个投资账户。',
+            firstPrinciplesLogic: '指数具有成分股优胜劣汰的自我救赎机制（永远不会归零且长期创新高），而单只商业实体不具备此数学特权。',
+            affectedBranches: ['H16-SingleStock-Experiment', 'Unhedged-Tech-Dip'],
+        },
+        {
+            id: 'prohibit-5-allocation-churn',
+            title: '禁区 5: 简单资本配置比例洗牌 (Simple Capital Allocation Tweaks)',
+            verdict: 'Strictly Rejected',
+            description: '严禁在 70/30 架构之外随意拍脑袋尝试 80/20、60/40 或 50/50 资金微调。',
+            empiricalReason: 'shared_capital 多轮实证表明：80/20 激进版本在 2026 年震荡行情中夏普与回撤表现显著劣于 70/30 基准。',
+            firstPrinciplesLogic: '70% 宽基指数核负责汲取全人类科技进步的长期复利，30% 战术个股负责捕获结构性弹性，这是经过 26 年验证的数学帕累托最优解。',
+            affectedBranches: ['SharedCap-80-20', 'SharedCap-60-40'],
+        },
+        {
+            id: 'prohibit-6-naive-shorting',
+            title: '禁区 6: 均线破位无脑追空 (Naive Short Continuation on Index Breaks)',
+            verdict: 'Strictly Rejected',
+            description: '严禁在指数或板块跌破 MA200 或纯动量翻空时机械地大举做空。',
+            empiricalReason: 'H12 假说实证证实：美股科技股的暴跌后常伴随极其剧烈、反直觉的 V 型暴力轧空逼空 (Short Squeeze)，单纯追空遭遇毁灭性止损。',
+            firstPrinciplesLogic: '做空收益有限（最多 100%）而风险无限，且借券利息与负向 Carry 极其高昂。做空只允许在极度严格的结构反抽失败确认下执行。',
+            affectedBranches: ['H12-NaiveShorting', 'MA200-Break-Short'],
+        },
+    ],
+    indexVsSingleStockWarning: {
+        title: '⚠️ 严禁偷换概念：为什么 H16 “100% 胜率” 战法只能用于指数与自然垄断 ETF？',
+        whyIndexSurvives: '指数（SPY/QQQ/SOXX/SCHD）是生生不息的活水，定期剔除掉队衰退企业、纳入时代领军者。无论经历 2000 年互联网泡沫、2008 年次贷危机还是 2020 年疫情熔断，指数底层代表人类生产力的指数级增长，其右侧企稳具备数学收敛性。',
+        whySingleStockFails: '个股面临严重的个异信用风险 (Idiosyncratic Risk)。柯达、安然、雷曼兄弟、诺基亚跌破均线后从未企稳回本。个股没有自我换血机制。如果无硬止损盲目抄底单票，单次暴跌即可清空 26 年积累的全部本金！',
+        hardRule: '铁律：在个股交易中，必须百分之百执行【六维实战核验】与【8%~10% 硬性止损保护】！绝不允许以任何借口“扛单”！',
+    },
+};
+
+// ----------------------------------------------------
+// 机构级四项处置规程 (Institutional Four Dispositions SOP)
+// ----------------------------------------------------
+
+export interface DispositionSOPItem {
+    action: 'keep' | 'repair' | 'measure' | 'next';
+    actionName: string;
+    actionEn: string;
+    motto: string;
+    color: string;
+    badge: string;
+    standardProcedures: string[];
+    currentWeeklyExecution: string;
+}
+
+export interface PortfolioFourDispositionsData {
+    asOfDate: string;
+    governancePhilosophy: string;
+    auditStatus: string;
+    auditVerificationPassed: boolean;
+    dispositions: DispositionSOPItem[];
+}
+
+/**
+ * 生产级投资组合标准作业程序 (Keep / Repair / Measure / Next SOP)
+ */
+export const PORTFOLIO_FOUR_DISPOSITIONS_SOP: PortfolioFourDispositionsData = {
+    asOfDate: '2026-09-19',
+    governancePhilosophy: '严守投资纪律，拒绝情绪波动。不因单周盈利而盲目自大扩仓，不因单周浮亏而仓促乱改参数。所有动作必须经受 Keep（维持基石）、Repair（纠偏修复）、Measure（隔离实证）、Next（审慎前瞻）四重严密治理。',
+    auditStatus: 'Codex 独立哈希复核 50 个冻结文件差异为 0；Antigravity 独立量化审计全部通过。',
+    auditVerificationPassed: true,
+    dispositions: [
+        {
+            action: 'keep',
+            actionName: '维持基石 (Keep)',
+            actionEn: 'KEEP FROZEN DISCIPLINE',
+            motto: '守住纪律底线，不被短期杂音干扰。',
+            color: '#10b981',
+            badge: '🟢 坚守原则',
+            standardProcedures: [
+                '维持 V9 冻结交易规则与 70/30 资本分配终极框架不动摇。',
+                '维持月度指数再平衡模块，杜绝日度日内高频损耗。',
+                '维持数据源严格健康门槛，缺少 PIT 认证数据坚决不入决策流。',
+                '维持已选定优质标的的长期持有逻辑，不被 1~3 天波动洗盘。',
+            ],
+            currentWeeklyExecution: '已锁定 V9-E 与 V9-A 账户架构，维持 63.93% 高清流动性现金底盘，严格杜绝无授权个股增仓。',
+        },
+        {
+            action: 'repair',
+            actionName: '纠偏修复 (Repair)',
+            actionEn: 'REPAIR DEVIATIONS & BIAS',
+            motto: '发现偏差即刻纠偏，不掩盖数据漏洞。',
+            color: '#f59e0b',
+            badge: '🟠 科学纠偏',
+            standardProcedures: [
+                '统一全部收益与现金占比口径，杜绝分母计算错误。',
+                '标注历史研究的真实截止日期，防止混淆已成熟样本与未完成前瞻。',
+                '校对不同数据源收盘价差，要求 518 标的收盘价差小于 0.01 美元。',
+                '纠偏多因子敞口超标，对突破 30% 预算的主题制定明确压降方案。',
+            ],
+            currentWeeklyExecution: '已更正前瞻账户净值算法，消除汇率与除息计算偏差；明确 MRVL 仓位 16.63% 带来的单一主题超标问题，冻结买单。',
+        },
+        {
+            action: 'measure',
+            actionName: '隔离实证 (Measure)',
+            actionEn: 'ISOLATED MEASUREMENT',
+            motto: '实证必须在沙盒中度量，绝不污染正式主库。',
+            color: '#3b82f6',
+            badge: '🔵 严格测度',
+            standardProcedures: [
+                '所有策略新重算与参数校验必须在隔离目录中以只读模式运行。',
+                '完整归档 518 只标的周度 OHLCV 与微观广度数据，不做任何数据清洗擦除。',
+                '严格度量每只个股对投资组合 NAV 的单周损益贡献与拖累点位。',
+                '严禁依据单周或单月的盈利与亏损反向修改量化入场规则。',
+            ],
+            currentWeeklyExecution: '本周工作账户 NAV 从 $5,845.05 增至 $5,875.91 (+0.53%)。股票端贡献 +1.48%，现金利息贡献 +0.02%，准确归因。',
+        },
+        {
+            action: 'next',
+            actionName: '审慎前瞻 (Next)',
+            actionEn: 'FORWARD ROADMAP',
+            motto: '先核实先决条件，再按部就班推进。',
+            color: '#8b5cf6',
+            badge: '🟣 前瞻规划',
+            standardProcedures: [
+                '下周交易日前，必须首先核对券商真实可用现金、成交记录与未撤挂单。',
+                '完成多源数据刷新的完整性与顺序校验，防止丢失开盘时段关键行情。',
+                '对跌破 MA20/MA50 均线的持仓标的（如 GLW）优先复核基本面底线与官方 SEC 申报。',
+                '仅在 Fear Gate 评分脱离恐慌警戒、且全市场广度企稳时方可考虑恢复仓位。',
+            ],
+            currentWeeklyExecution: '重点监测 QQQ 关键支撑位 (MA20: 713.24, MA50: 709.95) 与 SMH (MA50: 564.78)；等待美联储与欧洲央行加息政策在实体经济中发酵。',
+        },
+    ],
+};
+
+
 

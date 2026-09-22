@@ -22,6 +22,8 @@ import {
     CROSS_MARKET_AI_MAPPING_MATRIX,
     CROSS_BORDER_LEAD_LAG_ENGINE,
     BATCH_TRADE_AUDIT_DATA,
+    RESEARCH_SATURATION_BOUNDARY,
+    PORTFOLIO_FOUR_DISPOSITIONS_SOP,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -491,6 +493,69 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
             expect(row.crowdingScore).toBeGreaterThanOrEqual(0);
             expect(row.crowdingScore).toBeLessThanOrEqual(100);
         });
+    });
+
+    it('22. should verify 26-year research saturation boundary and 6 strict anti-fitting prohibitions', () => {
+        expect(RESEARCH_SATURATION_BOUNDARY.totalBranches).toBe(27);
+        expect(RESEARCH_SATURATION_BOUNDARY.closedOrRejectedCount).toBe(13);
+        expect(RESEARCH_SATURATION_BOUNDARY.frozenShadowCount).toBe(2);
+        expect(RESEARCH_SATURATION_BOUNDARY.saturationThesis.length).toBeGreaterThan(30);
+
+        // 验证六大严厉科研禁区
+        expect(RESEARCH_SATURATION_BOUNDARY.prohibitions.length).toBe(6);
+        const prohibitIds = RESEARCH_SATURATION_BOUNDARY.prohibitions.map(p => p.id);
+        expect(prohibitIds).toContain('prohibit-1-param-tweaks');
+        expect(prohibitIds).toContain('prohibit-2-winner-holding');
+        expect(prohibitIds).toContain('prohibit-3-partial-exits');
+        expect(prohibitIds).toContain('prohibit-4-single-stock-dip');
+        expect(prohibitIds).toContain('prohibit-5-allocation-churn');
+        expect(prohibitIds).toContain('prohibit-6-naive-shorting');
+
+        RESEARCH_SATURATION_BOUNDARY.prohibitions.forEach(p => {
+            expect(p.verdict).toBe('Strictly Rejected');
+            expect(p.description.length).toBeGreaterThan(15);
+            expect(p.empiricalReason.length).toBeGreaterThan(20);
+            expect(p.firstPrinciplesLogic.length).toBeGreaterThan(20);
+            expect(p.affectedBranches.length).toBeGreaterThanOrEqual(2);
+        });
+
+        // 验证指数与单票不可偷换概念的核心警示
+        const warn = RESEARCH_SATURATION_BOUNDARY.indexVsSingleStockWarning;
+        expect(warn.title).toContain('100% 胜率');
+        expect(warn.whyIndexSurvives).toContain('数学收敛性');
+        expect(warn.whySingleStockFails).toContain('信用风险');
+        expect(warn.hardRule).toContain('硬性止损');
+    });
+
+    it('23. should verify institutional four dispositions SOP governance framework (keep, repair, measure, next)', () => {
+        expect(PORTFOLIO_FOUR_DISPOSITIONS_SOP.auditVerificationPassed).toBe(true);
+        expect(PORTFOLIO_FOUR_DISPOSITIONS_SOP.governancePhilosophy.length).toBeGreaterThan(20);
+        expect(PORTFOLIO_FOUR_DISPOSITIONS_SOP.auditStatus).toContain('Codex');
+        expect(PORTFOLIO_FOUR_DISPOSITIONS_SOP.dispositions.length).toBe(4);
+
+        const actions = PORTFOLIO_FOUR_DISPOSITIONS_SOP.dispositions.map(d => d.action);
+        expect(actions).toContain('keep');
+        expect(actions).toContain('repair');
+        expect(actions).toContain('measure');
+        expect(actions).toContain('next');
+
+        PORTFOLIO_FOUR_DISPOSITIONS_SOP.dispositions.forEach(disp => {
+            expect(disp.actionName.length).toBeGreaterThan(2);
+            expect(disp.actionEn.length).toBeGreaterThan(4);
+            expect(disp.motto.length).toBeGreaterThan(5);
+            expect(disp.standardProcedures.length).toBeGreaterThanOrEqual(3);
+            expect(disp.currentWeeklyExecution.length).toBeGreaterThan(15);
+        });
+
+        // 验证具体动作的内容完整性
+        const keep = PORTFOLIO_FOUR_DISPOSITIONS_SOP.dispositions.find(d => d.action === 'keep')!;
+        expect(keep.currentWeeklyExecution).toContain('63.93%');
+
+        const repair = PORTFOLIO_FOUR_DISPOSITIONS_SOP.dispositions.find(d => d.action === 'repair')!;
+        expect(repair.currentWeeklyExecution).toContain('MRVL');
+
+        const measure = PORTFOLIO_FOUR_DISPOSITIONS_SOP.dispositions.find(d => d.action === 'measure')!;
+        expect(measure.currentWeeklyExecution).toContain('$5,875.91');
     });
 });
 

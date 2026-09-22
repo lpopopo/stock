@@ -7817,5 +7817,503 @@
   color: #0f172a;
 }
 
+/* ========================================================
+   Phase 6: 科研防拟合饱和边界与机构四项处置规程 (SOP)
+   ======================================================== */
+
+/* 1. 科研防拟合饱和边界 (Saturation Boundary View) */
+.rebound-saturation-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.saturation-hero-banner {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(22, 27, 34, 0.95));
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.saturation-hero-banner .hero-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.saturation-hero-banner .hero-icon {
+  font-size: 2.2rem;
+}
+
+.saturation-hero-banner h4 {
+  margin: 0 0 4px 0;
+  font-size: 1.15rem;
+  color: #f8fafc;
+}
+
+.saturation-hero-banner .as-of-date {
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+.saturation-kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .saturation-kpis-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.sat-kpi-card {
+  background: #11161d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sat-kpi-card .lbl {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.sat-kpi-card .val {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.sat-kpi-card .val-text {
+  font-size: 1.05rem;
+}
+
+.sat-kpi-card .sub {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.sat-thesis-box {
+  background: rgba(56, 189, 248, 0.05);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #e2e8f0;
+}
+
+.sat-thesis-box strong {
+  display: block;
+  color: #38bdf8;
+  margin-bottom: 4px;
+}
+
+.sat-thesis-box p {
+  margin: 0;
+}
+
+/* 警示卡片：指数 vs 个股 */
+.index-vs-stock-warning-card {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(15, 23, 42, 0.9));
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.warning-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.warning-head .warn-icon {
+  font-size: 1.6rem;
+}
+
+.warning-head h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #fca5a5;
+}
+
+.warning-body-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .warning-body-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.warn-col {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.index-col {
+  border-left: 3px solid #10b981;
+}
+
+.stock-col {
+  border-left: 3px solid #ef4444;
+}
+
+.col-title {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  color: #f8fafc;
+}
+
+.warn-col p {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.warn-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #fef2f2;
+}
+
+.footer-badge {
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* 六大严厉科研禁区 */
+.prohibitions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #f8fafc;
+}
+
+.prohibitions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .prohibitions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.prohibition-card {
+  background: #11161d;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.prohibition-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.prohibit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 8px;
+}
+
+.prohibit-title {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #f8fafc;
+  line-height: 1.35;
+}
+
+.verdict-tag-rejected {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.prohibit-desc {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.prohibit-section strong {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.prohibit-section p {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.empirical-sec {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid #f59e0b;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.logic-sec {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid #38bdf8;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.affected-branches-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.branches-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.branch-tag {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+}
+
+/* 2. 机构四项处置规程 (Four Dispositions SOP View) */
+.rebound-sop-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sop-hero-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(22, 27, 34, 0.95));
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sop-hero-banner .hero-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sop-hero-banner .hero-icon {
+  font-size: 2.2rem;
+}
+
+.sop-hero-banner h4 {
+  margin: 0 0 4px 0;
+  font-size: 1.15rem;
+  color: #f8fafc;
+}
+
+.sop-hero-banner .as-of-date {
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+.audit-passed-badge {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.sop-philosophy-card {
+  background: #11161d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.philo-content strong {
+  display: block;
+  font-size: 0.82rem;
+  color: #10b981;
+  margin-bottom: 4px;
+}
+
+.philo-content p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+.audit-note {
+  font-size: 0.72rem;
+  color: #64748b;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 6px;
+}
+
+.dispositions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1200px) {
+  .dispositions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .dispositions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sop-card {
+  background: #11161d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.sop-card:hover {
+  transform: translateY(-2px);
+}
+
+.sop-card-head {
+  border-bottom: 2px solid;
+  padding-bottom: 8px;
+}
+
+.disp-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid;
+  margin-bottom: 6px;
+}
+
+.disp-name {
+  margin: 0;
+  font-size: 1rem;
+  color: #f8fafc;
+}
+
+.disp-en {
+  font-size: 0.65rem;
+  color: #64748b;
+}
+
+.sop-motto-box em {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-style: italic;
+  line-height: 1.4;
+  display: block;
+}
+
+.sop-procedures-box .box-title, .sop-execution-box .box-title {
+  margin: 0 0 6px 0;
+  font-size: 0.74rem;
+  color: #cbd5e1;
+}
+
+.sop-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.sop-list li {
+  margin-bottom: 4px;
+}
+
+.sop-execution-box {
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 2px solid;
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin-top: auto;
+}
+
+.sop-execution-box p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+
 
 

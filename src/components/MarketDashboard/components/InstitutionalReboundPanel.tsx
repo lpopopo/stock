@@ -21,6 +21,8 @@ import {
     CROSS_MARKET_AI_MAPPING_MATRIX,
     CROSS_BORDER_LEAD_LAG_ENGINE,
     BATCH_TRADE_AUDIT_DATA,
+    RESEARCH_SATURATION_BOUNDARY,
+    PORTFOLIO_FOUR_DISPOSITIONS_SOP,
     type BottomReboundStock,
     type TradeChecklistInput,
     type TradeChecklistResult,
@@ -39,6 +41,8 @@ type SubTabType =
     | 'cross-market'
     | 'lead-lag'
     | 'batch-audit'
+    | 'saturation-boundary'
+    | 'four-dispositions'
     | 'ai-bottleneck'
     | 'crowding-radar'
     | 'trade-checklist'
@@ -215,6 +219,18 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     onClick={() => setSubTab('batch-audit')}
                 >
                     🚦 核心池全量六维审计
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'saturation-boundary' ? 'active' : ''}`}
+                    onClick={() => setSubTab('saturation-boundary')}
+                >
+                    🛡️ 科研防拟合饱和边界
+                </button>
+                <button
+                    className={`rebound-tab-btn ${subTab === 'four-dispositions' ? 'active' : ''}`}
+                    onClick={() => setSubTab('four-dispositions')}
+                >
+                    📋 机构四项处置规程 SOP
                 </button>
                 <button
                     className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
@@ -924,6 +940,178 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：量化科研防拟合饱和边界与六大禁区 */}
+            {subTab === 'saturation-boundary' && (
+                <div className="rebound-saturation-view">
+                    <div className="saturation-hero-banner">
+                        <div className="hero-left">
+                            <span className="hero-icon">🛡️</span>
+                            <div>
+                                <h4>26 年历史量化科研防过拟合饱和边界 (Research Saturation Boundary)</h4>
+                                <span className="as-of-date font-mono">
+                                    统计截止：{RESEARCH_SATURATION_BOUNDARY.asOfDate} · 27 条科研路径全盘归档（{RESEARCH_SATURATION_BOUNDARY.closedOrRejectedCount} 条已否决关闭，{RESEARCH_SATURATION_BOUNDARY.frozenShadowCount} 条前瞻冻结）
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 统计指标卡片 */}
+                    <div className="saturation-kpis-grid">
+                        <div className="sat-kpi-card">
+                            <span className="lbl">归档科研分支总数</span>
+                            <span className="val font-mono text-cyan">{RESEARCH_SATURATION_BOUNDARY.totalBranches} 条</span>
+                            <span className="sub">2000~2026 全样本归档</span>
+                        </div>
+                        <div className="sat-kpi-card">
+                            <span className="lbl">实证已否决/关闭分支</span>
+                            <span className="val font-mono text-red">{RESEARCH_SATURATION_BOUNDARY.closedOrRejectedCount} 条</span>
+                            <span className="sub">占比 48.1%，绝不报喜不报忧</span>
+                        </div>
+                        <div className="sat-kpi-card">
+                            <span className="lbl">前瞻冻结基准分支</span>
+                            <span className="val font-mono text-gold">{RESEARCH_SATURATION_BOUNDARY.frozenShadowCount} 条</span>
+                            <span className="sub">RSR1 / RSR2 纯前瞻观测</span>
+                        </div>
+                        <div className="sat-kpi-card">
+                            <span className="lbl">量化统计结论</span>
+                            <span className="val-text text-green font-bold">历史数据已达饱和</span>
+                            <span className="sub">杜绝 P-Hacking 与数据窥探偏见</span>
+                        </div>
+                    </div>
+
+                    {/* 核心方法论论述 */}
+                    <div className="sat-thesis-box">
+                        <strong>💡 量化科学家核心宣言：</strong>
+                        <p>{RESEARCH_SATURATION_BOUNDARY.saturationThesis}</p>
+                    </div>
+
+                    {/* 为什么 100% 胜率战法严禁搬用于个股高危警示 */}
+                    <div className="index-vs-stock-warning-card">
+                        <div className="warning-head">
+                            <span className="warn-icon">🚨</span>
+                            <h4>{RESEARCH_SATURATION_BOUNDARY.indexVsSingleStockWarning.title}</h4>
+                        </div>
+                        <div className="warning-body-grid">
+                            <div className="warn-col index-col">
+                                <h5 className="col-title">🏛️ 宽基指数 (SPY/QQQ) 为什么具有永续企稳特权？</h5>
+                                <p>{RESEARCH_SATURATION_BOUNDARY.indexVsSingleStockWarning.whyIndexSurvives}</p>
+                            </div>
+                            <div className="warn-col stock-col">
+                                <h5 className="col-title">💣 商业单票 (GLW/MXL/MRVL) 为什么无对冲抄底必死？</h5>
+                                <p>{RESEARCH_SATURATION_BOUNDARY.indexVsSingleStockWarning.whySingleStockFails}</p>
+                            </div>
+                        </div>
+                        <div className="warn-footer">
+                            <span className="footer-badge">铁律红线</span>
+                            <strong>{RESEARCH_SATURATION_BOUNDARY.indexVsSingleStockWarning.hardRule}</strong>
+                        </div>
+                    </div>
+
+                    {/* 六大严厉科研禁区网格 */}
+                    <div className="prohibitions-container">
+                        <h4 className="section-title">🚫 杜绝数据拟合：量化投研六大绝对禁区</h4>
+                        <div className="prohibitions-grid">
+                            {RESEARCH_SATURATION_BOUNDARY.prohibitions.map((p) => (
+                                <div key={p.id} className="prohibition-card">
+                                    <div className="prohibit-head">
+                                        <h5 className="prohibit-title">{p.title}</h5>
+                                        <span className="verdict-tag-rejected font-mono">严格否决 (Rejected)</span>
+                                    </div>
+                                    <p className="prohibit-desc">{p.description}</p>
+                                    
+                                    <div className="prohibit-section empirical-sec">
+                                        <strong>🔬 26 年科研实证原因：</strong>
+                                        <p>{p.empiricalReason}</p>
+                                    </div>
+
+                                    <div className="prohibit-section logic-sec">
+                                        <strong>🧠 第一性原理机制：</strong>
+                                        <p>{p.firstPrinciplesLogic}</p>
+                                    </div>
+
+                                    <div className="affected-branches-row">
+                                        <span className="lbl">涉及关闭历史分支：</span>
+                                        <div className="branches-tags">
+                                            {p.affectedBranches.map((b, bi) => (
+                                                <span key={bi} className="branch-tag font-mono">{b}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 视图：机构级四项处置规程 (Keep / Repair / Measure / Next SOP) */}
+            {subTab === 'four-dispositions' && (
+                <div className="rebound-sop-view">
+                    <div className="sop-hero-banner">
+                        <div className="hero-left">
+                            <span className="hero-icon">📋</span>
+                            <div>
+                                <h4>生产级投资组合四项处置规程 (Institutional Four Dispositions SOP)</h4>
+                                <span className="as-of-date font-mono">
+                                    执行周期：{PORTFOLIO_FOUR_DISPOSITIONS_SOP.asOfDate} · 治理哲学：不因单周盈利狂妄加仓，不因单周浮亏仓促改参
+                                </span>
+                            </div>
+                        </div>
+                        <div className="hero-right">
+                            <span className="audit-passed-badge">
+                                {PORTFOLIO_FOUR_DISPOSITIONS_SOP.auditVerificationPassed ? '✅ 独立双重审计核验通过' : '⚠️ 审计待定'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* 治理核心法则 */}
+                    <div className="sop-philosophy-card">
+                        <div className="philo-content">
+                            <strong>⚖️ 组合运维治理铁律：</strong>
+                            <p>{PORTFOLIO_FOUR_DISPOSITIONS_SOP.governancePhilosophy}</p>
+                        </div>
+                        <div className="audit-note font-mono">
+                            <span>🔍 审计复核状态：{PORTFOLIO_FOUR_DISPOSITIONS_SOP.auditStatus}</span>
+                        </div>
+                    </div>
+
+                    {/* 四项处置四栏卡片 */}
+                    <div className="dispositions-grid">
+                        {PORTFOLIO_FOUR_DISPOSITIONS_SOP.dispositions.map((disp) => (
+                            <div key={disp.action} className={`sop-card sop-card-${disp.action}`}>
+                                <div className="sop-card-head" style={{ borderColor: disp.color }}>
+                                    <div>
+                                        <span className="disp-badge" style={{ backgroundColor: `${disp.color}22`, color: disp.color, borderColor: disp.color }}>
+                                            {disp.badge}
+                                        </span>
+                                        <h4 className="disp-name">{disp.actionName}</h4>
+                                        <span className="disp-en font-mono">{disp.actionEn}</span>
+                                    </div>
+                                </div>
+
+                                <div className="sop-motto-box">
+                                    <em>"{disp.motto}"</em>
+                                </div>
+
+                                <div className="sop-procedures-box">
+                                    <h5 className="box-title">📑 标准作业程序 (SOP)：</h5>
+                                    <ul className="sop-list">
+                                        {disp.standardProcedures.map((proc, pi) => (
+                                            <li key={pi}>{proc}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                <div className="sop-execution-box" style={{ borderLeftColor: disp.color }}>
+                                    <h5 className="box-title">📍 本周真实生产执行记录：</h5>
+                                    <p>{disp.currentWeeklyExecution}</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
