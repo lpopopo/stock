@@ -135,6 +135,7 @@ import {
     DEFAULT_LENDING_HOLDINGS,
     evaluateTreasuryLadderAndLending,
     PHASE40_TREASURY_LADDER_FRAMEWORK,
+    PHASE36_40_BACKTEST_BENCHMARK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -2594,7 +2595,7 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
     });
 
     it('Test 62: Phase 25 — 四大核心因子消融实证 (双连阳企稳、VIX门控、SGOV清扫、棘轮止盈)', () => {
-        expect(V9_ABLATION_STUDY_DATA.length).toBe(4);
+        expect(V9_ABLATION_STUDY_DATA.length).toBeGreaterThanOrEqual(4);
 
         // 1. 双连阳确认：使最深浮亏由 -29.26% 减半至 -15.95%
         const confirmAbl = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-01-CONFIRMATION')!;
@@ -3172,5 +3173,70 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         expect(ladderRes.combinedEnhancedYieldPct).toBeGreaterThan(ladderRes.weightedCurrentYieldPct);
         expect(ladderRes.strategySummary).toContain('证券借贷计划');
         expect(PHASE40_TREASURY_LADDER_FRAMEWORK.coreModules.length).toBe(3);
+    });
+
+    it('Test 95: Phase 36~40 全量前沿增强回测沙盒模拟 (CAGR 提升至 19%+, 回撤收窄至单位数, 胜率 95%+)', () => {
+        const baseResult = simulateV9ComprehensiveBacktest({
+            coreWeightPct: 70,
+            stockSleeveWeightPct: 30,
+            sgovYieldPct: 5.25,
+            frictionModel: 'us_standard_10bps',
+            trailingStopMode: 'ratchet_tiered',
+            vixGateEnabled: true,
+            reboundConfirmation: 'two_day_green',
+        });
+
+        const enhancedResult = simulateV9ComprehensiveBacktest({
+            coreWeightPct: 70,
+            stockSleeveWeightPct: 30,
+            sgovYieldPct: 5.25,
+            frictionModel: 'us_standard_10bps',
+            trailingStopMode: 'ratchet_tiered',
+            vixGateEnabled: true,
+            reboundConfirmation: 'two_day_green',
+            smartPeggingEnabled: true,
+            dealerGexOverlayEnabled: true,
+            crowdingGuardEnabled: true,
+            transcriptNlpAlphaEnabled: true,
+            treasuryLendingYieldBoostPct: 1.25,
+        });
+
+        // 1. CAGR 提升：增强后年化复合收益率显著超越基础版
+        expect(enhancedResult.summary.cagrV9Composite).toBeGreaterThan(baseResult.summary.cagrV9Composite);
+        expect(enhancedResult.summary.cagrV9Composite).toBeGreaterThan(19.0);
+
+        // 2. 最大回撤收窄：由于 GEX 避险与因子拥挤度防守，回撤从 -11.20% 收窄至 -9.0% 以内
+        expect(Math.abs(enhancedResult.summary.maxDrawdownV9Composite)).toBeLessThan(Math.abs(baseResult.summary.maxDrawdownV9Composite));
+        expect(Math.abs(enhancedResult.summary.maxDrawdownV9Composite)).toBeLessThan(9.0);
+
+        // 3. 夏普比率改善：显著超越未增强的基础沙盒版
+        expect(enhancedResult.summary.sharpeV9Composite).toBeGreaterThan(baseResult.summary.sharpeV9Composite);
+        expect(enhancedResult.summary.sharpeV9Composite).toBeGreaterThanOrEqual(1.45);
+
+        // 4. 胜率进一步跃升
+        expect(enhancedResult.summary.tradeLevelWinRate).toBeGreaterThanOrEqual(95.0);
+    });
+
+    it('Test 96: Phase 36~40 全周期量化回测基准表与消融实证完整性', () => {
+        const benchmark = PHASE36_40_BACKTEST_BENCHMARK;
+        expect(benchmark.totalYears).toBe(22);
+        expect(benchmark.comparisonTable.length).toBe(9);
+
+        // 验证消融实验 ABL-05 至 ABL-09 成功注入
+        const abl5 = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-05-SMART-PEGGING');
+        const abl6 = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-06-DEALER-GEX');
+        const abl7 = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-07-FACTOR-CROWDING');
+        const abl8 = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-08-TRANSCRIPT-NLP');
+        const abl9 = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-09-TREASURY-LADDER-LENDING');
+
+        expect(abl5).toBeDefined();
+        expect(abl6).toBeDefined();
+        expect(abl7).toBeDefined();
+        expect(abl8).toBeDefined();
+        expect(abl9).toBeDefined();
+
+        expect(abl5?.experimentGroup.winRatePct).toBeGreaterThan(abl5?.controlGroup.winRatePct || 0);
+        expect(abl6?.experimentGroup.maxDrawdownPct).toBeGreaterThan(abl6?.controlGroup.maxDrawdownPct || 0); // 回撤更小
+        expect(abl9?.experimentGroup.cagrPct).toBeGreaterThan(abl9?.controlGroup.cagrPct || 0);
     });
 });
