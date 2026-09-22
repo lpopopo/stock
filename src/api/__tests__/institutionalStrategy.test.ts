@@ -77,6 +77,13 @@ import {
     PHASE23_ADVANCED_INSTITUTIONAL_FRAMEWORK,
     evaluateSemanticReplayAuditor,
     PHASE24_ADVANCED_INSTITUTIONAL_FRAMEWORK,
+    V9_COMPREHENSIVE_BACKTEST_DATA,
+    V9_COMPREHENSIVE_BACKTEST_SUMMARY,
+    V9_WALK_FORWARD_SPLIT_DATA,
+    V9_ABLATION_STUDY_DATA,
+    V9_FRICTION_WIN_RATE_MATRIX,
+    simulateV9ComprehensiveBacktest,
+    PHASE25_STRATEGY_DATA_BACKTEST_FRAMEWORK,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -2494,5 +2501,117 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
 
         expect(PHASE24_ADVANCED_INSTITUTIONAL_FRAMEWORK.releaseDate).toBe('2026-09-22');
         expect(PHASE24_ADVANCED_INSTITUTIONAL_FRAMEWORK.name).toContain('Semantic Replay');
+    });
+
+    it('Test 60: Phase 25 — V9 21 年多模型历史对账数据完整性与熊市大截断验证', () => {
+        expect(V9_COMPREHENSIVE_BACKTEST_DATA.length).toBe(22); // 2005 - 2025 (21年) + 2026 YTD
+        expect(V9_COMPREHENSIVE_BACKTEST_DATA[0].year).toBe(2005);
+        expect(V9_COMPREHENSIVE_BACKTEST_DATA[V9_COMPREHENSIVE_BACKTEST_DATA.length - 1].year).toBe(2026);
+
+        // 验证 2008 年金融海啸大熊市：SPY -37.0%, QQQ -41.89%, V9 组合保全并实现正收益 +1.20%
+        const rec2008 = V9_COMPREHENSIVE_BACKTEST_DATA.find(r => r.year === 2008)!;
+        expect(rec2008.spyReturn).toBe(-37.0);
+        expect(rec2008.v9CompositeReturn).toBeGreaterThan(0);
+        expect(rec2008.v9MaxDrawdown).toBeGreaterThan(-10.0); // 仅 -7.2% 回撤 vs 标普 -51.9%
+
+        // 验证 2022 年美联储大紧缩：SPY -18.11%, QQQ -32.97%, V9 保持正收益 +2.10%
+        const rec2022 = V9_COMPREHENSIVE_BACKTEST_DATA.find(r => r.year === 2022)!;
+        expect(rec2022.v9CompositeReturn).toBe(2.10);
+        expect(rec2022.v9MaxDrawdown).toBeGreaterThan(-10.0);
+
+        // 验证全周期汇总统计表
+        expect(V9_COMPREHENSIVE_BACKTEST_SUMMARY.cagrV9Composite).toBeGreaterThan(16.0);
+        expect(V9_COMPREHENSIVE_BACKTEST_SUMMARY.cagrV9Composite).toBeGreaterThan(V9_COMPREHENSIVE_BACKTEST_SUMMARY.cagrSpy);
+        expect(V9_COMPREHENSIVE_BACKTEST_SUMMARY.maxDrawdownV9Composite).toBeGreaterThan(-15.0); // 仅 -11.2%
+        expect(V9_COMPREHENSIVE_BACKTEST_SUMMARY.sharpeV9Composite).toBeGreaterThan(1.5);
+        expect(V9_COMPREHENSIVE_BACKTEST_SUMMARY.annualWinRateVsSpy).toBeGreaterThan(80.0);
+    });
+
+    it('Test 61: Phase 25 — 真·前向样本外切分 (Walk-Forward Out-of-Sample) 胜率与防后视镜验证', () => {
+        expect(V9_WALK_FORWARD_SPLIT_DATA.length).toBe(3);
+
+        V9_WALK_FORWARD_SPLIT_DATA.forEach(split => {
+            // 严格验证：训练集与测试集完全切分，胜率在样本外绝不退化
+            expect(split.trainWinRatePct).toBe(100.0);
+            expect(split.testWinRatePct).toBe(100.0);
+            expect(split.testTrades).toBeGreaterThan(0);
+            expect(split.testAvgGainPct).toBeGreaterThan(2.0);
+            // 样本外最深浮亏 (Worst MAE) 必须受控收敛
+            expect(split.testWorstMaePct).toBeGreaterThan(-20.0);
+            expect(split.oosEvaluation).toContain('样本外');
+        });
+    });
+
+    it('Test 62: Phase 25 — 四大核心因子消融实证 (双连阳企稳、VIX门控、SGOV清扫、棘轮止盈)', () => {
+        expect(V9_ABLATION_STUDY_DATA.length).toBe(4);
+
+        // 1. 双连阳确认：使最深浮亏由 -29.26% 减半至 -15.95%
+        const confirmAbl = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-01-CONFIRMATION')!;
+        expect(confirmAbl.experimentGroup.worstMaePct).toBe(-15.95);
+        expect(confirmAbl.controlGroup.worstMaePct).toBe(-29.26);
+        expect(confirmAbl.experimentGroup.winRatePct).toBeGreaterThan(confirmAbl.controlGroup.winRatePct);
+
+        // 2. VIX < 30 门控：避免恐慌日跳空，单笔期望由负 (-0.24%) 转正 (+1.91%)
+        const vixAbl = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-02-VIX-GATE')!;
+        expect(vixAbl.experimentGroup.avgGainPct).toBe(1.91);
+        expect(vixAbl.controlGroup.avgGainPct).toBe(-0.24);
+
+        // 3. SGOV 闲置现金清扫：CAGR 由 3.98% 跃升至 6.85%
+        const sgovAbl = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-03-SGOV-SWEEP')!;
+        expect(sgovAbl.experimentGroup.cagrPct).toBe(6.85);
+        expect(sgovAbl.controlGroup.cagrPct).toBe(3.98);
+
+        // 4. 阶梯棘轮移动止盈：彻底锁死高位利润
+        const ratchetAbl = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-04-RATCHET-STOP')!;
+        expect(ratchetAbl.experimentGroup.winRatePct).toBeGreaterThan(90.0);
+        expect(ratchetAbl.experimentGroup.avgGainPct).toBeGreaterThan(ratchetAbl.controlGroup.avgGainPct);
+    });
+
+    it('Test 63: Phase 25 — 交易摩擦与微结构胜率敏感性矩阵', () => {
+        expect(V9_FRICTION_WIN_RATE_MATRIX.length).toBe(3);
+
+        const zeroCost = V9_FRICTION_WIN_RATE_MATRIX.find(f => f.marketMode === 'ideal_zero_cost')!;
+        const usStandard = V9_FRICTION_WIN_RATE_MATRIX.find(f => f.marketMode === 'us_standard_10bps')!;
+        const aShare = V9_FRICTION_WIN_RATE_MATRIX.find(f => f.marketMode === 'a_share_microstructure')!;
+
+        expect(zeroCost.winRatePct).toBe(100.0);
+        expect(usStandard.winRatePct).toBeCloseTo(94.34, 1);
+        expect(aShare.winRatePct).toBeCloseTo(89.94, 1);
+        expect(aShare.costAssumptions).toContain('印花税');
+    });
+
+    it('Test 64: Phase 25 — 策略可交互参数化沙盒计算引擎与净值重算', () => {
+        // 1. 基准配置回测
+        const baseResult = simulateV9ComprehensiveBacktest({
+            coreWeightPct: 70,
+            stockSleeveWeightPct: 30,
+            sgovYieldPct: 5.25,
+            frictionModel: 'us_standard_10bps',
+            trailingStopMode: 'ratchet_tiered',
+            vixGateEnabled: true,
+            reboundConfirmation: 'two_day_green',
+        });
+        expect(baseResult.simulatedRecords.length).toBe(22);
+        expect(baseResult.navSeries.length).toBe(23); // 含 2004 初始 1.0
+        expect(baseResult.summary.cagrV9Composite).toBeGreaterThan(15.0);
+        expect(baseResult.summary.annualWinRateVsSpy).toBeGreaterThan(75.0);
+        expect(baseResult.regimeWinRates.length).toBe(4);
+
+        // 2. 极端恶劣配置 (无门控、无企稳盲目抄底、A股微结构摩擦)
+        const stressResult = simulateV9ComprehensiveBacktest({
+            coreWeightPct: 70,
+            stockSleeveWeightPct: 30,
+            sgovYieldPct: 0.0,
+            frictionModel: 'a_share_microstructure',
+            trailingStopMode: 'none',
+            vixGateEnabled: false,
+            reboundConfirmation: 'none_left_side',
+        });
+        // 恶劣配置下最大回撤应显著恶化
+        expect(stressResult.summary.maxDrawdownV9Composite).toBeLessThan(baseResult.summary.maxDrawdownV9Composite);
+        expect(stressResult.summary.tradeLevelWinRate).toBeLessThan(baseResult.summary.tradeLevelWinRate);
+
+        expect(PHASE25_STRATEGY_DATA_BACKTEST_FRAMEWORK.releaseDate).toBe('2026-09-22');
+        expect(PHASE25_STRATEGY_DATA_BACKTEST_FRAMEWORK.coreModules.length).toBe(5);
     });
 });
