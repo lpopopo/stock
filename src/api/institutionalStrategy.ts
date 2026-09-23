@@ -615,6 +615,284 @@ export const V9_LIVE_FORWARD_PORTFOLIO: V9LiveForwardPortfolio = {
     ],
 };
 
+/**
+ * ============================================================================
+ * AI-Memory 官方真实对账账本与持仓切片 (Real Live Portfolio & Ledger)
+ * 来源: AI-Memory/domains/quant-strategy/memory/portfolio/2026-09-22-portfolio-summary.md
+ * ============================================================================
+ */
+export interface AiMemoryHolding {
+    symbol: string;
+    name: string;
+    assetClass: 'Cash ETF' | 'Equity Stock';
+    shares: number;
+    costBasis: number;
+    currentPrice: number;
+    marketValue: number;
+    navWeightPct: number;
+    pnlAmount: number;
+    pnlPct: number;
+    aiRole: string;
+    statusBadge: string;
+    statusType: 'success' | 'warning' | 'info' | 'danger';
+    stopPrice?: number;
+    targetPrice?: number;
+    factorGroup: string;
+    actionAdvice: string;
+}
+
+export interface AiMemoryRealTrade {
+    tradeId: string;
+    date: string;
+    time: string;
+    symbol: string;
+    direction: 'BUY' | 'SELL';
+    shares: number;
+    fillPrice: number;
+    grossAmount: number;
+    feeUsd: number;
+    preTradeCash: number;
+    postTradeCash: number;
+    strategyRole: string;
+    rationale: string;
+}
+
+export interface AiMemoryNavMilestone {
+    date: string;
+    nav: number;
+    cashPct: number;
+    equityPct: number;
+    note: string;
+}
+
+export interface AiMemoryAuditItem {
+    id: string;
+    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+    title: string;
+    targetSymbol: string;
+    condition: string;
+    recommendation: string;
+    status: 'PENDING' | 'TRIGGERED' | 'WATCHING';
+}
+
+export interface AiMemoryPortfolioLedger {
+    sourceFile: string;
+    auditTimestamp: string;
+    asOfDate: string;
+    totalNav: number;
+    dayPnlUsd: number;
+    dayPnlPct: number;
+    workingCash: number;
+    workingCashPct: number;
+    sgovReserve: number;
+    sgovReservePct: number;
+    totalDefenseCash: number;
+    totalDefensePct: number;
+    equityTotal: number;
+    equityPct: number;
+    monthlyDividendEstimateUsd: number;
+    holdings: AiMemoryHolding[];
+    realTrades: AiMemoryRealTrade[];
+    auditItems: AiMemoryAuditItem[];
+    navMilestones: AiMemoryNavMilestone[];
+    summaryComments: string[];
+}
+
+export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
+    sourceFile: 'AI-Memory/domains/quant-strategy/memory/portfolio/2026-09-22-portfolio-summary.md',
+    auditTimestamp: '2026-09-22 23:12 +08:00 (美东 11:12 ET)',
+    asOfDate: '2026-09-22',
+    totalNav: 6046.53,
+    dayPnlUsd: 19.70,
+    dayPnlPct: 0.33,
+    workingCash: 1643.78,
+    workingCashPct: 27.18,
+    sgovReserve: 2112.81,
+    sgovReservePct: 34.94,
+    totalDefenseCash: 3756.59,
+    totalDefensePct: 62.13,
+    equityTotal: 2289.94,
+    equityPct: 37.87,
+    monthlyDividendEstimateUsd: 8.80,
+    holdings: [
+        {
+            symbol: 'SGOV',
+            name: '0-3月超短美债 ETF',
+            assetClass: 'Cash ETF',
+            shares: 21,
+            costBasis: 100.605,
+            currentPrice: 100.61,
+            marketValue: 2112.81,
+            navWeightPct: 34.94,
+            pnlAmount: 0.105,
+            pnlPct: 0.01,
+            aiRole: 'cash-efficiency-sweep / 无风险年化 ~5.0% 票息储备',
+            statusBadge: '生息现金储备',
+            statusType: 'success',
+            factorGroup: '0-3月美国超短国债 (久期 0.1 年)',
+            actionAdvice: '安心持有收息，年化 ~5.0%，随时 T+0/T+1 释放购买力配合右侧买点',
+        },
+        {
+            symbol: 'MRVL',
+            name: '迈威尔科技',
+            assetClass: 'Equity Stock',
+            shares: 4,
+            costBasis: 172.50,
+            currentPrice: 262.36,
+            marketValue: 1049.44,
+            navWeightPct: 17.36,
+            pnlAmount: 359.44,
+            pnlPct: 52.09,
+            aiRole: 'profit-protection / defensive hold / 超 15% 建议减仓 1 股',
+            statusBadge: '超限 15% 警报',
+            statusType: 'warning',
+            stopPrice: 235.00,
+            targetPrice: 268.00,
+            factorGroup: 'AI ASIC & DSP 光电互联',
+            actionAdvice: '占 NAV 达 17.4%，超出 15% 正常单名红线，建议择机在 $265~$268 挂单减仓 1 股落袋',
+        },
+        {
+            symbol: 'MXL',
+            name: '迈凌半导体',
+            assetClass: 'Equity Stock',
+            shares: 6,
+            costBasis: 91.40,
+            currentPrice: 87.43,
+            marketValue: 524.58,
+            navWeightPct: 8.68,
+            pnlAmount: -23.82,
+            pnlPct: -4.34,
+            aiRole: 'defensive hold / no add / 底部筑底修复中',
+            statusBadge: '防守持有',
+            statusType: 'info',
+            stopPrice: 78.00,
+            targetPrice: 95.00,
+            factorGroup: '高速光模块 PAM4 驱动芯片',
+            actionAdvice: '底部筑底修复中，仓位舒适安全（<10%），严格禁止左侧加仓摊低',
+        },
+        {
+            symbol: 'QCOM',
+            name: '高通公司',
+            assetClass: 'Equity Stock',
+            shares: 2,
+            costBasis: 185.20,
+            currentPrice: 198.27,
+            marketValue: 396.54,
+            navWeightPct: 6.56,
+            pnlAmount: 26.14,
+            pnlPct: 7.06,
+            aiRole: 'long-term hold / 移动止盈棘轮提拉保护',
+            statusBadge: '棘轮止盈中',
+            statusType: 'success',
+            stopPrice: 190.00,
+            targetPrice: 205.00,
+            factorGroup: '端侧 AI 算力与无线射频',
+            actionAdvice: '大涨冲破 $198，执行 Phase 11 棘轮提拉止盈线至 $190，锁定利润同时放飞牛股',
+        },
+        {
+            symbol: 'GLW',
+            name: '康宁光通信',
+            assetClass: 'Equity Stock',
+            shares: 2,
+            costBasis: 187.20,
+            currentPrice: 159.69,
+            marketValue: 319.38,
+            navWeightPct: 5.28,
+            pnlAmount: -55.02,
+            pnlPct: -14.70,
+            aiRole: 'reduce-review / defensive hold / no add',
+            statusBadge: '底仓观察',
+            statusType: 'info',
+            stopPrice: 150.00,
+            factorGroup: 'AI 数据中心高密度光纤物理垄断',
+            actionAdvice: '仓位极轻（仅 5.3%），对组合总体波动极低，维持底仓静待周期拐点',
+        },
+    ],
+    realTrades: [
+        {
+            tradeId: 'REAL-20260922-SGOV-BUY',
+            date: '2026-09-22',
+            time: '11:10 ET (23:12 CST)',
+            symbol: 'SGOV',
+            direction: 'BUY',
+            shares: 21,
+            fillPrice: 100.605,
+            grossAmount: 2112.71,
+            feeUsd: 1.00,
+            preTradeCash: 3756.49,
+            postTradeCash: 1643.78,
+            strategyRole: 'Phase 8 & Phase 10 现金自动清扫机制 (Cash Efficiency Sweep)',
+            rationale: '配置 0~3 个月超短美国国债，年化获取稳健的 ~5.0% 票面利息，最大历史回撤仅 -0.07%，随时在 T+0/T+1 释放购买力。',
+        },
+        {
+            tradeId: 'REAL-20260815-PORTFOLIO-REBALANCE',
+            date: '2026-08-15',
+            time: '16:00 ET',
+            symbol: 'MRVL',
+            direction: 'BUY',
+            shares: 4,
+            fillPrice: 172.50,
+            grossAmount: 690.00,
+            feeUsd: 1.00,
+            preTradeCash: 4446.49,
+            postTradeCash: 3756.49,
+            strategyRole: 'AI-Capex 核心光电互联龙头建仓',
+            rationale: '突破放量确认，建立 4 股核心仓位，严守 15% 仓位预算上限。',
+        },
+    ],
+    auditItems: [
+        {
+            id: 'AUDIT-01',
+            priority: 'HIGH',
+            title: 'MRVL 单票权重超标 (17.36% > 15.0%)',
+            targetSymbol: 'MRVL',
+            condition: '持仓市值 $1,049.44 占总 NAV 17.36%，突破 15% 机构正常单名上限',
+            recommendation: '建议择机在 $265~$268 挂单限价卖出 1 股，回收 ~$265 现金并压低单票暴露至 13% 舒适区。',
+            status: 'TRIGGERED',
+        },
+        {
+            id: 'AUDIT-02',
+            priority: 'MEDIUM',
+            title: 'QCOM 移动止盈棘轮提拉保护',
+            targetSymbol: 'QCOM',
+            condition: '现价逼近 $198 关口，累计涨幅 +7.06%，存在短期获利盘回吐风险',
+            recommendation: '执行 Phase 11 动态棘轮，将防守止损线上移至 $190.00，锁定浮盈同时享受后续主升浪。',
+            status: 'TRIGGERED',
+        },
+        {
+            id: 'AUDIT-03',
+            priority: 'MEDIUM',
+            title: 'SPY 核心大盘宽基底座建仓筹划',
+            targetSymbol: 'SPY',
+            condition: '当前工作现金 $1,643.78，尚缺少 V9 标准宏观指数平抑波动底座',
+            recommendation: '建议利用自由现金中的约 $770 挂单买入 1~2 股 SPY，构建穿越周期的核心底仓。',
+            status: 'PENDING',
+        },
+        {
+            id: 'AUDIT-04',
+            priority: 'LOW',
+            title: '底部品种 CVX 右侧买点严格跟踪',
+            targetSymbol: 'CVX',
+            condition: '原油受压回踩，CVX 正在考验 $200 整数防线，尚未触发连续两日收阳右侧信号',
+            recommendation: '坚决恪守严禁左侧抄底接飞刀纪律，耐心等待连续两日收阳买点确认后再启动 2~3 股建仓。',
+            status: 'WATCHING',
+        },
+    ],
+    navMilestones: [
+        { date: '2026-06-10', nav: 5000.00, cashPct: 100.0, equityPct: 0.0, note: '账户初始建仓，100% 现金防守' },
+        { date: '2026-07-10', nav: 5420.50, cashPct: 72.0, equityPct: 28.0, note: '建仓半导体光通信龙头，稳步反弹' },
+        { date: '2026-08-18', nav: 5680.40, cashPct: 65.0, equityPct: 35.0, note: 'MRVL 与光模块爆发，净值突破 $5,600' },
+        { date: '2026-09-18', nav: 5875.91, cashPct: 63.9, equityPct: 36.1, note: '全市场流动性充裕，组合稳健创新高' },
+        { date: '2026-09-22', nav: 6026.83, cashPct: 27.3, equityPct: 37.7, note: '买入 SGOV 21 股，正式启动现金自动清扫' },
+        { date: '2026-09-23', nav: 6046.53, cashPct: 27.2, equityPct: 37.9, note: '最新 Mark-to-Market，总净值历史新高' },
+    ],
+    summaryComments: [
+        '现金利用效率大幅跃升：通过 SGOV 21 股配置，原先 62.5% 的零息躺平闲置资金中有超过一半（$2,112.71）直接转化为年化 ~5.0% 的生息资产，每月稳定派发现金红利。',
+        '流动性完全保全：SGOV 随时可在美股常规交易时段 T+0/T+1 卖出兑现，剩余 $1,643.78 的自由现金可无缝用于后续 SPY 核心底仓建仓或底部品种（如 CVX）右侧买点。',
+        '个股超限监控：MRVL 随着股价走强至 $262+，单票权重达到 17.36%，超出 15.0% 的正常单股上限，维持建议择机挂单减仓 1 股以落袋利润并将权重降至 13% 安全线内。',
+    ],
+};
+
 export interface FearGateFactor {
     name: string;
     score: number;

@@ -61,7 +61,7 @@ export const MarketDashboard: React.FC = () => {
     }, [autoRefreshInterval, fetchAllData]);
 
     const viewTabs: { key: MarketViewType; label: string; icon: string }[] = [
-        { key: 'portfolio', label: '我的资产与实战决策', icon: '🏆' },
+        { key: 'portfolio', label: '💼 AI-Memory 我的持仓', icon: '💼' },
         { key: 'overview', label: '全球大盘与市场温度', icon: '🌐' },
         { key: 'sector_rotation', label: '板块轮动与时钟', icon: '🧭' },
         { key: 'institutional_lab', label: '机构量化实验室与回测', icon: '🔬' },
