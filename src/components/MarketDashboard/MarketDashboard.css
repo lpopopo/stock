@@ -4294,25 +4294,115 @@
   opacity: 0.75;
 }
 
+/* 顶层 5 大模块分类抽屉导航 */
+.quant-lab-segmented-nav {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+
+.category-pill-group {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.category-nav-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+}
+
+.category-nav-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.category-nav-pill.active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(37, 99, 235, 0.12) 100%);
+  border-color: rgba(96, 165, 250, 0.55);
+  color: #93c5fd;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+.category-nav-pill .cat-icon {
+  font-size: 1.15rem;
+}
+
+.category-nav-pill .cat-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.category-nav-pill .cat-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.category-nav-pill .cat-count {
+  font-size: 0.68rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.category-nav-pill.active .cat-count {
+  color: #60a5fa;
+  opacity: 1;
+}
+
 /* 导航切换条 */
 .rebound-tabs-bar {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.categorized-subtabs-bar {
+  padding-top: 4px;
+}
+
 .rebound-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-muted);
   border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 0.82rem;
+  padding: 7px 13px;
+  font-size: 0.8rem;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
+}
+
+.tab-badge-pill {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-weight: 500;
 }
 
 .rebound-tab-btn:hover {

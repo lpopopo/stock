@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     BOTTOM_REBOUND_100WIN_SUMMARY,
     BOTTOM_REBOUND_UNIVERSE,
@@ -158,11 +158,7 @@ import {
     evaluateTreasuryLadderAndLending,
 } from '../../../api/institutionalStrategy';
 
-interface InstitutionalReboundPanelProps {
-    colorScheme?: 'cn' | 'us';
-}
-
-type SubTabType =
+export type SubTabType =
     | 'stocks'
     | 'strategy-data-backtest'
     | 'brinson-attribution'
@@ -217,10 +213,147 @@ type SubTabType =
     | 'portfolio-orchestrator-arbitration'
     | 'production-infrastructure';
 
+interface InstitutionalReboundPanelProps {
+    colorScheme?: 'cn' | 'us';
+    initialSubTab?: SubTabType;
+}
+
+export type QuantLabCategory = 'backtest' | 'execution' | 'options' | 'macro' | 'governance';
+
+export interface QuantLabGroupDef {
+    key: QuantLabCategory;
+    label: string;
+    icon: string;
+    desc: string;
+    tabs: { id: SubTabType; label: string; badge?: string }[];
+}
+
+export const QUANT_LAB_GROUPS: QuantLabGroupDef[] = [
+    {
+        key: 'backtest',
+        label: '全周期回测与前沿实证',
+        icon: '📊',
+        desc: '22年全周期实证、ABL消融实验、垄断标的池与动量突破',
+        tabs: [
+            { id: 'strategy-data-backtest', label: '📊 22年全周期回测与消融 (Phase 25 & 36~40)', badge: '核心实证' },
+            { id: 'stocks', label: '🎯 6 大核心垄断标的雷达', badge: '精选池' },
+            { id: 'live-shadow', label: '💼 V9 实盘前瞻账户追踪', badge: '实盘' },
+            { id: 'rsr-momentum', label: '🚀 RSR2 动量突破雷达' },
+            { id: 'trades', label: '📜 跨三大纪元逐笔样本' },
+            { id: 'rules', label: '📐 100% 胜率数学规则' },
+            { id: 'hypotheses', label: '🧬 H1~H17 实证科研假说' },
+            { id: 'v9', label: '🛡️ V9 机构双轨配置' },
+            { id: 'hedgefunds', label: '🏛️ 全球量化智库' },
+        ],
+    },
+    {
+        key: 'execution',
+        label: '订单流与自适应执行',
+        icon: '⚡',
+        desc: '微结构挂单、日内VWAP滑点、整股防陷阱与生产审计',
+        tabs: [
+            { id: 'smart-execution-copilot', label: '⚡ 券商自适应挂单与无感记账 (Phase 36)', badge: '实操推荐' },
+            { id: 'gap-vwap-microstructure', label: '⚡ 隔夜跳空与日内 VWAP (Phase 28)' },
+            { id: 'discrete-execution-capex', label: '⚙️ 离散整股防陷阱与云Capex (Phase 13)' },
+            { id: 'production-infrastructure', label: '🏭 生产级基建·A股微结构与审计 (Phase 20-24)' },
+            { id: 'webhook-alerts', label: '📢 实时推送信标与企微卡片 (Phase 29)' },
+        ],
+    },
+    {
+        key: 'options',
+        label: '做市商 GEX 与衍生品防雷',
+        icon: '🎯',
+        desc: 'Dealer Net Gamma、尾盘磁吸、电话会NLP与产业链瓶颈',
+        tabs: [
+            { id: 'gamma-dex-radar', label: '🧲 期权做市商GEX与尾盘磁吸 (Phase 37)', badge: '做市雷达' },
+            { id: 'transcript-nlp-alpha', label: '🎙️ 业绩电话会逐字稿LLM情绪 (Phase 39)', badge: 'AI前沿' },
+            { id: 'tail-risk-options', label: '🛡️ 极端尾部期权黑天鹅保险 (Phase 32)' },
+            { id: 'breadth', label: '📡 518 标的微观广度背离雷达' },
+            { id: 'lead-lag', label: '⏱️ 中美时间差互证套利' },
+            { id: 'cross-market', label: '🇨🇳🇺🇸 中美AI产业链跨市映射' },
+            { id: 'ai-bottleneck', label: '🌐 AI 基建四层产业链瓶颈' },
+        ],
+    },
+    {
+        key: 'macro',
+        label: '宏观流动性与资产配置',
+        icon: '🛡️',
+        desc: '全球央行流动性、降息国债阶梯、风险平价与因子拥挤',
+        tabs: [
+            { id: 'treasury-ladder-lending', label: '🪜 降息国债阶梯与证券出借增厚 (Phase 40)', badge: '防御配置' },
+            { id: 'central-bank-liquidity', label: '🌐 全球央行净流动性宏观时钟 (Phase 34)' },
+            { id: 'factor-crowding-blackhole', label: '🌪️ 风格因子拥挤度与出清测算 (Phase 38)' },
+            { id: 'dynamic-risk-parity', label: '⚖️ 动态风险平价ERC与协方差收缩 (Phase 35)' },
+            { id: 'portfolio-health-check', label: '🩺 个人持仓体检与调仓处方 (Phase 30)' },
+            { id: 'fx-hedging', label: '💱 跨境汇率对冲与损益穿透 (Phase 31)' },
+            { id: 'tax-loss-harvesting', label: '🧾 税收损失收割与批次优化 (Phase 33)' },
+            { id: 'brinson-attribution', label: '⚖️ Brinson 收益归因与 Barra (Phase 26)' },
+            { id: 'monte-carlo-stress', label: '🎲 蒙特卡洛与黑天鹅应激 (Phase 27)' },
+        ],
+    },
+    {
+        key: 'governance',
+        label: '机构风控闸门与规程 SOP',
+        icon: '📜',
+        desc: '硬风控、六门控再入、四项处置、SGOV清扫与不可篡改审计',
+        tabs: [
+            { id: 'six-gates-reentry', label: '🛡️ 统一六门控与风险方差 (Phase 15)' },
+            { id: 'three-arm-reentry', label: '⚖️ 三组对照减仓重入框架 (Phase 16)' },
+            { id: 'portfolio-orchestrator-arbitration', label: '🌐 组合风控·连续调度·资金仲裁 (Phase 17-19)' },
+            { id: 'tactical-guards', label: '🛡️ 进阶实战四维硬风控 (Phase 11)' },
+            { id: 'fear-matrix', label: '⚡ Fear Gate 动态风控矩阵' },
+            { id: 'cash-efficiency', label: '💵 SGOV 现金清扫与资金效率' },
+            { id: 'position-sizing', label: '🎯 8% 黄金仓位定寸前沿' },
+            { id: 'core-whipsaw', label: '🛡️ 指数核心洗盘与保险成本' },
+            { id: 'thematic-tiers', label: '🎨 主题浓度分级防御梯次' },
+            { id: 'fee-gate', label: '⚖️ 小微账户经济费率阀' },
+            { id: 'reclass-invariance', label: '📜 持仓重分类防鸵鸟协议' },
+            { id: 'calendar-vol-damping', label: '🌐 宏观日历阻尼与126日慢速定寸 (Phase 12)' },
+            { id: 'turn-state-machine', label: '🔄 半导体信贷四阶状态机 (Phase 14)' },
+            { id: 'four-dispositions', label: '📋 机构四项处置规程 SOP' },
+            { id: 'behavioral-guardrail', label: '🧠 行为金融四大心理陷阱' },
+            { id: 'immutable-audit', label: '⛓️ 不可篡改生产对账链条' },
+            { id: 'batch-audit', label: '🚦 核心池全量六维审计' },
+            { id: 'saturation-boundary', label: '🛡️ 科研防拟合饱和边界' },
+            { id: 'crowding-radar', label: '👥 舆论情绪拥挤度反指' },
+            { id: 'trade-checklist', label: '✅ 六维实战交易核验器' },
+            { id: 'reentry', label: '🔄 防洗盘二次重入决策树' },
+            { id: 'risk-budget', label: '⚖️ 风险预算与锁利实证' },
+            { id: 'mechanisms', label: '🔬 三大独立前瞻对冲机制' },
+        ],
+    },
+];
+
+export const getCategoryForSubTab = (tab: SubTabType): QuantLabCategory => {
+    for (const group of QUANT_LAB_GROUPS) {
+        if (group.tabs.some(t => t.id === tab)) {
+            return group.key;
+        }
+    }
+    return 'backtest';
+};
+
 export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps> = ({
     colorScheme = 'cn',
+    initialSubTab = 'strategy-data-backtest',
 }) => {
-    const [subTab, setSubTab] = useState<SubTabType>('stocks');
+    const [subTab, setSubTab] = useState<SubTabType>(initialSubTab);
+    const [activeGroup, setActiveGroup] = useState<QuantLabCategory>(() => getCategoryForSubTab(initialSubTab));
+
+    useEffect(() => {
+        const cat = getCategoryForSubTab(subTab);
+        if (cat !== activeGroup) {
+            setActiveGroup(cat);
+        }
+    }, [subTab]);
+
+    const handleCategoryClick = (categoryKey: QuantLabCategory) => {
+        setActiveGroup(categoryKey);
+        const groupDef = QUANT_LAB_GROUPS.find(g => g.key === categoryKey);
+        if (groupDef && !groupDef.tabs.some(t => t.id === subTab)) {
+            setSubTab(groupDef.tabs[0].id);
+        }
+    };
     const [selectedEpoch, setSelectedEpoch] = useState<'all' | '2000-2007' | '2008-2016' | '2017-2026'>('all');
     const [hypoCategoryFilter, setHypoCategoryFilter] = useState<string>('all');
     const [hypoStatusFilter, setHypoStatusFilter] = useState<string>('all');
@@ -898,326 +1031,41 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                 </div>
             </div>
 
-            {/* 子视图切换栏 */}
-            <div className="rebound-tabs-bar">
-                <button
-                    className={`rebound-tab-btn ${subTab === 'stocks' ? 'active' : ''}`}
-                    onClick={() => setSubTab('stocks')}
-                >
-                    🎯 6 大核心垄断标的雷达
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'live-shadow' ? 'active' : ''}`}
-                    onClick={() => setSubTab('live-shadow')}
-                >
-                    💼 V9 实盘前瞻账户追踪
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'fear-matrix' ? 'active' : ''}`}
-                    onClick={() => setSubTab('fear-matrix')}
-                >
-                    ⚡ Fear Gate 动态风控矩阵
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'breadth' ? 'active' : ''}`}
-                    onClick={() => setSubTab('breadth')}
-                >
-                    📡 518 标的微观广度背离雷达
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'ai-bottleneck' ? 'active' : ''}`}
-                    onClick={() => setSubTab('ai-bottleneck')}
-                >
-                    🌐 AI 基建四层产业链瓶颈
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'cross-market' ? 'active' : ''}`}
-                    onClick={() => setSubTab('cross-market')}
-                >
-                    🇨🇳🇺🇸 中美AI产业链跨市映射
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'lead-lag' ? 'active' : ''}`}
-                    onClick={() => setSubTab('lead-lag')}
-                >
-                    ⏱️ 中美时间差互证套利
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'batch-audit' ? 'active' : ''}`}
-                    onClick={() => setSubTab('batch-audit')}
-                >
-                    🚦 核心池全量六维审计
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'saturation-boundary' ? 'active' : ''}`}
-                    onClick={() => setSubTab('saturation-boundary')}
-                >
-                    🛡️ 科研防拟合饱和边界
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'four-dispositions' ? 'active' : ''}`}
-                    onClick={() => setSubTab('four-dispositions')}
-                >
-                    📋 机构四项处置规程 SOP
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'behavioral-guardrail' ? 'active' : ''}`}
-                    onClick={() => setSubTab('behavioral-guardrail')}
-                >
-                    🧠 行为金融四大心理陷阱
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'immutable-audit' ? 'active' : ''}`}
-                    onClick={() => setSubTab('immutable-audit')}
-                >
-                    ⛓️ 不可篡改生产对账链条
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'cash-efficiency' ? 'active' : ''}`}
-                    onClick={() => setSubTab('cash-efficiency')}
-                >
-                    💵 SGOV 现金清扫与资金效率
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'position-sizing' ? 'active' : ''}`}
-                    onClick={() => setSubTab('position-sizing')}
-                >
-                    🎯 8% 黄金仓位定寸前沿
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'core-whipsaw' ? 'active' : ''}`}
-                    onClick={() => setSubTab('core-whipsaw')}
-                >
-                    🛡️ 指数核心洗盘与保险成本
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'thematic-tiers' ? 'active' : ''}`}
-                    onClick={() => setSubTab('thematic-tiers')}
-                >
-                    🎨 主题浓度分级防御梯次
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'fee-gate' ? 'active' : ''}`}
-                    onClick={() => setSubTab('fee-gate')}
-                >
-                    ⚖️ 小微账户经济费率阀
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'reclass-invariance' ? 'active' : ''}`}
-                    onClick={() => setSubTab('reclass-invariance')}
-                >
-                    📜 持仓重分类防鸵鸟协议
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'tactical-guards' ? 'active' : ''}`}
-                    onClick={() => setSubTab('tactical-guards')}
-                >
-                    🛡️ 进阶实战四维硬风控 (Phase 11)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'calendar-vol-damping' ? 'active' : ''}`}
-                    onClick={() => setSubTab('calendar-vol-damping')}
-                >
-                    🌐 宏观日历阻尼与126日慢速定寸 (Phase 12)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'discrete-execution-capex' ? 'active' : ''}`}
-                    onClick={() => setSubTab('discrete-execution-capex')}
-                >
-                    ⚙️ 离散整股防陷阱与云Capex (Phase 13)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'turn-state-machine' ? 'active' : ''}`}
-                    onClick={() => setSubTab('turn-state-machine')}
-                >
-                    🔄 半导体信贷四阶状态机 (Phase 14)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'six-gates-reentry' ? 'active' : ''}`}
-                    onClick={() => setSubTab('six-gates-reentry')}
-                >
-                    🛡️ 统一六门控与风险方差 (Phase 15)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'three-arm-reentry' ? 'active' : ''}`}
-                    onClick={() => setSubTab('three-arm-reentry')}
-                >
-                    ⚖️ 三组对照减仓重入框架 (Phase 16)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'portfolio-orchestrator-arbitration' ? 'active' : ''}`}
-                    onClick={() => setSubTab('portfolio-orchestrator-arbitration')}
-                >
-                    🌐 组合风控·连续调度·资金仲裁 (Phase 17-19)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'production-infrastructure' ? 'active' : ''}`}
-                    onClick={() => setSubTab('production-infrastructure')}
-                >
-                    🏭 生产级基建·A股微结构与审计 (Phase 20-24)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'strategy-data-backtest' ? 'active' : ''}`}
-                    onClick={() => setSubTab('strategy-data-backtest')}
-                >
-                    📊 策略全周期回测与胜率实证 (Phase 25)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'brinson-attribution' ? 'active' : ''}`}
-                    onClick={() => setSubTab('brinson-attribution')}
-                >
-                    ⚖️ Brinson 收益归因与 Barra (Phase 26)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'monte-carlo-stress' ? 'active' : ''}`}
-                    onClick={() => setSubTab('monte-carlo-stress')}
-                >
-                    🎲 蒙特卡洛与黑天鹅应激 (Phase 27)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'gap-vwap-microstructure' ? 'active' : ''}`}
-                    onClick={() => setSubTab('gap-vwap-microstructure')}
-                >
-                    ⚡ 隔夜跳空与日内 VWAP (Phase 28)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'webhook-alerts' ? 'active' : ''}`}
-                    onClick={() => setSubTab('webhook-alerts')}
-                >
-                    📢 实时推送信标与企微卡片 (Phase 29)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'portfolio-health-check' ? 'active' : ''}`}
-                    onClick={() => setSubTab('portfolio-health-check')}
-                >
-                    🩺 个人持仓体检与调仓处方 (Phase 30)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'fx-hedging' ? 'active' : ''}`}
-                    onClick={() => setSubTab('fx-hedging')}
-                >
-                    💱 跨境汇率对冲与损益穿透 (Phase 31)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'tail-risk-options' ? 'active' : ''}`}
-                    onClick={() => setSubTab('tail-risk-options')}
-                >
-                    🛡️ 极端尾部期权黑天鹅保险 (Phase 32)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'tax-loss-harvesting' ? 'active' : ''}`}
-                    onClick={() => setSubTab('tax-loss-harvesting')}
-                >
-                    🧾 税收损失收割与批次优化 (Phase 33)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'central-bank-liquidity' ? 'active' : ''}`}
-                    onClick={() => setSubTab('central-bank-liquidity')}
-                >
-                    🌐 全球央行净流动性宏观时钟 (Phase 34)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'dynamic-risk-parity' ? 'active' : ''}`}
-                    onClick={() => setSubTab('dynamic-risk-parity')}
-                >
-                    ⚖️ 动态风险平价ERC与协方差收缩 (Phase 35)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'smart-execution-copilot' ? 'active' : ''}`}
-                    onClick={() => setSubTab('smart-execution-copilot')}
-                >
-                    ⚡ 券商自适应挂单与无感记账 (Phase 36)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'gamma-dex-radar' ? 'active' : ''}`}
-                    onClick={() => setSubTab('gamma-dex-radar')}
-                >
-                    🧲 期权做市商GEX与尾盘磁吸 (Phase 37)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'factor-crowding-blackhole' ? 'active' : ''}`}
-                    onClick={() => setSubTab('factor-crowding-blackhole')}
-                >
-                    🌪️ 风格因子拥挤度与出清测算 (Phase 38)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'transcript-nlp-alpha' ? 'active' : ''}`}
-                    onClick={() => setSubTab('transcript-nlp-alpha')}
-                >
-                    🎙️ 业绩电话会逐字稿LLM情绪 (Phase 39)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'treasury-ladder-lending' ? 'active' : ''}`}
-                    onClick={() => setSubTab('treasury-ladder-lending')}
-                >
-                    🪜 降息国债阶梯与证券出借增厚 (Phase 40)
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'crowding-radar' ? 'active' : ''}`}
-                    onClick={() => setSubTab('crowding-radar')}
-                >
-                    👥 舆论情绪拥挤度反指
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'trade-checklist' ? 'active' : ''}`}
-                    onClick={() => setSubTab('trade-checklist')}
-                >
-                    ✅ 六维实战交易核验器
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'hypotheses' ? 'active' : ''}`}
-                    onClick={() => setSubTab('hypotheses')}
-                >
-                    🧬 H1~H17 实证科研假说
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'rsr-momentum' ? 'active' : ''}`}
-                    onClick={() => setSubTab('rsr-momentum')}
-                >
-                    🚀 RSR2 动量突破雷达
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'reentry' ? 'active' : ''}`}
-                    onClick={() => setSubTab('reentry')}
-                >
-                    🔄 防洗盘二次重入决策树
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'risk-budget' ? 'active' : ''}`}
-                    onClick={() => setSubTab('risk-budget')}
-                >
-                    ⚖️ 风险预算与锁利实证
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'mechanisms' ? 'active' : ''}`}
-                    onClick={() => setSubTab('mechanisms')}
-                >
-                    🔬 三大独立前瞻对冲机制
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'rules' ? 'active' : ''}`}
-                    onClick={() => setSubTab('rules')}
-                >
-                    📐 100% 胜率数学规则
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'trades' ? 'active' : ''}`}
-                    onClick={() => setSubTab('trades')}
-                >
-                    📜 跨三大纪元逐笔样本
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'v9' ? 'active' : ''}`}
-                    onClick={() => setSubTab('v9')}
-                >
-                    🛡️ V9 机构双轨配置
-                </button>
-                <button
-                    className={`rebound-tab-btn ${subTab === 'hedgefunds' ? 'active' : ''}`}
-                    onClick={() => setSubTab('hedgefunds')}
-                >
-                    🏛️ 全球量化智库
-                </button>
+            {/* 顶层模块分类抽屉导航 (5大核心分类) */}
+            <div className="quant-lab-segmented-nav">
+                <div className="category-pill-group">
+                    {QUANT_LAB_GROUPS.map(group => {
+                        const isGroupActive = activeGroup === group.key;
+                        return (
+                            <button
+                                key={group.key}
+                                className={`category-nav-pill ${isGroupActive ? 'active' : ''}`}
+                                onClick={() => handleCategoryClick(group.key)}
+                                title={group.desc}
+                            >
+                                <span className="cat-icon">{group.icon}</span>
+                                <div className="cat-text">
+                                    <span className="cat-label">{group.label}</span>
+                                    <span className="cat-count">{group.tabs.length} 模块</span>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* 当前分类下的精选子模块切换栏 (次级扁平条) */}
+            <div className="rebound-tabs-bar categorized-subtabs-bar">
+                {QUANT_LAB_GROUPS.find(g => g.key === activeGroup)?.tabs.map(item => (
+                    <button
+                        key={item.id}
+                        className={`rebound-tab-btn ${subTab === item.id ? 'active' : ''}`}
+                        onClick={() => setSubTab(item.id)}
+                    >
+                        <span>{item.label}</span>
+                        {item.badge && <span className="tab-badge-pill">{item.badge}</span>}
+                    </button>
+                ))}
             </div>
 
             {/* 视图 1：6 大核心标的实时监控雷达 */}

@@ -212,5 +212,5 @@ export interface UsSectorSignal {
     timestamp: string;
 }
 
-export type MarketViewType = 'overview' | 'a_share' | 'us_stock' | 'valuation' | 'watchlist' | 'sector_rotation';
+export type MarketViewType = 'portfolio' | 'overview' | 'a_share' | 'us_stock' | 'valuation' | 'watchlist' | 'sector_rotation' | 'institutional_lab';
 export type ColorScheme = 'cn' | 'us'; // 'cn': 红涨绿跌; 'us': 绿涨红跌

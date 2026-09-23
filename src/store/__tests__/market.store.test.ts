@@ -5,7 +5,7 @@ describe('Market Zustand Store', () => {
     beforeEach(() => {
         localStorage.clear();
         useMarketStore.setState({
-            activeView: 'overview',
+            activeView: 'portfolio',
             colorScheme: 'cn',
             autoRefreshInterval: 15,
             watchlist: [
@@ -17,7 +17,7 @@ describe('Market Zustand Store', () => {
 
     it('should initialize with default state', () => {
         const state = useMarketStore.getState();
-        expect(state.activeView).toBe('overview');
+        expect(state.activeView).toBe('portfolio');
         expect(state.colorScheme).toBe('cn');
         expect(state.autoRefreshInterval).toBe(15);
         expect(state.watchlist.length).toBe(1);
@@ -25,6 +25,12 @@ describe('Market Zustand Store', () => {
 
     it('should switch active view', () => {
         const { setActiveView } = useMarketStore.getState();
+        setActiveView('overview');
+        expect(useMarketStore.getState().activeView).toBe('overview');
+
+        setActiveView('institutional_lab');
+        expect(useMarketStore.getState().activeView).toBe('institutional_lab');
+
         setActiveView('a_share');
         expect(useMarketStore.getState().activeView).toBe('a_share');
 
@@ -36,6 +42,9 @@ describe('Market Zustand Store', () => {
 
         setActiveView('watchlist');
         expect(useMarketStore.getState().activeView).toBe('watchlist');
+
+        setActiveView('portfolio');
+        expect(useMarketStore.getState().activeView).toBe('portfolio');
     });
 
     it('should toggle and persist color scheme', () => {

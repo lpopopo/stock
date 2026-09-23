@@ -10,6 +10,8 @@ import { StockMatrixTable } from './components/StockMatrixTable';
 import { ValuationCycleGauges } from './components/ValuationCycleGauges';
 import { MarketWatchlist } from './components/MarketWatchlist';
 import { MarketAiAnalysisModal } from './components/MarketAiAnalysisModal';
+import { PortfolioExecutionHub } from './components/PortfolioExecutionHub';
+import { InstitutionalReboundPanel } from './components/InstitutionalReboundPanel';
 import type { MarketViewType } from '../../types/market.types';
 import './MarketDashboard.css';
 
@@ -59,12 +61,14 @@ export const MarketDashboard: React.FC = () => {
     }, [autoRefreshInterval, fetchAllData]);
 
     const viewTabs: { key: MarketViewType; label: string; icon: string }[] = [
-        { key: 'overview', label: '全球宏观全景', icon: '🌐' },
-        { key: 'a_share', label: 'A股深度看板', icon: '🇨🇳' },
-        { key: 'sector_rotation', label: '板块轮动与雷达', icon: '🧭' },
-        { key: 'us_stock', label: '美股深度看板', icon: '🇺🇸' },
-        { key: 'valuation', label: '估值与周期水位', icon: '⚖️' },
+        { key: 'portfolio', label: '我的资产与实战决策', icon: '🏆' },
+        { key: 'overview', label: '全球大盘与市场温度', icon: '🌐' },
+        { key: 'sector_rotation', label: '板块轮动与时钟', icon: '🧭' },
+        { key: 'institutional_lab', label: '机构量化实验室与回测', icon: '🔬' },
         { key: 'watchlist', label: '个人自选监控', icon: '⭐' },
+        { key: 'valuation', label: '估值与周期水位', icon: '⚖️' },
+        { key: 'a_share', label: 'A股深度看板', icon: '🇨🇳' },
+        { key: 'us_stock', label: '美股深度看板', icon: '🇺🇸' },
     ];
 
     const refreshIntervalOptions = [
@@ -165,7 +169,18 @@ export const MarketDashboard: React.FC = () => {
 
             {/* 主内容区域 */}
             <div className="dashboard-view-content">
-                {/* 视图 1：全球宏观全景 */}
+                {/* 视图 0 (C位主视图)：核心资产与实战决策 */}
+                {activeView === 'portfolio' && (
+                    <div className="portfolio-view-layout">
+                        <PortfolioExecutionHub
+                            colorScheme={colorScheme}
+                            onNavigateToLab={() => setActiveView('institutional_lab')}
+                            onNavigateToWatchlist={() => setActiveView('watchlist')}
+                        />
+                    </div>
+                )}
+
+                {/* 视图 1：全球宏观全景与市场温度 */}
                 {activeView === 'overview' && (
                     <div className="overview-view-layout">
                         {/* 核心宽基指数卡片 */}
@@ -185,16 +200,6 @@ export const MarketDashboard: React.FC = () => {
                         {/* 全市场主力/散户资金流向与两融杠杆监测 */}
                         <div className="section-block">
                             <MarketCapitalFlowBar breadth={breadth} colorScheme={colorScheme} />
-                        </div>
-
-                        {/* 宏观信用时钟与板块轮动信号雷达 */}
-                        <div className="section-block">
-                            <SectorRotationRadar
-                                sectors={sectors}
-                                macroPhase={macroPhase}
-                                signals={rotationSignals}
-                                colorScheme={colorScheme}
-                            />
                         </div>
 
                         {/* 宏观跨资产风向标 (黄金、原油、白银、离岸人民币、美元指数) */}
@@ -217,6 +222,13 @@ export const MarketDashboard: React.FC = () => {
                         <div className="section-block">
                             <ValuationCycleGauges valuations={valuations} />
                         </div>
+                    </div>
+                )}
+
+                {/* 视图：机构量化实验室与22年全周期回测 */}
+                {activeView === 'institutional_lab' && (
+                    <div className="institutional-lab-view-layout">
+                        <InstitutionalReboundPanel colorScheme={colorScheme} />
                     </div>
                 )}
 

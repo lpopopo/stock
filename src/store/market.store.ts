@@ -118,7 +118,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     isLoading: false,
     lastUpdated: '',
     autoRefreshInterval: 15, // 默认 15 秒自动刷新
-    activeView: 'overview',
+    activeView: 'portfolio',
     colorScheme: loadSavedColorScheme(),
 
     fetchAllData: async () => {
