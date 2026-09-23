@@ -7,7 +7,7 @@ import {
     V9_STRATEGY_CONFIG,
     FEAR_GATE_LEVELS,
     INSTITUTIONAL_RESEARCH_FEED,
-    V9_LIVE_FORWARD_PORTFOLIO,
+    currentBrokerLedgerView,
     FEAR_GATE_DYNAMIC_MATRIX,
     MARKET_BREADTH_DIVERGENCE_DATA,
     PREREGISTERED_MECHANISMS,
@@ -231,16 +231,16 @@ export interface QuantLabGroupDef {
 export const QUANT_LAB_GROUPS: QuantLabGroupDef[] = [
     {
         key: 'backtest',
-        label: '全周期回测与前沿实证',
+        label: '全周期回测沙盒（演示）',
         icon: '📊',
-        desc: '22年全周期实证、ABL消融实验、垄断标的池与动量突破',
+        desc: '22年全周期沙盒演示、前端常量对照、ABL消融实验与垄断标的池（非生产实证）',
         tabs: [
-            { id: 'strategy-data-backtest', label: '📊 22年全周期回测与消融 (Phase 25 & 36~40)', badge: '核心实证' },
+            { id: 'strategy-data-backtest', label: '📊 22年全周期回测与消融 (Phase 25 & 36~40)', badge: '沙盒演示' },
             { id: 'stocks', label: '🎯 6 大核心垄断标的雷达', badge: '精选池' },
-            { id: 'live-shadow', label: '💼 V9 实盘前瞻账户追踪', badge: '实盘' },
+            { id: 'live-shadow', label: '💼 当前账本（09-22 ledger，手工同步）', badge: '账户快照' },
             { id: 'rsr-momentum', label: '🚀 RSR2 动量突破雷达' },
             { id: 'trades', label: '📜 跨三大纪元逐笔样本' },
-            { id: 'rules', label: '📐 100% 胜率数学规则' },
+            { id: 'rules', label: '📐 历史样本规则（研究假说）' },
             { id: 'hypotheses', label: '🧬 H1~H17 实证科研假说' },
             { id: 'v9', label: '🛡️ V9 机构双轨配置' },
             { id: 'hedgefunds', label: '🏛️ 全球量化智库' },
@@ -252,7 +252,7 @@ export const QUANT_LAB_GROUPS: QuantLabGroupDef[] = [
         icon: '⚡',
         desc: '微结构挂单、日内VWAP滑点、整股防陷阱与生产审计',
         tabs: [
-            { id: 'smart-execution-copilot', label: '⚡ 券商自适应挂单与无感记账 (Phase 36)', badge: '实操推荐' },
+            { id: 'smart-execution-copilot', label: '⚡ 券商自适应挂单与无感记账 (Phase 36)', badge: '沙盒演示' },
             { id: 'gap-vwap-microstructure', label: '⚡ 隔夜跳空与日内 VWAP (Phase 28)' },
             { id: 'discrete-execution-capex', label: '⚙️ 离散整股防陷阱与云Capex (Phase 13)' },
             { id: 'production-infrastructure', label: '🏭 生产级基建·A股微结构与审计 (Phase 20-24)' },
@@ -958,6 +958,7 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     const summary = BOTTOM_REBOUND_100WIN_SUMMARY;
     const stocks = BOTTOM_REBOUND_UNIVERSE;
     const isCn = colorScheme === 'cn';
+    const ledgerView = currentBrokerLedgerView();
 
     const filteredTrades = selectedEpoch === 'all'
         ? BOTTOM_REBOUND_AUDITED_TRADES
@@ -968,27 +969,42 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
             {/* 顶栏 Hero 战绩看板 */}
             <div className="rebound-hero-header">
                 <div className="hero-badge-strip">
-                    <span className="source-repo-tag">🧠 跨仓库融合 · AI-Memory 策略引擎</span>
-                    <span className="hero-super-badge">🏆 26年实证 100% 胜率 (159战159胜)</span>
-                    <span className="hero-audit-badge">✓ 十轮系统化逐级审计严正通过</span>
+                    <span className="source-repo-tag">🧠 跨仓库融合 · AI-Memory 归档研究</span>
+                    <span className="hero-super-badge warning-badge">🔬 研究假说 · 历史已平仓样本（非实盘承诺）</span>
+                    <span className="hero-audit-badge warning-badge">⚠️ 官方复测裁定：REJECTED_FOR_LIVE_DEPLOYMENT</span>
                 </div>
                 <h3 className="hero-title">
                     底部品种企稳反弹量化战法 & V9 机构双轨配置雷达
                 </h3>
                 <p className="hero-desc">
-                    由 <code>AI-Memory</code> 2000–2026（6,713 交易日）无偏历史全样本深度实证提炼：针对<strong>自然垄断必需消费/公用/能源白马</strong>，
-                    通过 <strong>MA200 支撑 + 回踩深度 $\ge -6\%$ + 两日连阳右侧确认 + RSI(2) 极短周期顶背离闪电止盈</strong>，实现零参数退化的高胜率闭环。
+                    基于 <code>AI-Memory</code> 历史探索归档快照（2000–2026 样本）：针对<strong>自然垄断必需消费/公用/能源白马</strong>，
+                    通过 <strong>MA200 支撑 + 回踩深度 $\ge -6\%$ + 两日连阳右侧确认 + RSI(2) 极短周期顶背离闪电止盈</strong> 构建的研究假说（非实盘承诺）。
                 </p>
+
+                {/* 风险与审计合规警示红条 */}
+                <div className="rebound-audit-rejection-banner">
+                    <div className="rejection-banner-badge">⚠️ 审计合规披露 · REJECTED_FOR_LIVE_DEPLOYMENT</div>
+                    <div className="rejection-banner-content">
+                        <div className="rejection-banner-title">【非实盘承诺与研究归档说明】</div>
+                        <p className="rejection-banner-lead">
+                            本面板展示的 100% 胜率与 159 战战绩源自 <code>AI-Memory</code> 早期归档研究（<code>PERFECT_STOCKS_AND_OPTIMAL_EXITS.md</code>），<strong>已被后续 2026-09-12 官方严谨全网格复测（rigorous-v2）明确拒绝实盘部署（REJECTED_FOR_LIVE_DEPLOYMENT）</strong>。两项研究线量化事实分述如下：
+                        </p>
+                        <ul className="rejection-banner-list">
+                            <li><strong>线 A（垄断白马已平仓快照 · 159 战归档）</strong>：展示的 159 笔/6 标的归档快照（与结算单 151 笔/4 标的存在口径差异）声称夏普 1.84，但字面 100% 胜率完全依赖“无硬止损 + 仅统计已平仓单”，需承受约 <strong>-16.14% 最差 MAE</strong>（死扛极端浮亏），且与下方 Phase 25/36~40 沙盒非同一引擎，禁止作为实盘承诺；</li>
+                            <li><strong>线 B（rigorous-v2 SPY/QQQ 全网格验收 · 独立被拒）</strong>：另一项针对 SPY/QQQ 宽基宇宙实施的 215,040 组全网格严格复测已被官方明确裁定为 <strong>REJECTED_FOR_LIVE_DEPLOYMENT</strong>。带真实固定止损最优候选年化夏普仅 <strong>0.26</strong>（CAGR 仅 <strong>0.59%</strong>），前向滚动胜率击穿至 90.91%。官方拒绝的是 v2 的 SPY/QQQ 网格实盘，0.26 属于宽基网格实验候选，绝非 159 篮子带止损后的实测结果。</li>
+                        </ul>
+                    </div>
+                </div>
 
                 {/* 核心战绩 KPI 网格 */}
                 <div className="rebound-kpi-grid">
                     <div className="rebound-kpi-item featured-kpi">
-                        <span className="lbl">全历史胜率 (Win Rate)</span>
+                        <span className="lbl">全历史胜率 (归档快照)</span>
                         <div className="val-row">
                             <span className="val font-mono text-gold">{summary.winRatePct.toFixed(1)}%</span>
                             <span className="tag-pill win-pill">159 战 159 胜</span>
                         </div>
-                        <span className="sub">26 年零败绩，无未来函数与过度拟合</span>
+                        <span className="sub">历史已平仓样本，非实盘承诺</span>
                     </div>
 
                     <div className="rebound-kpi-item">
@@ -1021,12 +1037,12 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     </div>
 
                     <div className="rebound-kpi-item">
-                        <span className="lbl">年化夏普比率 (Sharpe)</span>
+                        <span className="lbl">年化夏普比率 (归档快照)</span>
                         <div className="val-row">
                             <span className="val font-mono text-gold">{summary.annualSharpeRatio.toFixed(2)}</span>
-                            <span className="tag-pill">3.6x 标普</span>
+                            <span className="tag-pill">归档快照</span>
                         </div>
-                        <span className="sub">标普500基准夏普仅 0.51</span>
+                        <span className="sub">依赖无硬止损 · 独立v2宽基验收已拒实盘</span>
                     </div>
                 </div>
             </div>
@@ -1136,62 +1152,79 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                 </div>
             )}
 
-            {/* 视图：V9 实盘前瞻账户追踪 */}
+            {/* 视图：当前唯一账本（与执行中枢同一 AI_MEMORY_PORTFOLIO_LEDGER） */}
             {subTab === 'live-shadow' && (
                 <div className="rebound-shadow-view">
                     <div className="shadow-account-header-card">
+                        <div style={{
+                            padding: '10px 14px',
+                            background: ledgerView.stockSleeveBreach || ledgerView.singleNameBreach
+                                ? 'rgba(239, 68, 68, 0.12)'
+                                : 'rgba(16, 185, 129, 0.1)',
+                            border: `1px solid ${ledgerView.stockSleeveBreach || ledgerView.singleNameBreach ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.35)'}`,
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            lineHeight: 1.5,
+                            color: ledgerView.stockSleeveBreach || ledgerView.singleNameBreach ? '#fca5a5' : '#6ee7b7',
+                        }}>
+                            <strong>唯一账本：</strong>绑定 <code>AI_MEMORY_PORTFOLIO_LEDGER</code>（asOf {ledgerView.asOfDate}，{ledgerView.auditTimestamp}）。
+                            SGOV 计入现金袖，不计入 30% 个股袖。09-18 <code>V9_LIVE_FORWARD_PORTFOLIO</code> 仅作历史常量，本页不再渲染。
+                            本切片来自记忆层手工同步，不是券商 API，也不是 r8 影子引擎输出。
+                        </div>
+
                         <div className="shadow-head-top">
                             <div className="shadow-title-group">
-                                <span className="shadow-tag-pill">💼 真实前瞻运行实盘</span>
-                                <h4>AI-Memory 实时账户持仓与净值透视</h4>
-                                <span className="as-of-date">审计核验日：{V9_LIVE_FORWARD_PORTFOLIO.asOfDate}</span>
+                                <span className="shadow-tag-pill">💼 当前账本 · 非实时成交回执</span>
+                                <h4>AI-Memory 账户切片（非实时、非券商接口）</h4>
+                                <span className="as-of-date">核验日：{ledgerView.asOfDate}</span>
                             </div>
                             <div className="shadow-nav-stat">
                                 <span className="lbl">总资产规模 (NAV)</span>
-                                <span className="val font-mono text-gold">${V9_LIVE_FORWARD_PORTFOLIO.totalNav.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                                <span className={`pnl font-mono font-bold ${V9_LIVE_FORWARD_PORTFOLIO.weeklyNavReturnPct >= 0 ? 'text-green' : 'text-red'}`}>
-                                    周损益 +${V9_LIVE_FORWARD_PORTFOLIO.weeklyPnlUsd.toFixed(2)} (+{V9_LIVE_FORWARD_PORTFOLIO.weeklyNavReturnPct.toFixed(2)}%)
+                                <span className="val font-mono text-gold">${ledgerView.totalNav.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                <span className={`pnl font-mono font-bold ${ledgerView.dayPnlPct >= 0 ? 'text-green' : 'text-red'}`}>
+                                    切片日损益 {ledgerView.dayPnlUsd >= 0 ? '+' : ''}${ledgerView.dayPnlUsd.toFixed(2)} ({ledgerView.dayPnlPct >= 0 ? '+' : ''}{ledgerView.dayPnlPct.toFixed(2)}%)
                                 </span>
                             </div>
                         </div>
 
-                        {/* 资产配置双轨条 */}
                         <div className="shadow-allocation-bar-wrap">
                             <div className="alloc-bar-labels">
-                                <span>💵 防守现金：${V9_LIVE_FORWARD_PORTFOLIO.cashAmount.toFixed(2)} ({V9_LIVE_FORWARD_PORTFOLIO.cashWeightPct.toFixed(1)}%)</span>
-                                <span>📈 个股 Alpha：${V9_LIVE_FORWARD_PORTFOLIO.stockAmount.toFixed(2)} ({V9_LIVE_FORWARD_PORTFOLIO.stockWeightPct.toFixed(1)}%)</span>
+                                <span>💵 现金袖（含 SGOV）：${ledgerView.defenseCash.toFixed(2)} ({ledgerView.defensePct.toFixed(1)}%)</span>
+                                <span>📈 个股袖：${ledgerView.equityTotal.toFixed(2)} ({ledgerView.equityPct.toFixed(1)}%)</span>
                             </div>
                             <div className="alloc-dual-bar">
-                                <div className="bar-cash" style={{ width: `${V9_LIVE_FORWARD_PORTFOLIO.cashWeightPct}%` }} />
-                                <div className="bar-stock" style={{ width: `${V9_LIVE_FORWARD_PORTFOLIO.stockWeightPct}%` }} />
+                                <div className="bar-cash" style={{ width: `${ledgerView.defensePct}%` }} />
+                                <div className="bar-stock" style={{ width: `${ledgerView.equityPct}%` }} />
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                                工作现金 ${ledgerView.workingCash.toFixed(2)} · SGOV ${ledgerView.sgovReserve.toFixed(2)} ({ledgerView.sgovReservePct.toFixed(2)}%)
                             </div>
                         </div>
 
                         <div className="shadow-action-callout">
                             <div className="callout-badge">
                                 <span className="status-label">风控状态：</span>
-                                <strong>{V9_LIVE_FORWARD_PORTFOLIO.canonicalStatus}</strong>
+                                <strong>{ledgerView.canonicalStatus}</strong>
                             </div>
-                            <p>{V9_LIVE_FORWARD_PORTFOLIO.riskActionNote}</p>
+                            <p>{ledgerView.riskActionNote}</p>
                         </div>
                     </div>
 
-                    {/* 四只个股持仓明细 */}
                     <div className="shadow-holdings-grid">
-                        {V9_LIVE_FORWARD_PORTFOLIO.holdings.map(h => (
+                        {ledgerView.holdings.map((h) => (
                             <div key={h.symbol} className="shadow-holding-card">
                                 <div className="holding-top">
                                     <div>
                                         <span className="holding-sym font-mono font-bold">{h.symbol}</span>
-                                        <span className="holding-name">{h.companyName}</span>
+                                        <span className="holding-name">{h.name}</span>
                                     </div>
-                                    <span className="holding-shares font-mono">{h.shares} 股</span>
+                                    <span className="holding-shares font-mono">{h.shares} 股 · {h.assetClass === 'Cash ETF' ? '现金袖' : '个股袖'}</span>
                                 </div>
-                                <div className="holding-factor-tag">{h.factorGroup}</div>
+                                <div className="holding-factor-tag">{h.factorGroup} · {h.statusBadge}</div>
 
                                 <div className="holding-metrics-grid">
                                     <div className="metric-cell">
-                                        <span className="lbl">最新价格</span>
+                                        <span className="lbl">标记价格</span>
                                         <span className="val font-mono">${h.currentPrice.toFixed(2)}</span>
                                     </div>
                                     <div className="metric-cell">
@@ -1200,28 +1233,28 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     </div>
                                     <div className="metric-cell">
                                         <span className="lbl">净值权重 (NAV)</span>
-                                        <span className={`val font-mono font-bold ${h.navWeightPct > 10 ? 'text-gold' : 'text-cyan'}`}>
+                                        <span className={`val font-mono font-bold ${h.assetClass === 'Equity Stock' && h.navWeightPct > 15 ? 'text-gold' : 'text-cyan'}`}>
                                             {h.navWeightPct.toFixed(2)}%
                                         </span>
                                     </div>
                                     <div className="metric-cell">
-                                        <span className="lbl">本周盈亏</span>
-                                        <span className={`val font-mono font-bold ${h.weeklyReturnPct >= 0 ? (isCn ? 'text-red' : 'text-green') : (isCn ? 'text-green' : 'text-red')}`}>
-                                            {h.weeklyReturnPct >= 0 ? '+' : ''}{h.weeklyReturnPct.toFixed(2)}% (${h.weeklyGainLossUsd.toFixed(2)})
+                                        <span className="lbl">相对成本盈亏</span>
+                                        <span className={`val font-mono font-bold ${h.pnlPct >= 0 ? (isCn ? 'text-red' : 'text-green') : (isCn ? 'text-green' : 'text-red')}`}>
+                                            {h.pnlPct >= 0 ? '+' : ''}{h.pnlPct.toFixed(2)}% (${h.pnlAmount.toFixed(2)})
                                         </span>
                                     </div>
                                     <div className="metric-cell">
-                                        <span className="lbl">MA20 支撑</span>
-                                        <span className="val font-mono">${h.ma20.toFixed(2)}</span>
+                                        <span className="lbl">成本</span>
+                                        <span className="val font-mono">${h.costBasis.toFixed(3)}</span>
                                     </div>
                                     <div className="metric-cell">
-                                        <span className="lbl">MA50 支撑</span>
-                                        <span className="val font-mono">${h.ma50.toFixed(2)}</span>
+                                        <span className="lbl">角色</span>
+                                        <span className="val">{h.aiRole}</span>
                                     </div>
                                 </div>
 
                                 <div className="holding-audit-note">
-                                    <strong>处置纪律：</strong>{h.statusNote}
+                                    <strong>处置纪律：</strong>{h.actionAdvice}
                                 </div>
                             </div>
                         ))}
@@ -6279,17 +6312,20 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                 </div>
             )}
 
-            {/* 视图：Phase 25 策略全周期数据回测与胜率实证系统 */}
+            {/* 视图：Phase 25 策略全周期数据回测沙盒演示 (SIMULATED) */}
             {subTab === 'strategy-data-backtest' && (
                 <div className="rebound-six-gates-view">
                     <div className="six-gates-header-card">
                         <div className="six-gates-top-row">
                             <span className="six-gates-phase-label">Phase 25</span>
-                            <span className="six-gates-title">📊 策略全周期数据回测与胜率实证系统 (V9 Multi-Asset Backtest)</span>
+                            <span className="six-gates-title">📊 策略全周期数据回测沙盒演示 (SIMULATED · V9 Multi-Asset Backtest)</span>
                             <span className="six-gates-asof">{PHASE25_STRATEGY_DATA_BACKTEST_FRAMEWORK.releaseDate}</span>
                         </div>
                         <div className="six-gates-subtitle">
-                            2005-2026 YTD 22 周期多模型横向对账 · 严格无偏真·向前样本外切分 · 四大因子消融实证 · 全市场微结构摩擦敏感性 · 交互式参数化沙盒计算引擎
+                            2005-2026 YTD 22 周期多模型横向对照 · Walk-Forward 样本切分展示 · 四大因子消融演示 · 全市场微结构摩擦敏感性 · 交互式参数化沙盒演示引擎
+                        </div>
+                        <div style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '6px', color: '#fca5a5', fontSize: '12px', fontWeight: 'bold' }}>
+                            ⚠️ 本区为参数化演示引擎，指标为前端常量，非 22 年真实逐 bar 回测。本页 Phase 25/36-40 与顶部 100% 胜率研究不是同一回测引擎。
                         </div>
                     </div>
 
@@ -6366,6 +6402,9 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                             <span className="gates-badge badge-pass">
                                 实时模拟: CAGR {backtestSimulationResult.summary.cagrV9Composite}% | MaxDD {backtestSimulationResult.summary.maxDrawdownV9Composite}%
                             </span>
+                        </div>
+                        <div style={{ padding: '6px 16px', background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24', fontSize: '11px', borderBottom: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                            本区为参数化演示引擎，指标为前端常量，非 22 年真实逐 bar 回测。
                         </div>
                         <div className="gates-preset-row">
                             <button
@@ -6588,13 +6627,13 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                         </div>
                     </div>
 
-                    {/* Card 1.5: Phase 36~40 策略优化前后全量量化回测多维对比表 */}
+                    {/* Card 1.5: Phase 36~40 沙盒常量对照表 (SIMULATED) */}
                     <div className="gates-eval-card" style={{ marginBottom: '18px', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
                         <div className="gates-card-header" style={{ background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.1))' }}>
                             <span className="gates-card-icon">🏆</span>
-                            <span className="gates-card-title">Phase 36~40 策略优化前后全周期 (2005 - 2026 YTD) 量化回测多维实证对比表</span>
+                            <span className="gates-card-title">Phase 36~40 策略优化前后全周期 (2005 - 2026 YTD) 沙盒常量对照表 (SIMULATED)</span>
                             <span className="gates-badge badge-pass" style={{ background: '#10b981', color: '#000', fontWeight: 'bold' }}>
-                                22年全历史复合实证 · 单数位回撤突破
+                                沙盒常量对照 / SIMULATED
                             </span>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '10px 0 14px' }}>
@@ -6750,15 +6789,15 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                         </div>
                     </div>
 
-                    {/* Card 3: 严格量化金融真·前向样本外切分 (Walk-Forward Out-of-Sample) */}
+                    {/* Card 3: Walk-Forward 展示表（硬编码常量，非盲跑） */}
                     <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
                         <div className="gates-card-header">
                             <span className="gates-card-icon">🔬</span>
-                            <span className="gates-card-title">真·向前样本外切分实证 (True Walk-Forward Out-of-Sample: 2000-2015 vs 2016-2026)</span>
-                            <span className="gates-badge badge-pass">防后视镜 100% 通过</span>
+                            <span className="gates-card-title">Walk-Forward 展示表（硬编码常量，非盲跑） (2000-2015 vs 2016-2026)</span>
+                            <span className="gates-badge badge-pass">沙盒常量展示</span>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                            遵循美国 SEC 严格合规准则：参数完全在样本内（2000-2015，长达16年）选定并坚决冻结，在长达 10 年零 8 个月的独立真实样本外盲跑，彻底杜绝数据窥探与参数偷看。
+                            样本内（2000-2015）与样本外（2016-2026）切分静态展示表（前端硬编码常量，非动态盲跑逐 bar 回测）。
                         </div>
                         <div style={{ overflowX: 'auto' }}>
                             <table className="radar-data-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
@@ -8256,6 +8295,9 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                             </div>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2026-09-22</div>
+                        <div style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '6px', color: '#93c5fd', fontSize: '12px' }}>
+                            💡 提示：本页 Phase 36 券商自适应挂单与无感记账为沙盒演示工具，不是实操自动授权；本页 Phase 25/36-40 与顶部 100% 胜率研究不是同一回测引擎。
+                        </div>
                     </div>
 
                     {/* 交互调节与标的预设面板 */}
@@ -8393,7 +8435,7 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                         <div className="gates-eval-card">
                             <div className="gates-card-header">
                                 <span className="gates-card-icon">📋</span>
-                                <span className="gates-card-title">实盘挂单交易小票 (点击复制)</span>
+                                <span className="gates-card-title">沙盒演示挂单小票 (SIMULATED，点击复制)</span>
                                 <button
                                     className="gates-preset-btn active"
                                     onClick={() => {
@@ -9673,14 +9715,16 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                 </div>
             )}
 
-            {/* 视图 2：100% 胜率数学铁律与审计报告 */}
+            {/* 视图 2：历史样本规则（研究假说）与审计披露 */}
             {subTab === 'rules' && (
                 <div className="rebound-rules-view">
                     <div className="rules-intro-card">
-                        <h4>十轮逐级优化科学审计全景 (2000–2026)</h4>
+                        <div className="rules-intro-header">
+                            <h4>历史样本规则体系与审计降级披露 (归档假说)</h4>
+                            <span className="tag-pill warning-pill">REJECTED_FOR_LIVE_DEPLOYMENT</span>
+                        </div>
                         <p>
-                            AI-Memory 严守“绝不造假、闭环循环优化、检查错误数据与结论”科研原则，对 61 只标的展开全面历史扫描。揭露出 NVDA/AMD/NFLX 等成长股存在“假 100% 陷阱”（若盲目死扛浮亏曾深达 -95% 且需熬过 13 年），
-                            通过逐级加入 <strong>-6% 相变回踩深度、MA200 长期过滤、两日连阳右侧确认、RSI &ge; 85 顶背离闪电止盈、VIX &le; 35 极端断路器</strong>，彻底将策略提炼至零退化的全纪元 100% 胜率。
+                            AI-Memory 历史研究对 61 只标的展开扫描，揭露出成长股存在“假 100% 陷阱”（若盲目死扛浮亏曾深达 -95% 且需熬过 13 年）；通过加入 <strong>-6% 回踩深度、MA200 过滤、两日连阳右侧确认、RSI &ge; 85 闪电止盈、VIX &le; 35 断路器</strong> 构建了历史样本规则。<strong>审计定论：该策略依赖无硬止损假说且未达标基准增量价值门槛，已被 rigorous-v2 拒绝实盘部署，以下规则仅作科研归档参考。</strong>
                         </p>
                     </div>
 
@@ -9688,7 +9732,7 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                         {BOTTOM_REBOUND_RULES.map((r, idx) => (
                             <div key={idx} className="rule-item-card">
                                 <div className="rule-head">
-                                    <span className="rule-step">铁律 {idx + 1}</span>
+                                    <span className="rule-step">规则 {idx + 1}</span>
                                     <h4 className="rule-title">{r.title}</h4>
                                     <code className="rule-formula-badge">{r.formula}</code>
                                 </div>

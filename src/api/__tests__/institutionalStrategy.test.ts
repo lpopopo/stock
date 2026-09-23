@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     BOTTOM_REBOUND_100WIN_SUMMARY,
+    BOTTOM_REBOUND_100WIN_DISCLOSURE,
     BOTTOM_REBOUND_UNIVERSE,
     BOTTOM_REBOUND_RULES,
     BOTTOM_REBOUND_AUDITED_TRADES,
@@ -9,6 +10,8 @@ import {
     INSTITUTIONAL_RESEARCH_FEED,
     evaluateReboundSignal,
     V9_LIVE_FORWARD_PORTFOLIO,
+    currentBrokerLedgerView,
+    AI_MEMORY_PORTFOLIO_LEDGER,
     FEAR_GATE_DYNAMIC_MATRIX,
     MARKET_BREADTH_DIVERGENCE_DATA,
     PREREGISTERED_MECHANISMS,
@@ -139,7 +142,7 @@ import {
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
-    it('1. should verify 26-year 100% win rate bottom rebound audited summary statistics', () => {
+    it('1. should verify 26-year bottom rebound archive summary statistics and rejection disclosure', () => {
         expect(BOTTOM_REBOUND_100WIN_SUMMARY.winRatePct).toBe(100.0);
         expect(BOTTOM_REBOUND_100WIN_SUMMARY.totalTrades).toBe(159);
         expect(BOTTOM_REBOUND_100WIN_SUMMARY.wins).toBe(159);
@@ -148,6 +151,31 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         expect(BOTTOM_REBOUND_100WIN_SUMMARY.medianHoldBars).toBe(7.0);
         expect(BOTTOM_REBOUND_100WIN_SUMMARY.portfolioMaxDrawdownPct).toBeCloseTo(-5.11, 1);
         expect(BOTTOM_REBOUND_100WIN_SUMMARY.annualSharpeRatio).toBeGreaterThan(1.5);
+        // ROUND4 官方合规披露与实盘拒绝断言（两线严格拆分）
+        expect(BOTTOM_REBOUND_100WIN_SUMMARY.deploymentStatus).toBe('REJECTED_FOR_LIVE_DEPLOYMENT');
+        expect(BOTTOM_REBOUND_100WIN_SUMMARY.source).toContain('superseded');
+        expect(BOTTOM_REBOUND_100WIN_SUMMARY.note).toContain('REJECTED_FOR_LIVE_DEPLOYMENT');
+        expect(BOTTOM_REBOUND_100WIN_SUMMARY.note).toContain('非实盘');
+        expect(BOTTOM_REBOUND_100WIN_SUMMARY.note).toContain('151');
+        expect(BOTTOM_REBOUND_100WIN_SUMMARY.note).toMatch(/SPY|v2/);
+
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.deploymentStatus).toBe('REJECTED_FOR_LIVE_DEPLOYMENT');
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.researchHypothesisOnly).toBe(true);
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.note).toContain('151');
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.note).toMatch(/SPY|v2/);
+
+        // 验证线 A 独立字段断言
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.snapshotNote).toContain('151');
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.snapshotNote).toContain('159');
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.snapshotNote).toContain('MAE');
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.snapshotNote).not.toContain('0.26');
+
+        // 验证线 B 独立字段断言 (0.26 仅出现在 SPY/QQQ / v2 语境)
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.v2SpyQqqNote).toMatch(/SPY\/QQQ/);
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.v2SpyQqqNote).toContain('0.26');
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.v2SpyQqqNote).toContain('REJECTED_FOR_LIVE_DEPLOYMENT');
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.v2SpyQqqBestStoppedSharpe).toBeCloseTo(0.26, 2);
+        expect(BOTTOM_REBOUND_100WIN_DISCLOSURE.v2SpyQqqBestStoppedCagrPct).toBeCloseTo(0.59, 2);
     });
 
     it('2. should contain all 6 audited natural monopoly and defensive core stocks', () => {
@@ -254,6 +282,43 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
             expect(h.marketValue).toBeCloseTo(h.shares * h.currentPrice, 1);
             expect(h.navWeightPct).toBeGreaterThan(0);
         });
+    });
+
+    it('8b. should verify AI_MEMORY_PORTFOLIO_LEDGER as of 2026-09-22 with SGOV 21 shares and individual holdings', () => {
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.asOfDate).toBe('2026-09-22');
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.holdings.length).toBe(5);
+
+        const sgov = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'SGOV');
+        expect(sgov).toBeDefined();
+        expect(sgov?.shares).toBe(21);
+        expect(sgov?.assetClass).toBe('Cash ETF');
+
+        const mrvl = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'MRVL');
+        expect(mrvl?.shares).toBe(4);
+
+        const mxl = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'MXL');
+        expect(mxl?.shares).toBe(6);
+
+        const qcom = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'QCOM');
+        expect(qcom?.shares).toBe(2);
+
+        const glw = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'GLW');
+        expect(glw?.shares).toBe(2);
+
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.workingCash).toBe(1643.78);
+    });
+
+    it('8c. should derive currentBrokerLedgerView from 09-22 ledger with sleeve classification', () => {
+        const view = currentBrokerLedgerView();
+        expect(view.asOfDate).toBe('2026-09-22');
+        expect(view.workingCash).toBe(1643.78);
+        expect(view.holdings.find((h) => h.symbol === 'SGOV')?.shares).toBe(21);
+        expect(view.stockSleeveBreach).toBe(true);
+        expect(view.singleNameBreach).toBe(true);
+        expect(view.maxNamePct).toBeGreaterThan(15);
+        expect(view.defensePct + view.equityPct).toBeCloseTo(100.0, 0);
+        expect(view.canonicalStatus).toContain('SGOV 计入现金袖');
+        expect(view.holdings.every((h) => !('ma20' in h))).toBe(true);
     });
 
     it('9. should verify Fear Gate dynamic multi-factor matrix and regime', () => {
@@ -474,12 +539,19 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
             expect(ids).toContain(`H${i}`);
         }
 
-        // 验证 H16 100% 胜率低点战法假说
+        // 验证 H16 假说披露与实盘拒绝状态
         const h16 = EMPIRICAL_HYPOTHESES_REGISTRY.find(h => h.id === 'H16')!;
-        expect(h16.title).toContain('100% 胜率');
-        expect(h16.status).toBe('validated');
+        expect(h16.title).toContain('REJECTED_FOR_LIVE_DEPLOYMENT');
+        expect(h16.title).toContain('非实盘');
+        expect(h16.status).toBe('rejected');
+        expect(h16.statusText).toContain('REJECTED');
+        expect(h16.actionImpact).toContain('REJECTED_FOR_LIVE_DEPLOYMENT');
         expect(h16.coreThesis).toContain('159 战 159 胜');
         expect(h16.keyFindings).toContain('159 笔全部止盈出场');
+        expect(h16.empiricalMethod).toContain('线A');
+        expect(h16.empiricalMethod).toMatch(/SPY\/QQQ|v2/);
+        expect(h16.keyFindings).toMatch(/SPY\/QQQ|v2/);
+        expect(h16.keyFindings).toContain('0.26');
 
         // 验证 H9 趋势企稳优于抄底假说
         const h9 = EMPIRICAL_HYPOTHESES_REGISTRY.find(h => h.id === 'H9')!;
@@ -1766,7 +1838,7 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         });
         expect(g2RsPass.gates.trendGate.passed).toBe(true);
 
-        // 5. Gate 3 阻断：宏观恐慌熔断 (Panic)
+        // 5. Gate 3 阻断与临界对齐：宏观恐慌熔断 (Panic) 与 VIX 临界点 (> 35.0 熔断，== 35.0 放行)
         const g3Fail = evaluateSixGatesReentry({
             ...goldenInput,
             macroRegime: 'panic',
@@ -1774,6 +1846,24 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         expect(g3Fail.eligible).toBe(false);
         expect(g3Fail.gates.marketFearGate.passed).toBe(false);
         expect(g3Fail.allBlockers.some(b => b.includes('market_panic_regime'))).toBe(true);
+
+        // VIX == 35.0 临界值测试：严格与 AI-Memory six_gates_evaluator.py (> 35.0) 对齐，35.0 允许放行
+        const g3VixBoundaryPass = evaluateSixGatesReentry({
+            ...goldenInput,
+            macroRegime: 'normal',
+            vixValue: 35.0,
+        });
+        expect(g3VixBoundaryPass.gates.marketFearGate.passed).toBe(true);
+
+        // VIX > 35.0 (例如 35.1) 触发风控红线拦截
+        const g3VixBreachFail = evaluateSixGatesReentry({
+            ...goldenInput,
+            macroRegime: 'normal',
+            vixValue: 35.1,
+        });
+        expect(g3VixBreachFail.eligible).toBe(false);
+        expect(g3VixBreachFail.gates.marketFearGate.passed).toBe(false);
+        expect(g3VixBreachFail.allBlockers.some(b => b.includes('vix_exceeds_panic_threshold'))).toBe(true);
 
         // 6. Gate 4 阻断：存在未定界核心指数再平衡 (核心优先最高排他)
         const g4Fail = evaluateSixGatesReentry({
@@ -3061,7 +3151,8 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         expect(rec.fillProbabilityPct).toBe(100);
         expect(rec.peggingStrategy).toContain('主动对撞');
         expect(rec.rationale).toContain('对撞卖一 Ask ($100.61) 可 100% 秒级即时撮合');
-        expect(rec.ticketText).toContain('【实盘挂单交易小票】');
+        expect(rec.ticketText).toContain('【沙盒演示挂单小票 / SIMULATED — 非实盘指令】');
+        expect(rec.ticketText).toContain('SIMULATED');
         expect(rec.ticketText).toContain('SGOV');
         expect(rec.ticketText).toContain('21 股');
     });

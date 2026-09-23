@@ -53,10 +53,13 @@ export interface BottomReboundStrategySummary {
     finalNav: number;
     totalYears: number;
     annualSharpeRatio: number;
+    deploymentStatus?: 'REJECTED_FOR_LIVE_DEPLOYMENT';
+    source?: string;
+    note?: string;
 }
 
 /**
- * 26 年历史十轮严密无偏实证核心指标 (源自 AI-Memory AUDITED_STRATEGY_SYNTHESIS)
+ * 26 年历史底部品种企稳反弹归档快照 (源自 AI-Memory PERFECT_STOCKS_AND_OPTIMAL_EXITS 探索线，已被 rigorous-v2 官方验收拒绝实盘部署)
  */
 export const BOTTOM_REBOUND_100WIN_SUMMARY: BottomReboundStrategySummary = {
     symbols: ['SO', 'CVX', 'LIN', 'XLP', 'LMT', 'SCHD'],
@@ -72,6 +75,25 @@ export const BOTTOM_REBOUND_100WIN_SUMMARY: BottomReboundStrategySummary = {
     finalNav: 24890.35,
     totalYears: 26,
     annualSharpeRatio: 1.84,
+    deploymentStatus: 'REJECTED_FOR_LIVE_DEPLOYMENT',
+    source: 'PERFECT_STOCKS_AND_OPTIMAL_EXITS.md (superseded)',
+    note: '【线A-白马归档快照】159 笔/6 标的为历史已平仓探索快照（非实盘承诺），与结算单 bulletproof_100win_summary.json（151 笔/4 标的 SO/CVX/LIN/XLP）存在口径差异，字面 100% 依赖无硬止损且最差 MAE 达 -16.14%。【线B-独立全网格验收】另一项针对 SPY/QQQ 宽基宇宙的 2026-09-12 rigorous-v2 实施 215,040 组全网格检验，官方裁定为 REJECTED_FOR_LIVE_DEPLOYMENT（SPY/QQQ 带止损最优候选 Sharpe 仅 0.26、CAGR 仅 0.59%）。请注意：官方验收拒绝的是 v2 的 SPY/QQQ 网格实盘，0.26 绝非 159 篮子带止损后的实测结果；两者与 Phase 25/36-40 沙盒非同一引擎。',
+};
+
+/**
+ * 底部品种反弹研究线独立合规披露元数据
+ */
+export const BOTTOM_REBOUND_100WIN_DISCLOSURE = {
+    deploymentStatus: 'REJECTED_FOR_LIVE_DEPLOYMENT' as const,
+    source: 'PERFECT_STOCKS_AND_OPTIMAL_EXITS.md (superseded)',
+    note: '【线A-白马快照】前端 159 笔/6 标的为历史归档探索数据，与结算单 bulletproof_100win_summary.json 中的 151 笔/4 标的不一致（LMT/SCHD 系后加未入 summary json）；字面 100% 依赖无硬止损与已平仓筛选（需承受约 -16.14% MAE）。【线B-v2网格验收】另一项针对 SPY/QQQ 宽基宇宙的 2026-09-12 rigorous-v2 实施 215,040 组全网格检验，官方验收裁定为 REJECTED_FOR_LIVE_DEPLOYMENT（带固定止损最优候选 Sharpe 仅 0.26、CAGR 仅 0.59%）。官方拒绝的是 v2 的 SPY/QQQ 网格验收，0.26 属于宽基网格实验候选，不是把 0.26 当作 159 篮子带止损后的结果；两者与 Phase 25/36-40 沙盒不是同一引擎。',
+    snapshotNote: '线 A（垄断白马已平仓快照）：前端 159 笔/6 标的为历史归档探索数据，与结算单 bulletproof_100win_summary.json 中的 151 笔/4 标的不一致（LMT/SCHD 系扩充标的且未入 json）；字面 100% 胜率完全依赖无硬止损与仅统计已平仓交易，最差需死扛 -16.14% MAE，绝非实盘承诺。',
+    v2SpyQqqNote: '线 B（rigorous-v2 SPY/QQQ 全网格验收）：另一项针对 SPY/QQQ 宽基宇宙的 215,040 组全网格复测，已被官方独立验收裁定为 REJECTED_FOR_LIVE_DEPLOYMENT。带真实固定止损最优候选年化 Sharpe 仅 0.26、CAGR 仅 0.59%，前向测试胜率击穿至 90.91%。官方拒绝的是 v2 的 SPY/QQQ 网格实盘，0.26 属于宽基网格指标，绝非 159 篮子带止损后的实测结果。',
+    isLivePromise: false,
+    researchHypothesisOnly: true,
+    v2SpyQqqBestStoppedSharpe: 0.26,
+    v2SpyQqqBestStoppedCagrPct: 0.59,
+    worstMaePct: -16.14,
 };
 
 /**
@@ -215,7 +237,7 @@ export const BOTTOM_REBOUND_AUDITED_TRADES: AuditedTradeRecord[] = [
 ];
 
 /**
- * 底部品种 100% 胜率战法核心数学规则
+ * 底部品种企稳反弹历史样本规则（归档假说，非实盘承诺）
  */
 export const BOTTOM_REBOUND_RULES = [
     {
@@ -542,7 +564,7 @@ export interface V9LiveForwardPortfolio {
 }
 
 /**
- * AI-Memory 真实前瞻运行账户实盘切片 (2026-09-18 审计核验)
+ * AI-Memory 2026-09-18 历史切片，已被 09-22 ledger 取代 (2026-09-18 审计核验)
  */
 export const V9_LIVE_FORWARD_PORTFOLIO: V9LiveForwardPortfolio = {
     asOfDate: '2026-09-18',
@@ -892,6 +914,34 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
         '个股超限监控：MRVL 随着股价走强至 $262+，单票权重达到 17.36%，超出 15.0% 的正常单股上限，维持建议择机挂单减仓 1 股以落袋利润并将权重降至 13% 安全线内。',
     ],
 };
+
+/** Current broker-memory ledger view. SGOV is cash sleeve, not stock sleeve. */
+export function currentBrokerLedgerView(ledger: AiMemoryPortfolioLedger = AI_MEMORY_PORTFOLIO_LEDGER) {
+    const equityHoldings = ledger.holdings.filter((h) => h.assetClass === 'Equity Stock');
+    const maxNamePct = equityHoldings.reduce((m, h) => Math.max(m, h.navWeightPct), 0);
+    return {
+        sourceFile: ledger.sourceFile,
+        asOfDate: ledger.asOfDate,
+        auditTimestamp: ledger.auditTimestamp,
+        totalNav: ledger.totalNav,
+        defenseCash: ledger.totalDefenseCash,
+        defensePct: ledger.totalDefensePct,
+        workingCash: ledger.workingCash,
+        sgovReserve: ledger.sgovReserve,
+        sgovReservePct: ledger.sgovReservePct,
+        equityTotal: ledger.equityTotal,
+        equityPct: ledger.equityPct,
+        dayPnlUsd: ledger.dayPnlUsd,
+        dayPnlPct: ledger.dayPnlPct,
+        stockSleeveBreach: ledger.equityPct > 30,
+        singleNameBreach: maxNamePct > 15,
+        maxNamePct,
+        canonicalStatus: `个股袖 ${ledger.equityPct.toFixed(2)}%（上限 30%）· 最大单票 ${maxNamePct.toFixed(2)}%（上限 15%）· SGOV 计入现金袖`,
+        riskActionNote: ledger.summaryComments.join(' '),
+        holdings: ledger.holdings,
+        auditItems: ledger.auditItems,
+    };
+}
 
 export interface FearGateFactor {
     name: string;
@@ -2135,16 +2185,16 @@ export const EMPIRICAL_HYPOTHESES_REGISTRY: EmpiricalHypothesis[] = [
     },
     {
         id: 'H16',
-        title: '宏观牛市完整趋势底部品种非对称退出实现 100% 胜率 (无偏实证)',
+        title: '宏观牛市底部品种非对称退出假说 (归档研究·已被v2判定REJECTED_FOR_LIVE_DEPLOYMENT，非实盘承诺)',
         proposedDate: '2026-09-12',
         category: 'Execution Discipline',
-        status: 'validated',
-        statusText: '重大科研突破',
-        statusColor: '#10b981',
-        coreThesis: '在宏观牛市体制 ($Close > MA200$) 下，对具有自然垄断护城河的刚需标的，在满足技术超卖并右侧确认后买入，采用非对称快出机制 ($+2\\%$)，26 年历史实现 159 战 159 胜 100% 胜率。',
-        empiricalMethod: '对 SO, CVX, LIN, LMT, XLP, SCHD 进行 2000-2026 年（6,713 交易日）逐笔回放与最差 MAE 压力测试。',
-        keyFindings: '全样本 159 笔全部止盈出场；无硬止损方案将尾部风险完全转移给时间持有与最大不利变动 (最差 MAE -16.14%，中位持有 7 天)。',
-        actionImpact: '成为 V9 组合最强底仓收益增强引擎，严格限定于宽基与垄断底盘，绝不可无对冲用于高波动个股。',
+        status: 'rejected',
+        statusText: '实盘已拒绝 (REJECTED)',
+        statusColor: '#ef4444',
+        coreThesis: '在宏观牛市体制 ($Close > MA200$) 下，对具有自然垄断护城河的刚需标的，在满足技术超卖并右侧确认后买入，采用非对称快出机制 ($+2\\%$)，归档历史样本记录 159 战 159 胜字面胜率。',
+        empiricalMethod: '【线A-归档快照】对 SO, CVX, LIN, LMT, XLP, SCHD 进行 2000-2026 年（6,713 交易日）逐笔回放与最差 MAE 压力测试，记录历史归档快照；【线B-独立验收】另一项针对 SPY/QQQ 宽基宇宙的 215,040 组全网格 rigorous-v2 独立验收已拒绝实盘，两项实验宇宙与目标独立。',
+        keyFindings: '【线A】白马快照全样本 159 笔全部止盈出场；无硬止损方案将尾部风险完全转移给时间持有与最大不利变动（最差 MAE -16.14%，中位持有 7 天）。【线B】另一项针对 SPY/QQQ 宽基的 215,040 组全网格验收中，带固定止损最优候选夏普仅 0.26、CAGR 仅 0.59%，无法提供超越 V8 核心的基准增量价值，已被判定 REJECTED_FOR_LIVE_DEPLOYMENT。0.26 属于 SPY/QQQ 网格实验，非 159 篮子指标。',
+        actionImpact: '归档研究假说。线 A 归档快照高度依赖无硬止损不可实操；线 B SPY/QQQ 全网格已被 rigorous-v2 官方验收裁定为 REJECTED_FOR_LIVE_DEPLOYMENT。两线均严禁作为实战依据，不得在个股或生产盘中使用。',
     },
     {
         id: 'H17',
@@ -5198,8 +5248,8 @@ export function evaluateSixGatesReentry(input: CandidateReentryInput): SixGatesR
     if (macroRegime === 'panic') {
         g3Blockers.push('market_panic_regime: 宏观环境处于 Panic 极度恐慌熔断状态');
     }
-    if (vixValue >= 35.0) {
-        g3Blockers.push(`vix_exceeds_panic_threshold: VIX 波动率 ${vixValue.toFixed(1)} >= 35.0 突破风控红线`);
+    if (vixValue > 35.0) {
+        g3Blockers.push(`vix_exceeds_panic_threshold: VIX 波动率 ${vixValue.toFixed(1)} > 35.0 突破风控红线`);
     }
     const g3Passed = g3Blockers.length === 0;
     allBlockers.push(...g3Blockers);
@@ -5209,7 +5259,7 @@ export function evaluateSixGatesReentry(input: CandidateReentryInput): SixGatesR
         passed: g3Passed,
         statusText: g3Passed ? '宏观许可' : '恐慌熔断禁买',
         blockers: g3Blockers,
-        detail: g3Passed ? `体制 ${macroRegime}, VIX ${vixValue.toFixed(1)} < 35.0，允许承担风险。` : g3Blockers.join('; '),
+        detail: g3Passed ? `体制 ${macroRegime}, VIX ${vixValue.toFixed(1)} <= 35.0，允许承担风险。` : g3Blockers.join('; '),
     };
 
     // Gate 4: 容量穿透与未定界核心排他守卫 (Capacity Guard Gate)
@@ -10424,7 +10474,7 @@ export function calculateSmartPeggingOrder(request: SmartPeggingRequest): SmartP
     }
 
     const estimatedTotal = Number((targetShares * recommendedPrice).toFixed(2));
-    const ticketText = `【实盘挂单交易小票】
+    const ticketText = `【沙盒演示挂单小票 / SIMULATED — 非实盘指令】
 - 标的代码：${symbol}
 - 操作方向：${direction === 'BUY' ? '买入 (BUY)' : '卖出 (SELL)'}
 - 执行股数：${targetShares} 股 (整股/碎股)
@@ -10432,7 +10482,9 @@ export function calculateSmartPeggingOrder(request: SmartPeggingRequest): SmartP
 - 建议挂单价格：USD ${recommendedPrice}
 - 预估成交金额：USD ${estimatedTotal} (预估佣金/费率: ~$${feeEstimateUsd})
 - 预期成交把握度：${fillProbabilityPct}%
-- 策略算法建议：${rationale}`;
+- 策略算法建议：${rationale}
+【警告】盘口价格为前端写死演示数据，不是实时行情。
+【警告】Phase 36-40 数字不是逐 bar 历史回测，禁止据此下单。`;
 
     return {
         recommendedPrice,

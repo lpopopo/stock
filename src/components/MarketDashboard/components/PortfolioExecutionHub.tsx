@@ -98,7 +98,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                         gap: '4px',
                     }}>
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-                        AI-Memory 真实账本已同步
+                        研究账本快照（展示用，非成交回执）
                     </span>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                         对账源: <code style={{ color: '#93c5fd', background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: '4px' }}>{ledger.sourceFile}</code>
@@ -636,9 +636,20 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                             <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#60a5fa' }}>
                                 Phase 36 智能自适应挂单小票生成器 (券商无 API 极速下单助手)
                             </span>
+                            <span style={{
+                                fontSize: '11px',
+                                background: 'rgba(239, 68, 68, 0.2)',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239, 68, 68, 0.4)',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontWeight: 'bold',
+                            }}>
+                                SIMULATED / 沙盒演示
+                            </span>
                         </div>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                            智能贴盘节省 15 bps 滑点 · 格式化小票一键复制入券商 App
+                            沙盒演示小票 · 盘口为写死数据，禁止当作券商指令
                         </span>
                     </div>
 
@@ -691,6 +702,9 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                         </div>
 
                         <div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 'bold' }}>SIMULATED / 沙盒演示</span>
+                            </div>
                             <button
                                 onClick={handleCopy}
                                 style={{
@@ -706,7 +720,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                     transition: 'all 0.2s',
                                 }}
                             >
-                                {copied ? '✅ 已复制标准小票' : '📋 一键复制下单小票'}
+                                {copied ? '✅ 已复制标准小票' : '📋 一键复制下单小票 (SIMULATED)'}
                             </button>
                         </div>
                     </div>
