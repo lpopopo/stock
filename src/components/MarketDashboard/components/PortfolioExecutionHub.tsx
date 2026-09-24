@@ -18,6 +18,15 @@ interface PortfolioExecutionHubProps {
     onNavigateToWatchlist?: () => void;
 }
 
+export const ANTIGRAVITY_MODELS = [
+    { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (旗舰高阶深度推演)', badge: 'Flagship' },
+    { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (极速微秒响应)', badge: 'Fastest' },
+    { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash (自适应混合推演)', badge: 'Adaptive' },
+    { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 Thinking (深度逻辑思维)', badge: 'Reasoning' },
+    { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 Thinking (超强量化架构)', badge: 'Architecture' },
+    { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (本地开源模型)', badge: 'Open-weights' },
+];
+
 export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
     colorScheme = 'cn',
     onNavigateToLab,
@@ -42,8 +51,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
     const [isAiStreaming, setIsAiStreaming] = useState(false);
     const [aiCopied, setAiCopied] = useState(false);
 
-    // Option C: 8045 本地代理服务与模型配置状态
-    const [apiKey, setApiKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('AGY_API_KEY') || '' : ''));
+    // Option C: 8045 本地代理服务与 Antigravity 原生模型配置状态
     const [selectedModel, setSelectedModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('AGY_MODEL') || 'gemini-3.1-pro-high' : 'gemini-3.1-pro-high'));
     const [showAiSettings, setShowAiSettings] = useState(false);
     const [proxyOnline, setProxyOnline] = useState<boolean | null>(null);
@@ -58,11 +66,6 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
             })
             .catch(() => setProxyOnline(false));
     }, [isAiModalOpen]);
-
-    const handleSaveApiKey = (newKey: string) => {
-        setApiKey(newKey);
-        localStorage.setItem('AGY_API_KEY', newKey);
-    };
 
     const handleSelectModel = (model: string) => {
         setSelectedModel(model);
@@ -88,7 +91,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                 setIsAiStreaming(false);
                 setAiAnalysisContent((prev) => prev + `\n\n> ⚠️ [诊断提示] ${err}`);
             },
-            { apiKey, model: selectedModel }
+            { model: selectedModel }
         );
     };
 
@@ -1436,7 +1439,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                         </span>
                                     </div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
-                                        模型: {selectedModel} · 策略: {analyzingStock.strategySource} · {isAiStreaming ? '⚡ 正在通过本地 8045 端口流式推演中...' : '✅ 诊断推演完成'}
+                                        模型: {ANTIGRAVITY_MODELS.find(m => m.id === selectedModel)?.name.split(' ')[0] || selectedModel} · 策略: {analyzingStock.strategySource} · {isAiStreaming ? '⚡ 正在通过本地 8045 端口流式推演中...' : '✅ 诊断推演完成'}
                                     </div>
                                 </div>
                             </div>
@@ -1451,9 +1454,12 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                         cursor: 'pointer',
                                         padding: '4px 10px',
                                         borderRadius: '6px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
                                     }}
                                 >
-                                    ⚙️ {showAiSettings ? '收起配置' : '配置 Key/模型'}
+                                    ⚙️ {showAiSettings ? '收起选项' : '切换 Antigravity 模型'}
                                 </button>
                                 <button
                                     onClick={() => setIsAiModalOpen(false)}
@@ -1472,7 +1478,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                             </div>
                         </div>
 
-                        {/* 可折叠设置栏 (Option C 配置) */}
+                        {/* 可折叠设置栏 (Antigravity 官方内置模型切换) */}
                         {showAiSettings && (
                             <div style={{
                                 padding: '12px 22px',
@@ -1484,43 +1490,45 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                 flexWrap: 'wrap',
                                 fontSize: '12px',
                             }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '240px' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>🔑 API Key:</span>
-                                    <input
-                                        type="password"
-                                        placeholder="输入 API Key (选填，自动存入 localStorage)"
-                                        value={apiKey}
-                                        onChange={(e) => handleSaveApiKey(e.target.value)}
-                                        style={{
-                                            flex: 1,
-                                            background: 'rgba(0,0,0,0.5)',
-                                            border: '1px solid rgba(255,255,255,0.2)',
-                                            color: '#fff',
-                                            borderRadius: '6px',
-                                            padding: '4px 8px',
-                                            fontSize: '11px',
-                                        }}
-                                    />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '280px' }}>
+                                    <span style={{
+                                        fontSize: '11px',
+                                        background: 'rgba(16, 185, 129, 0.15)',
+                                        color: '#10b981',
+                                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        fontWeight: '600',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        whiteSpace: 'nowrap',
+                                    }}>
+                                        🛡️ Antigravity 本地原生认证 · 免密直连
+                                    </span>
+                                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                        环境内置授权已就绪，全系模型即刻调用，无需输入外部 API Key
+                                    </span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>🧠 推演模型:</span>
+                                    <span style={{ color: 'var(--text-muted)' }}>🧠 内置推演模型:</span>
                                     <select
                                         value={selectedModel}
                                         onChange={(e) => handleSelectModel(e.target.value)}
                                         style={{
                                             background: '#1e293b',
-                                            border: '1px solid rgba(255,255,255,0.2)',
+                                            border: '1px solid rgba(168, 85, 247, 0.4)',
                                             color: '#fff',
                                             borderRadius: '6px',
-                                            padding: '4px 8px',
+                                            padding: '5px 10px',
                                             fontSize: '11px',
                                             cursor: 'pointer',
+                                            fontWeight: '500',
                                         }}
                                     >
-                                        <option value="gemini-3.1-pro-high">Gemini 3.1 Pro (Antigravity High)</option>
-                                        <option value="deepseek-chat">DeepSeek V3 / R1</option>
-                                        <option value="gpt-4o">GPT-4o Omniscient</option>
-                                        <option value="qwen2.5-coder">Qwen 2.5 Coder</option>
+                                        {ANTIGRAVITY_MODELS.map(m => (
+                                            <option key={m.id} value={m.id}>{m.name}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <button
