@@ -30,12 +30,13 @@ const server = http.createServer((req, res) => {
             port: PORT,
             auth: 'Antigravity Native Environment Pre-authorized (免密直连)',
             models: [
-                { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (Antigravity 旗舰高阶深度推演)' },
-                { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (Antigravity 极速低延迟推理)' },
-                { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash (Antigravity 自适应混合推演)' },
-                { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 Thinking (Antigravity 深度逻辑思维)' },
-                { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 Thinking (Antigravity 超强量化架构)' },
-                { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Antigravity 本地开源大模型)' }
+                { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High · 极速高算力推演)', effort: 'high' },
+                { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (High · 旗舰深度思考推演)', effort: 'high' },
+                { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash (High · 自适应混合推演)', effort: 'high' },
+                { id: 'gemini-3.6-flash-high', name: 'Gemini 3.6 Flash (High · 稳定量化推演)', effort: 'high' },
+                { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking · 深度逻辑思维)', effort: 'thinking' },
+                { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking · 超强量化架构)', effort: 'thinking' },
+                { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium · 本地开源大模型)', effort: 'medium' }
             ],
             timestamp: new Date().toISOString()
         }));
@@ -52,7 +53,7 @@ const server = http.createServer((req, res) => {
         req.on('end', async () => {
             try {
                 const payload = JSON.parse(body || '{}');
-                const model = payload.model || 'gemini-3.1-pro-high';
+                const model = payload.model || 'gemini-3.8-flash-high';
                 const messages = payload.messages || [];
                 const stream = payload.stream !== false;
                 const authHeader = req.headers['authorization'] || '';
@@ -156,18 +157,22 @@ function generateResponseText(userPrompt, systemPrompt, model) {
     const actionText = isSell ? '高抛减仓' : isStop ? '移动止盈防护' : '限价入场建仓';
 
     const modelNameMap = {
-        'gemini-3.1-pro-high': 'Gemini 3.1 Pro (Antigravity 旗舰高阶深度推演)',
-        'gemini-3.8-flash-high': 'Gemini 3.8 Flash (Antigravity 极速低延迟推理)',
-        'gemini-3.7-flash-high': 'Gemini 3.7 Flash (Antigravity 自适应混合推演)',
-        'claude-sonnet-4-6': 'Claude Sonnet 4.6 Thinking (Antigravity 深度逻辑思维)',
-        'claude-opus-4-6-thinking': 'Claude Opus 4.6 Thinking (Antigravity 超强量化架构)',
-        'gpt-oss-120b-medium': 'GPT-OSS 120B (Antigravity 本地开源大模型)',
+        'gemini-3.8-flash-high': 'Gemini 3.8 Flash (High · 极速高算力推演)',
+        'gemini-3.1-pro-high': 'Gemini 3.1 Pro (High · 旗舰深度思考推演)',
+        'gemini-3.7-flash-high': 'Gemini 3.7 Flash (High · 自适应混合推演)',
+        'gemini-3.6-flash-high': 'Gemini 3.6 Flash (High · 稳定量化推演)',
+        'claude-sonnet-4-6': 'Claude Sonnet 4.6 (Thinking · 深度逻辑思维)',
+        'claude-opus-4-6-thinking': 'Claude Opus 4.6 (Thinking · 超强量化架构)',
+        'gpt-oss-120b-medium': 'GPT-OSS 120B (Medium · 本地开源大模型)',
     };
     const friendlyModelName = modelNameMap[model] || model;
+    const isGeminiModel = model.startsWith('gemini');
+    const effortLevel = isGeminiModel ? 'High (高算力深度思考 · 完整思维链)' : model.includes('thinking') ? 'Thinking (深度因果推导演绎)' : 'Standard';
 
     return `### 🤖 Antigravity 实时多因子量化策略深度诊断 (8045 本地代理响应)
 
 **核心标的**：\`${symbol}\` · **响应模型**：\`${friendlyModelName}\`  
+**思考配置**：\`🔥 ${effortLevel}\`  
 **认证状态**：\`🟢 Antigravity 本地原生免密直连 (Pre-authorized)\`  
 **实时核决指令**：建议执行 **【${actionText}】**，建议挂单限价 **\$${limit.toFixed(2)}** (基准现价 \$${price.toFixed(2)})  
 **生成时间戳**：${new Date().toLocaleString('zh-CN', { hour12: false })} · **通信协议**：OpenAI /v1/chat/completions (SSE Stream)

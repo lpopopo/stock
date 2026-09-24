@@ -11373,7 +11373,7 @@ export async function streamAiStrategyAnalysis(
 ): Promise<void> {
     try {
         const apiKey = options?.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('AGY_API_KEY') || '' : '');
-        const model = options?.model || (typeof window !== 'undefined' ? localStorage.getItem('AGY_MODEL') || 'gemini-3.1-pro-high' : 'gemini-3.1-pro-high');
+        const model = options?.model || (typeof window !== 'undefined' ? localStorage.getItem('AGY_MODEL') || 'gemini-3.8-flash-high' : 'gemini-3.8-flash-high');
 
         const prompt = `
 【受检策略命中个股基本数据】：

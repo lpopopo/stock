@@ -19,12 +19,13 @@ interface PortfolioExecutionHubProps {
 }
 
 export const ANTIGRAVITY_MODELS = [
-    { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (旗舰高阶深度推演)', badge: 'Flagship' },
-    { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (极速微秒响应)', badge: 'Fastest' },
-    { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash (自适应混合推演)', badge: 'Adaptive' },
-    { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 Thinking (深度逻辑思维)', badge: 'Reasoning' },
-    { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 Thinking (超强量化架构)', badge: 'Architecture' },
-    { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (本地开源模型)', badge: 'Open-weights' },
+    { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High · 极速高算力推演)', badge: 'High' },
+    { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (High · 旗舰深度思考推演)', badge: 'High' },
+    { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash (High · 自适应混合推演)', badge: 'High' },
+    { id: 'gemini-3.6-flash-high', name: 'Gemini 3.6 Flash (High · 稳定量化推演)', badge: 'High' },
+    { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking · 深度逻辑思维)', badge: 'Thinking' },
+    { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking · 超强量化架构)', badge: 'Thinking' },
+    { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium · 本地开源大模型)', badge: 'Medium' },
 ];
 
 export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
@@ -51,8 +52,8 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
     const [isAiStreaming, setIsAiStreaming] = useState(false);
     const [aiCopied, setAiCopied] = useState(false);
 
-    // Option C: 8045 本地代理服务与 Antigravity 原生模型配置状态
-    const [selectedModel, setSelectedModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('AGY_MODEL') || 'gemini-3.1-pro-high' : 'gemini-3.1-pro-high'));
+    // Option C: 8045 本地代理服务与 Antigravity 原生模型配置状态 (Gemini 全系默认 High 推理深度)
+    const [selectedModel, setSelectedModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('AGY_MODEL') || 'gemini-3.8-flash-high' : 'gemini-3.8-flash-high'));
     const [showAiSettings, setShowAiSettings] = useState(false);
     const [proxyOnline, setProxyOnline] = useState<boolean | null>(null);
 
