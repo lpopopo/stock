@@ -12,6 +12,10 @@ import {
     V9_LIVE_FORWARD_PORTFOLIO,
     currentBrokerLedgerView,
     AI_MEMORY_PORTFOLIO_LEDGER,
+    STRATEGY_SCREENED_HIT_STOCKS,
+    recalculateHitStocksWithLiveQuotes,
+    recalculatePortfolioLedgerWithLiveQuotes,
+    recalculateReboundUniverseWithLiveQuotes,
     FEAR_GATE_DYNAMIC_MATRIX,
     MARKET_BREADTH_DIVERGENCE_DATA,
     PREREGISTERED_MECHANISMS,
@@ -3381,5 +3385,75 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         expect(abl5?.experimentGroup.winRatePct).toBeGreaterThan(abl5?.controlGroup.winRatePct || 0);
         expect(abl6?.experimentGroup.maxDrawdownPct).toBeGreaterThan(abl6?.controlGroup.maxDrawdownPct || 0); // 回撤更小
         expect(abl9?.experimentGroup.cagrPct).toBeGreaterThan(abl9?.controlGroup.cagrPct || 0);
+    });
+
+    it('Test 97: 实时盘口现价重算：策略命中雷达与挂单限价动态调整', () => {
+        const mockQuotes: Record<string, any> = {
+            MRVL: { symbol: 'MRVL', rawCode: 'usMRVL', name: '迈威尔科技', price: 254.50, prevClose: 260.90, open: 260.0, change: -6.40, changePct: -2.45, high: 262.0, low: 253.0, updatedTime: '15:59:59' },
+            QCOM: { symbol: 'QCOM', rawCode: 'usQCOM', name: '高通公司', price: 193.29, prevClose: 197.24, open: 196.5, change: -3.95, changePct: -2.00, high: 198.0, low: 192.5, updatedTime: '15:59:59' },
+            CVX: { symbol: 'CVX', rawCode: 'usCVX', name: '雪佛龙', price: 207.76, prevClose: 205.51, open: 205.0, change: 2.25, changePct: 1.09, high: 208.5, low: 204.8, updatedTime: '15:59:59' },
+            SPY: { symbol: 'SPY', rawCode: 'usSPY', name: '标普 500 ETF', price: 763.69, prevClose: 767.81, open: 766.0, change: -4.12, changePct: -0.54, high: 768.0, low: 762.5, updatedTime: '15:59:59' },
+        };
+
+        const updatedHits = recalculateHitStocksWithLiveQuotes(STRATEGY_SCREENED_HIT_STOCKS, mockQuotes);
+        expect(updatedHits.length).toBe(STRATEGY_SCREENED_HIT_STOCKS.length);
+
+        const mrvlHit = updatedHits.find(h => h.symbol === 'MRVL');
+        expect(mrvlHit).toBeDefined();
+        expect(mrvlHit?.currentPrice).toBe(254.50);
+        expect(mrvlHit?.dayChangePct).toBe(-2.45);
+        expect(mrvlHit?.isLivePrice).toBe(true);
+
+        const qcomHit = updatedHits.find(h => h.symbol === 'QCOM');
+        expect(qcomHit).toBeDefined();
+        expect(qcomHit?.currentPrice).toBe(193.29);
+        expect(qcomHit?.dayChangePct).toBe(-2.00);
+
+        const cvxHit = updatedHits.find(h => h.symbol === 'CVX');
+        expect(cvxHit).toBeDefined();
+        expect(cvxHit?.currentPrice).toBe(207.76);
+        expect(cvxHit?.dayChangePct).toBe(1.09);
+
+        const spyHit = updatedHits.find(h => h.symbol === 'SPY');
+        expect(spyHit).toBeDefined();
+        expect(spyHit?.currentPrice).toBe(763.69);
+        expect(spyHit?.dayChangePct).toBe(-0.54);
+    });
+
+    it('Test 98: 实时盘口现价重算：AI-Memory 资产总账 NAV、实时日损益与持仓盈亏', () => {
+        const mockQuotes: Record<string, any> = {
+            SGOV: { symbol: 'SGOV', price: 100.63, change: 0.02, changePct: 0.02 },
+            MRVL: { symbol: 'MRVL', price: 254.50, change: -6.40, changePct: -2.45 },
+            MXL: { symbol: 'MXL', price: 82.81, change: -2.24, changePct: -2.63 },
+            QCOM: { symbol: 'QCOM', price: 193.29, change: -3.95, changePct: -2.00 },
+            GLW: { symbol: 'GLW', price: 152.35, change: -6.03, changePct: -3.81 },
+        };
+
+        const updatedLedger = recalculatePortfolioLedgerWithLiveQuotes(AI_MEMORY_PORTFOLIO_LEDGER, mockQuotes);
+
+        // 验证各持仓价格已更新
+        const sgov = updatedLedger.holdings.find(h => h.symbol === 'SGOV');
+        expect(sgov?.currentPrice).toBe(100.63);
+        expect(sgov?.marketValue).toBeCloseTo(21 * 100.63, 2);
+
+        const mrvl = updatedLedger.holdings.find(h => h.symbol === 'MRVL');
+        expect(mrvl?.currentPrice).toBe(254.50);
+        expect(mrvl?.marketValue).toBeCloseTo(4 * 254.50, 2);
+
+        // 验证 NAV 与总市值守恒
+        expect(updatedLedger.totalNav).toBeGreaterThan(5800);
+        expect(updatedLedger.totalDefenseCash).toBeCloseTo(updatedLedger.workingCash + (sgov?.marketValue || 0), 2);
+
+        // 验证实时日损益不再为 null
+        expect(updatedLedger.dayPnlUsd).not.toBeNull();
+        expect(updatedLedger.dayPnlPct).not.toBeNull();
+
+        // 验证底部品种池重算
+        const reboundPool = recalculateReboundUniverseWithLiveQuotes(undefined, {
+            SO: { symbol: 'SO', price: 92.50, changePct: 1.38 } as any,
+        });
+        const so = reboundPool.find(s => s.symbol === 'SO');
+        expect(so?.currentPrice).toBe(92.50);
+        expect(so?.changePct).toBe(1.38);
     });
 });

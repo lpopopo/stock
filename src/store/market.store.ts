@@ -34,6 +34,8 @@ import {
     calculateValuationMetrics,
     getTradingStatus,
     fetchWatchlistQuotes,
+    fetchLivePortfolioQuotes,
+    type LivePortfolioQuote,
 } from '../api/market';
 
 const WATCHLIST_STORAGE_KEY = 'MARKET_WATCHLIST_ITEMS';
@@ -83,6 +85,7 @@ interface MarketState {
     fedCycle: FedPolicyCycle | null;
     usDivergence: UsMarketBreadthDivergence | null;
     usSignals: UsSectorSignal[];
+    livePortfolioQuotes: Record<string, LivePortfolioQuote>;
     isLoading: boolean;
     lastUpdated: string;
     autoRefreshInterval: number; // 0: 暂停, 5, 15, 30, 60
@@ -115,6 +118,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     fedCycle: null,
     usDivergence: null,
     usSignals: [],
+    livePortfolioQuotes: {},
     isLoading: false,
     lastUpdated: '',
     autoRefreshInterval: 15, // 默认 15 秒自动刷新
@@ -133,6 +137,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
                 marginData,
                 rawSectors,
                 usSectorResult,
+                livePortfolioQuotes,
             ] = await Promise.all([
                 fetchAllMarketIndices(),
                 fetchStockMetrics(),
@@ -142,6 +147,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
                 fetchMarginTradingData(),
                 fetchSectorMetrics(),
                 fetchUsSectorMetrics(),
+                fetchLivePortfolioQuotes(),
             ]);
 
             const vixAsset = macroAssets.find(m => m.id === 'VIX');
@@ -183,6 +189,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
                 fedCycle,
                 usDivergence: usSectorResult.divergence,
                 usSignals,
+                livePortfolioQuotes,
                 isLoading: false,
                 lastUpdated: new Date().toLocaleTimeString(),
             });

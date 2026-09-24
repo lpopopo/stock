@@ -1868,3 +1868,89 @@ export function generateUsSectorSignals(
     return signals;
 }
 
+/**
+ * 核心持仓与策略命中个股实时行情接口
+ */
+export interface LivePortfolioQuote {
+    symbol: string;
+    rawCode: string;
+    name: string;
+    price: number;
+    prevClose: number;
+    open: number;
+    change: number;
+    changePct: number;
+    high: number;
+    low: number;
+    updatedTime: string;
+}
+
+export const PORTFOLIO_AND_STRATEGY_SYMBOLS: { symbol: string; rawCode: string; name: string }[] = [
+    { symbol: 'MRVL', rawCode: 'usMRVL', name: '迈威尔科技' },
+    { symbol: 'QCOM', rawCode: 'usQCOM', name: '高通公司' },
+    { symbol: 'CVX', rawCode: 'usCVX', name: '雪佛龙' },
+    { symbol: 'SPY', rawCode: 'usSPY', name: '标普 500 ETF' },
+    { symbol: 'MXL', rawCode: 'usMXL', name: '迈凌半导体' },
+    { symbol: 'GLW', rawCode: 'usGLW', name: '康宁' },
+    { symbol: 'SGOV', rawCode: 'usSGOV', name: '0-3月超短美债 ETF' },
+    { symbol: 'SO', rawCode: 'usSO', name: '南方电力' },
+    { symbol: 'LIN', rawCode: 'usLIN', name: '林德气体' },
+    { symbol: 'LMT', rawCode: 'usLMT', name: '洛克希德马丁' },
+    { symbol: 'XLP', rawCode: 'usXLP', name: '必需消费 ETF' },
+    { symbol: 'SCHD', rawCode: 'usSCHD', name: '高股息 ETF' },
+];
+
+export async function fetchLivePortfolioQuotes(): Promise<Record<string, LivePortfolioQuote>> {
+    const rawCodes = PORTFOLIO_AND_STRATEGY_SYMBOLS.map(s => s.rawCode);
+    const rawText = await fetchTencentQuotes(rawCodes);
+    const result: Record<string, LivePortfolioQuote> = {};
+
+    if (!rawText) return result;
+
+    const lines = rawText.split(';').filter(l => l.trim().length > 0);
+    const map = new Map<string, string>();
+
+    lines.forEach(l => {
+        const match = l.match(/v_(.+?)="(.+)"/);
+        if (match) {
+            map.set(match[1].toLowerCase(), match[2]);
+        }
+    });
+
+    PORTFOLIO_AND_STRATEGY_SYMBOLS.forEach(item => {
+        const dataStr = map.get(item.rawCode.toLowerCase());
+        if (!dataStr) return;
+
+        const parts = dataStr.split('~');
+        if (parts.length < 33) return;
+
+        const price = parseFloat(parts[3]) || 0;
+        const prevClose = parseFloat(parts[4]) || 0;
+        const open = parseFloat(parts[5]) || 0;
+        const change = parseFloat(parts[31]) || (price > 0 && prevClose > 0 ? Number((price - prevClose).toFixed(2)) : 0);
+        const changePct = parseFloat(parts[32]) || (prevClose > 0 ? Number(((change / prevClose) * 100).toFixed(2)) : 0);
+        const high = parseFloat(parts[33]) || price;
+        const low = parseFloat(parts[34]) || price;
+        const updatedTime = parts[30] || new Date().toLocaleTimeString();
+
+        if (price > 0) {
+            result[item.symbol] = {
+                symbol: item.symbol,
+                rawCode: item.rawCode,
+                name: parts[1] || item.name,
+                price,
+                prevClose,
+                open,
+                change,
+                changePct,
+                high,
+                low,
+                updatedTime,
+            };
+        }
+    });
+
+    return result;
+}
+
+

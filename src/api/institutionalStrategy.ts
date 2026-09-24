@@ -1,3 +1,5 @@
+import type { LivePortfolioQuote } from './market';
+
 /**
  * AI-Memory 跨仓库量化策略协同接口库 (Institutional Strategy Bridge)
  * 桥接 AI-Memory 的机构级无偏实证核心：
@@ -661,6 +663,9 @@ export interface AiMemoryHolding {
     targetPrice?: number;
     factorGroup: string;
     actionAdvice: string;
+    dayChange?: number;
+    dayChangePct?: number;
+    isLivePrice?: boolean;
 }
 
 export interface AiMemoryRealTrade {
@@ -954,6 +959,10 @@ export interface StrategyHitStock {
     rationale: string;
     prerequisite?: string;
     auditCitation: string;
+    dayChange?: number;
+    dayChangePct?: number;
+    lastUpdatedTime?: string;
+    isLivePrice?: boolean;
 }
 
 export const STRATEGY_SCREENED_HIT_STOCKS: StrategyHitStock[] = [
@@ -1102,6 +1111,214 @@ export const STRATEGY_SCREENED_HIT_STOCKS: StrategyHitStock[] = [
         auditCitation: '100% 胜率工业刚需资产库',
     },
 ];
+
+/**
+ * 盘口现价实时重算：策略筛选命中个股与建议挂单限价
+ */
+export function recalculateHitStocksWithLiveQuotes(
+    baseHits: StrategyHitStock[] = STRATEGY_SCREENED_HIT_STOCKS,
+    quotes?: Record<string, LivePortfolioQuote>
+): StrategyHitStock[] {
+    if (!quotes || Object.keys(quotes).length === 0) {
+        return baseHits;
+    }
+
+    return baseHits.map((hit) => {
+        const quote = quotes[hit.symbol];
+        if (!quote || quote.price <= 0) {
+            return hit;
+        }
+
+        const livePrice = quote.price;
+        const dayChange = quote.change;
+        const dayChangePct = quote.changePct;
+        const updatedTime = quote.updatedTime;
+
+        let suggestedLimitPrice = hit.suggestedLimitPrice;
+        let limitFormula = hit.limitFormula;
+        let limitPriceRange = hit.limitPriceRange;
+
+        if (hit.symbol === 'MRVL') {
+            if (livePrice >= 265) {
+                suggestedLimitPrice = Number((livePrice * 1.015).toFixed(2));
+                limitPriceRange = `$${suggestedLimitPrice.toFixed(2)} ~ $${(suggestedLimitPrice + 3).toFixed(2)}`;
+            } else {
+                suggestedLimitPrice = 265.00;
+                limitPriceRange = '$265.00 ~ $268.00';
+            }
+            const premiumPct = Number((((suggestedLimitPrice - livePrice) / livePrice) * 100).toFixed(2));
+            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，挂单于阻力位 $${suggestedLimitPrice.toFixed(2)} (${premiumPct >= 0 ? `上浮 +${premiumPct}%` : `${premiumPct}%`})，做市商向上脉冲扫单`;
+        } else if (hit.symbol === 'QCOM') {
+            if (livePrice > 200) {
+                suggestedLimitPrice = Number((livePrice - 5).toFixed(2));
+                limitPriceRange = `触发价 $${suggestedLimitPrice.toFixed(2)} / 最低限价 $${(suggestedLimitPrice - 0.5).toFixed(2)}`;
+            } else {
+                suggestedLimitPrice = 190.00;
+                limitPriceRange = '触发价 $190.00 / 最低限价 $189.50';
+            }
+            const cushionPct = Number((((livePrice - 185.20) / 185.20) * 100).toFixed(2));
+            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，动态棘轮止盈线设于 $${suggestedLimitPrice.toFixed(2)}，锁定安全垫 (${cushionPct >= 0 ? '+' : ''}${cushionPct}%)`;
+        } else if (hit.symbol === 'CVX') {
+            suggestedLimitPrice = Number((Math.min(204.00, livePrice * 0.995)).toFixed(2));
+            limitPriceRange = `$${(suggestedLimitPrice - 0.8).toFixed(2)} ~ $${suggestedLimitPrice.toFixed(2)}`;
+            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，回踩 5 日均线与密集成交区挂限价买单，严禁追高`;
+        } else if (hit.symbol === 'SPY') {
+            suggestedLimitPrice = Number((livePrice - 0.5).toFixed(2));
+            limitPriceRange = `$${(suggestedLimitPrice - 1).toFixed(2)} ~ $${suggestedLimitPrice.toFixed(2)}`;
+            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，采用 Midpoint Peg 盘口中位数挂买单，节约 15 bps 滑点`;
+        } else if (hit.symbol === 'SO') {
+            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，MA200 支撑线附近设预设限价单`;
+        } else if (hit.symbol === 'LIN') {
+            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，超卖筑底反弹关注区`;
+        }
+
+        const estimatedAmountUsd = Number((suggestedLimitPrice * hit.suggestedShares).toFixed(2));
+
+        return {
+            ...hit,
+            currentPrice: livePrice,
+            dayChange,
+            dayChangePct,
+            suggestedLimitPrice,
+            limitFormula,
+            limitPriceRange,
+            estimatedAmountUsd,
+            lastUpdatedTime: updatedTime,
+            isLivePrice: true,
+        };
+    });
+}
+
+/**
+ * 盘口现价实时重算：AI-Memory 官方对账账本与持仓市值/日损益
+ */
+export function recalculatePortfolioLedgerWithLiveQuotes(
+    baseLedger: AiMemoryPortfolioLedger = AI_MEMORY_PORTFOLIO_LEDGER,
+    quotes?: Record<string, LivePortfolioQuote>
+): AiMemoryPortfolioLedger {
+    if (!quotes || Object.keys(quotes).length === 0) {
+        return baseLedger;
+    }
+
+    let dayPnlSum = 0;
+    let hasValidDayPnl = false;
+
+    const updatedHoldings = baseLedger.holdings.map((holding) => {
+        const quote = quotes[holding.symbol];
+        if (!quote || quote.price <= 0) {
+            return holding;
+        }
+
+        const currentPrice = quote.price;
+        const marketValue = Number((holding.shares * currentPrice).toFixed(2));
+        const pnlAmount = Number(((currentPrice - holding.costBasis) * holding.shares).toFixed(2));
+        const pnlPct = Number((((currentPrice - holding.costBasis) / holding.costBasis) * 100).toFixed(2));
+
+        if (typeof quote.change === 'number') {
+            dayPnlSum += quote.change * holding.shares;
+            hasValidDayPnl = true;
+        }
+
+        return {
+            ...holding,
+            currentPrice,
+            marketValue,
+            pnlAmount,
+            pnlPct,
+            dayChange: quote.change,
+            dayChangePct: quote.changePct,
+            isLivePrice: true,
+        };
+    });
+
+    const sgovHolding = updatedHoldings.find((h) => h.symbol === 'SGOV');
+    const sgovReserve = sgovHolding ? sgovHolding.marketValue : baseLedger.sgovReserve;
+    const workingCash = baseLedger.workingCash;
+    const totalDefenseCash = Number((workingCash + sgovReserve).toFixed(2));
+
+    const equityHoldings = updatedHoldings.filter((h) => h.assetClass === 'Equity Stock');
+    const equityTotal = Number(equityHoldings.reduce((sum, h) => sum + h.marketValue, 0).toFixed(2));
+    const totalNav = Number((totalDefenseCash + equityTotal).toFixed(2));
+
+    const totalDefensePct = Number(((totalDefenseCash / totalNav) * 100).toFixed(2));
+    const equityPct = Number(((equityTotal / totalNav) * 100).toFixed(2));
+    const workingCashPct = Number(((workingCash / totalNav) * 100).toFixed(2));
+    const sgovReservePct = Number(((sgovReserve / totalNav) * 100).toFixed(2));
+
+    const finalHoldings = updatedHoldings.map((h) => {
+        const navWeightPct = Number(((h.marketValue / totalNav) * 100).toFixed(2));
+        return {
+            ...h,
+            navWeightPct,
+        };
+    });
+
+    const dayPnlUsd = hasValidDayPnl ? Number(dayPnlSum.toFixed(2)) : null;
+    const dayPnlPct = hasValidDayPnl && (totalNav - dayPnlSum) > 0
+        ? Number(((dayPnlSum / (totalNav - dayPnlSum)) * 100).toFixed(2))
+        : null;
+
+    const mrvlHolding = finalHoldings.find((h) => h.symbol === 'MRVL');
+    const qcomHolding = finalHoldings.find((h) => h.symbol === 'QCOM');
+    const updatedAuditItems = baseLedger.auditItems.map((item) => {
+        if (item.targetSymbol === 'MRVL' && mrvlHolding) {
+            const isBreach = mrvlHolding.navWeightPct > 15.0;
+            return {
+                ...item,
+                title: `MRVL 单票权重 (${mrvlHolding.navWeightPct}% ${isBreach ? '> 15.0%' : '安全'})`,
+                condition: `持仓现价 $${mrvlHolding.currentPrice.toFixed(2)}，市值 $${mrvlHolding.marketValue.toFixed(2)} 占总 NAV ${mrvlHolding.navWeightPct}%`,
+                status: isBreach ? ('TRIGGERED' as const) : ('WATCHING' as const),
+            };
+        }
+        if (item.targetSymbol === 'QCOM' && qcomHolding) {
+            return {
+                ...item,
+                condition: `现价 $${qcomHolding.currentPrice.toFixed(2)}，累计持仓浮盈 ${qcomHolding.pnlPct >= 0 ? '+' : ''}${qcomHolding.pnlPct.toFixed(2)}%`,
+            };
+        }
+        return item;
+    });
+
+    return {
+        ...baseLedger,
+        totalNav,
+        dayPnlUsd,
+        dayPnlPct,
+        workingCash,
+        workingCashPct,
+        sgovReserve,
+        sgovReservePct,
+        totalDefenseCash,
+        totalDefensePct,
+        equityTotal,
+        equityPct,
+        holdings: finalHoldings,
+        auditItems: updatedAuditItems,
+    };
+}
+
+/**
+ * 盘口现价实时重算：底部品种企稳反弹池 (SO, CVX, LIN, LMT, XLP, SCHD)
+ */
+export function recalculateReboundUniverseWithLiveQuotes(
+    universe: BottomReboundStock[] = BOTTOM_REBOUND_UNIVERSE,
+    quotes?: Record<string, LivePortfolioQuote>
+): BottomReboundStock[] {
+    if (!quotes || Object.keys(quotes).length === 0) return universe;
+    return universe.map((stk) => {
+        const q = quotes[stk.symbol];
+        if (!q || q.price <= 0) return stk;
+        const currentPrice = q.price;
+        const changePct = q.changePct;
+        const distanceToMa200Pct = Number((((currentPrice - stk.ma200) / stk.ma200) * 100).toFixed(2));
+        return {
+            ...stk,
+            currentPrice,
+            changePct,
+            distanceToMa200Pct,
+        };
+    });
+}
 
 export interface FearGateFactor {
     name: string;

@@ -156,7 +156,9 @@ import {
     DEFAULT_LADDER_WEIGHTS,
     DEFAULT_LENDING_HOLDINGS,
     evaluateTreasuryLadderAndLending,
+    recalculateReboundUniverseWithLiveQuotes,
 } from '../../../api/institutionalStrategy';
+import { useMarketStore } from '../../../store/market.store';
 
 export type SubTabType =
     | 'stocks'
@@ -956,7 +958,11 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
     };
 
     const summary = BOTTOM_REBOUND_100WIN_SUMMARY;
-    const stocks = BOTTOM_REBOUND_UNIVERSE;
+    const { livePortfolioQuotes } = useMarketStore();
+    const stocks = useMemo(
+        () => recalculateReboundUniverseWithLiveQuotes(BOTTOM_REBOUND_UNIVERSE, livePortfolioQuotes),
+        [livePortfolioQuotes]
+    );
     const isCn = colorScheme === 'cn';
     const ledgerView = currentBrokerLedgerView();
 
