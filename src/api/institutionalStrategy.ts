@@ -1021,21 +1021,21 @@ export const STRATEGY_SCREENED_HIT_STOCKS: StrategyHitStock[] = [
         nameEn: 'Chevron Corporation',
         strategySource: '100% 胜率底部反弹战法 & 周期大宗配置',
         actionType: 'BUY_LIMIT',
-        actionBadge: '🟡 右侧买点即将确认 (2日连阳待定)',
-        hitStatus: 'PENDING_CONFIRM',
-        statusText: '首根中阳线确立，待今晚第2根收阳',
+        actionBadge: '🟢 命中右侧买点限价 (两连阳已确立)',
+        hitStatus: 'HIT_NOW',
+        statusText: '两连阳右侧反弹确立 · 准予挂单入场',
         urgency: 'HIGH',
-        currentPrice: 205.51,
+        currentPrice: 207.84,
         suggestedLimitPrice: 204.00,
         limitPriceRange: '$203.50 ~ $204.80',
-        limitFormula: '昨收大涨 +1.53%，建议在回踩 5 日均线与密集成交中枢 $204.00 设限价挂单，严禁高开追单',
+        limitFormula: '昨收大涨 +1.53%，今盘中再收阳 (+1.13%) 站稳 $207，两连阳已确立！建议回踩 5 日均线与密集成交中枢 $204.00 挂限价买单，严禁追高',
         suggestedShares: 2,
         estimatedAmountUsd: 408.00,
         targetPrice: 210.00,
         stopLossPrice: 192.00,
         confidenceScore: 92,
-        rationale: '考验 $200 整数防线后在 $91+ 原油回暖支撑下强劲反弹。恪守严禁左侧接飞刀铁律，今晚一旦确认连续两日收阳，立即以 $204.00 限价开仓 2 股。',
-        prerequisite: '需今晚美股收盘确认连续两日收阳（若破位跌回收阴则自动撤销关注）',
+        rationale: '考验 $200 整数防线后在原油回暖支撑下强劲反弹，连续两日收阳右侧信号正式确立！以 $204.00 限价开仓 2 股。',
+        prerequisite: '两连阳已确立，严禁市价追高，挂单于 $204.00 回踩密集成交区',
         auditCitation: 'Bulletproof 100% Win Rebound Rule & 2026-09-22 Audit Item 4',
     },
     {
@@ -1137,6 +1137,11 @@ export function recalculateHitStocksWithLiveQuotes(
         let suggestedLimitPrice = hit.suggestedLimitPrice;
         let limitFormula = hit.limitFormula;
         let limitPriceRange = hit.limitPriceRange;
+        let actionBadge = hit.actionBadge;
+        let hitStatus = hit.hitStatus;
+        let statusText = hit.statusText;
+        let rationale = hit.rationale;
+        let prerequisite = hit.prerequisite;
 
         if (hit.symbol === 'MRVL') {
             if (livePrice >= 265) {
@@ -1161,7 +1166,20 @@ export function recalculateHitStocksWithLiveQuotes(
         } else if (hit.symbol === 'CVX') {
             suggestedLimitPrice = Number((Math.min(204.00, livePrice * 0.995)).toFixed(2));
             limitPriceRange = `$${(suggestedLimitPrice - 0.8).toFixed(2)} ~ $${suggestedLimitPrice.toFixed(2)}`;
-            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，回踩 5 日均线与密集成交区挂限价买单，严禁追高`;
+            const isGreenToday = dayChangePct >= 0;
+            if (isGreenToday) {
+                actionBadge = '🟢 命中右侧买点限价 (两连阳已确立)';
+                hitStatus = 'HIT_NOW';
+                statusText = '两连阳右侧反弹确立 · 准予挂单入场';
+                rationale = `昨收大涨 +1.53%，今晚盘中再度收阳 (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%) 逼近 $208，两连阳右侧反弹信号正式确立！满足 100% 胜率底部反弹战法黄金入场准则。`;
+                prerequisite = '两连阳已右侧确认，严禁市价追高，挂单于回踩均线与筹码中枢处 ($204.00 附近)';
+                limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，两连阳已确立！建议回踩 5 日均线与密集成交区 $${suggestedLimitPrice.toFixed(2)} 挂限价买单，严禁追高`;
+            } else {
+                actionBadge = '🟡 盘中转阴待定 (等待收阳)';
+                hitStatus = 'PENDING_CONFIRM';
+                statusText = '盘中出现阴线分歧，等待收盘确认是否收阳';
+                limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，盘中受压回踩，等待企稳信号`;
+            }
         } else if (hit.symbol === 'SPY') {
             suggestedLimitPrice = Number((livePrice - 0.5).toFixed(2));
             limitPriceRange = `$${(suggestedLimitPrice - 1).toFixed(2)} ~ $${suggestedLimitPrice.toFixed(2)}`;
@@ -1183,6 +1201,11 @@ export function recalculateHitStocksWithLiveQuotes(
             limitFormula,
             limitPriceRange,
             estimatedAmountUsd,
+            actionBadge,
+            hitStatus,
+            statusText,
+            rationale,
+            prerequisite,
             lastUpdatedTime: updatedTime,
             isLivePrice: true,
         };
@@ -1275,6 +1298,31 @@ export function recalculatePortfolioLedgerWithLiveQuotes(
                 ...item,
                 condition: `现价 $${qcomHolding.currentPrice.toFixed(2)}，累计持仓浮盈 ${qcomHolding.pnlPct >= 0 ? '+' : ''}${qcomHolding.pnlPct.toFixed(2)}%`,
             };
+        }
+        if (item.targetSymbol === 'CVX') {
+            const cvxQuote = quotes['CVX'];
+            if (cvxQuote && cvxQuote.price > 0) {
+                const isGreenToday = cvxQuote.changePct >= 0;
+                if (isGreenToday) {
+                    return {
+                        ...item,
+                        priority: 'HIGH' as const,
+                        title: '底部品种 CVX 右侧两连阳已达成！',
+                        condition: `昨收大涨 +1.53%，今日现价 $${cvxQuote.price.toFixed(2)} (+${cvxQuote.changePct.toFixed(2)}%)，两连阳右侧信号正式确立！`,
+                        recommendation: `已触发 100% 胜率反弹战法买点！建议动用工作现金（余 $${workingCash.toFixed(2)}）在回踩 $204~$205 处限价买入 2 股，严防市价追高。`,
+                        status: 'TRIGGERED' as const,
+                    };
+                } else {
+                    return {
+                        ...item,
+                        priority: 'LOW' as const,
+                        title: '底部品种 CVX 跟踪 (等待收阳)',
+                        condition: `今日现价 $${cvxQuote.price.toFixed(2)} (${cvxQuote.changePct.toFixed(2)}%) 盘中走弱，暂未确立连阳`,
+                        recommendation: '恪守不接飞刀铁律，保持观望。',
+                        status: 'WATCHING' as const,
+                    };
+                }
+            }
         }
         return item;
     });

@@ -3413,6 +3413,8 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         expect(cvxHit).toBeDefined();
         expect(cvxHit?.currentPrice).toBe(207.76);
         expect(cvxHit?.dayChangePct).toBe(1.09);
+        expect(cvxHit?.actionBadge).toContain('两连阳已确立');
+        expect(cvxHit?.hitStatus).toBe('HIT_NOW');
 
         const spyHit = updatedHits.find(h => h.symbol === 'SPY');
         expect(spyHit).toBeDefined();
@@ -3427,6 +3429,7 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
             MXL: { symbol: 'MXL', price: 82.81, change: -2.24, changePct: -2.63 },
             QCOM: { symbol: 'QCOM', price: 193.29, change: -3.95, changePct: -2.00 },
             GLW: { symbol: 'GLW', price: 152.35, change: -6.03, changePct: -3.81 },
+            CVX: { symbol: 'CVX', price: 207.76, change: 2.25, changePct: 1.09 },
         };
 
         const updatedLedger = recalculatePortfolioLedgerWithLiveQuotes(AI_MEMORY_PORTFOLIO_LEDGER, mockQuotes);
@@ -3447,6 +3450,11 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         // 验证实时日损益不再为 null
         expect(updatedLedger.dayPnlUsd).not.toBeNull();
         expect(updatedLedger.dayPnlPct).not.toBeNull();
+
+        // 验证 CVX 审计条目触发 TRIGGERED
+        const cvxAudit = updatedLedger.auditItems.find(a => a.targetSymbol === 'CVX');
+        expect(cvxAudit?.status).toBe('TRIGGERED');
+        expect(cvxAudit?.title).toContain('两连阳已达成');
 
         // 验证底部品种池重算
         const reboundPool = recalculateReboundUniverseWithLiveQuotes(undefined, {

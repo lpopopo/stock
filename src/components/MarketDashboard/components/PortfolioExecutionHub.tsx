@@ -476,9 +476,10 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                         {ledger.auditItems.map((item: AiMemoryAuditItem) => {
                             const isHigh = item.priority === 'HIGH';
                             const isMedium = item.priority === 'MEDIUM';
-                            const badgeColor = isHigh ? '#ef4444' : isMedium ? (item.targetSymbol === 'QCOM' ? '#10b981' : '#3b82f6') : '#f59e0b';
-                            const bgColor = isHigh ? 'rgba(239, 68, 68, 0.08)' : isMedium ? (item.targetSymbol === 'QCOM' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)') : 'rgba(245, 158, 11, 0.08)';
-                            const borderColor = isHigh ? 'rgba(239, 68, 68, 0.3)' : isMedium ? (item.targetSymbol === 'QCOM' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)') : 'rgba(245, 158, 11, 0.3)';
+                            const isCvx = item.targetSymbol === 'CVX';
+                            const badgeColor = isCvx && item.status === 'TRIGGERED' ? '#10b981' : isHigh ? '#ef4444' : isMedium ? (item.targetSymbol === 'QCOM' ? '#10b981' : '#3b82f6') : '#f59e0b';
+                            const bgColor = isCvx && item.status === 'TRIGGERED' ? 'rgba(16, 185, 129, 0.08)' : isHigh ? 'rgba(239, 68, 68, 0.08)' : isMedium ? (item.targetSymbol === 'QCOM' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)') : 'rgba(245, 158, 11, 0.08)';
+                            const borderColor = isCvx && item.status === 'TRIGGERED' ? 'rgba(16, 185, 129, 0.3)' : isHigh ? 'rgba(239, 68, 68, 0.3)' : isMedium ? (item.targetSymbol === 'QCOM' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)') : 'rgba(245, 158, 11, 0.3)';
 
                             return (
                                 <div
@@ -496,7 +497,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                     <div>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <span style={{ fontSize: '12px', fontWeight: 'bold', color: badgeColor }}>
-                                                {isHigh ? '🚨 集中度风险' : isMedium ? (item.targetSymbol === 'QCOM' ? '🟢 移动止盈锁利' : '🔵 核心底座建仓') : '🟡 右侧买点跟踪'} ({item.priority})
+                                                {isCvx ? (item.status === 'TRIGGERED' ? '🟢 右侧买点确立' : '🟡 右侧买点跟踪') : isHigh ? '🚨 集中度风险' : isMedium ? (item.targetSymbol === 'QCOM' ? '🟢 移动止盈锁利' : '🔵 核心底座建仓') : '🟡 策略动态观察'} ({item.priority})
                                             </span>
                                             <span style={{ fontSize: '11px', background: badgeColor, color: '#fff', padding: '1px 6px', borderRadius: '4px' }}>
                                                 {item.status}
@@ -553,10 +554,29 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                             </div>
                                         )}
                                         {item.targetSymbol === 'CVX' && (
-                                            <div style={{ fontSize: '11px', color: '#f59e0b', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                                <span>机动现金: ${ledger.workingCash.toFixed(2)}</span>
-                                                <span>等待连续2日收阳</span>
-                                            </div>
+                                            item.status === 'TRIGGERED' ? (
+                                                <button
+                                                    onClick={() => handlePresetOrder('CVX', 'BUY', 2, 204.00)}
+                                                    style={{
+                                                        padding: '6px 12px',
+                                                        background: 'rgba(16, 185, 129, 0.2)',
+                                                        border: '1px solid rgba(16, 185, 129, 0.5)',
+                                                        color: '#6ee7b7',
+                                                        borderRadius: '6px',
+                                                        fontSize: '12px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 'bold',
+                                                        width: '100%',
+                                                    }}
+                                                >
+                                                    ⚡ 装入 CVX 右侧买入小票 ($204.00 买入 2 股)
+                                                </button>
+                                            ) : (
+                                                <div style={{ fontSize: '11px', color: '#f59e0b', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                                                    <span>机动现金: ${ledger.workingCash.toFixed(2)}</span>
+                                                    <span>等待连续2日收阳</span>
+                                                </div>
+                                            )
                                         )}
                                     </div>
                                 </div>
