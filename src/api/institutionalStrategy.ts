@@ -672,7 +672,9 @@ export interface AiMemoryRealTrade {
     shares: number;
     fillPrice: number;
     grossAmount: number;
-    feeUsd: number;
+    feeUsd: number | null;
+    feeStatus?: 'unverified_pending_settlement' | 'verified_charged' | 'zero_commission';
+    feeNote?: string;
     preTradeCash: number;
     postTradeCash: number;
     strategyRole: string;
@@ -702,8 +704,8 @@ export interface AiMemoryPortfolioLedger {
     auditTimestamp: string;
     asOfDate: string;
     totalNav: number;
-    dayPnlUsd: number;
-    dayPnlPct: number;
+    dayPnlUsd: number | null;
+    dayPnlPct: number | null;
     workingCash: number;
     workingCashPct: number;
     sgovReserve: number;
@@ -724,17 +726,17 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
     sourceFile: 'AI-Memory/domains/quant-strategy/memory/portfolio/2026-09-22-portfolio-summary.md',
     auditTimestamp: '2026-09-22 23:12 +08:00 (美东 11:12 ET)',
     asOfDate: '2026-09-22',
-    totalNav: 6046.53,
-    dayPnlUsd: 19.70,
-    dayPnlPct: 0.33,
+    totalNav: 6026.83,
+    dayPnlUsd: null,
+    dayPnlPct: null,
     workingCash: 1643.78,
-    workingCashPct: 27.18,
-    sgovReserve: 2112.81,
-    sgovReservePct: 34.94,
-    totalDefenseCash: 3756.59,
-    totalDefensePct: 62.13,
-    equityTotal: 2289.94,
-    equityPct: 37.87,
+    workingCashPct: 27.27,
+    sgovReserve: 2112.71,
+    sgovReservePct: 35.05,
+    totalDefenseCash: 3756.49,
+    totalDefensePct: 62.33,
+    equityTotal: 2270.34,
+    equityPct: 37.67,
     monthlyDividendEstimateUsd: 8.80,
     holdings: [
         {
@@ -743,11 +745,11 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
             assetClass: 'Cash ETF',
             shares: 21,
             costBasis: 100.605,
-            currentPrice: 100.61,
-            marketValue: 2112.81,
-            navWeightPct: 34.94,
-            pnlAmount: 0.105,
-            pnlPct: 0.01,
+            currentPrice: 100.605,
+            marketValue: 2112.71,
+            navWeightPct: 35.05,
+            pnlAmount: 0.00,
+            pnlPct: 0.00,
             aiRole: 'cash-efficiency-sweep / 无风险年化 ~5.0% 票息储备',
             statusBadge: '生息现金储备',
             statusType: 'success',
@@ -760,18 +762,18 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
             assetClass: 'Equity Stock',
             shares: 4,
             costBasis: 172.50,
-            currentPrice: 262.36,
-            marketValue: 1049.44,
-            navWeightPct: 17.36,
-            pnlAmount: 359.44,
-            pnlPct: 52.09,
+            currentPrice: 263.60,
+            marketValue: 1054.40,
+            navWeightPct: 17.50,
+            pnlAmount: 364.40,
+            pnlPct: 52.81,
             aiRole: 'profit-protection / defensive hold / 超 15% 建议减仓 1 股',
             statusBadge: '超限 15% 警报',
             statusType: 'warning',
             stopPrice: 235.00,
             targetPrice: 268.00,
             factorGroup: 'AI ASIC & DSP 光电互联',
-            actionAdvice: '占 NAV 达 17.4%，超出 15% 正常单名红线，建议择机在 $265~$268 挂单减仓 1 股落袋',
+            actionAdvice: '占 NAV 达 17.50%，超出 15% 正常单名红线，建议择机在 $265~$268 挂单减仓 1 股落袋',
         },
         {
             symbol: 'MXL',
@@ -779,18 +781,18 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
             assetClass: 'Equity Stock',
             shares: 6,
             costBasis: 91.40,
-            currentPrice: 87.43,
-            marketValue: 524.58,
-            navWeightPct: 8.68,
-            pnlAmount: -23.82,
-            pnlPct: -4.34,
-            aiRole: 'defensive hold / no add / 底部筑底修复中',
+            currentPrice: 85.05,
+            marketValue: 510.30,
+            navWeightPct: 8.47,
+            pnlAmount: -38.10,
+            pnlPct: -6.95,
+            aiRole: 'defensive hold / no add / review remains open',
             statusBadge: '防守持有',
             statusType: 'info',
             stopPrice: 78.00,
             targetPrice: 95.00,
             factorGroup: '高速光模块 PAM4 驱动芯片',
-            actionAdvice: '底部筑底修复中，仓位舒适安全（<10%），严格禁止左侧加仓摊低',
+            actionAdvice: '底部筑底修复中，仓位舒适安全（8.47% < 10%），严格禁止左侧加仓摊低',
         },
         {
             symbol: 'QCOM',
@@ -798,18 +800,18 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
             assetClass: 'Equity Stock',
             shares: 2,
             costBasis: 185.20,
-            currentPrice: 198.27,
-            marketValue: 396.54,
-            navWeightPct: 6.56,
-            pnlAmount: 26.14,
-            pnlPct: 7.06,
-            aiRole: 'long-term hold / 移动止盈棘轮提拉保护',
+            currentPrice: 194.44,
+            marketValue: 388.88,
+            navWeightPct: 6.45,
+            pnlAmount: 18.48,
+            pnlPct: 4.99,
+            aiRole: 'long-term hold / 单日暴涨冷静期 / 移动止盈棘轮提拉保护',
             statusBadge: '棘轮止盈中',
             statusType: 'success',
             stopPrice: 190.00,
             targetPrice: 205.00,
             factorGroup: '端侧 AI 算力与无线射频',
-            actionAdvice: '大涨冲破 $198，执行 Phase 11 棘轮提拉止盈线至 $190，锁定利润同时放飞牛股',
+            actionAdvice: '单日大涨后进入冷静期，坚守 MA20 与 MA50 支撑上方，估值具备现金流安全垫，防守止盈上移至 $190',
         },
         {
             symbol: 'GLW',
@@ -817,17 +819,17 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
             assetClass: 'Equity Stock',
             shares: 2,
             costBasis: 187.20,
-            currentPrice: 159.69,
-            marketValue: 319.38,
-            navWeightPct: 5.28,
-            pnlAmount: -55.02,
-            pnlPct: -14.70,
+            currentPrice: 158.38,
+            marketValue: 316.76,
+            navWeightPct: 5.26,
+            pnlAmount: -57.64,
+            pnlPct: -15.40,
             aiRole: 'reduce-review / defensive hold / no add',
             statusBadge: '底仓观察',
             statusType: 'info',
             stopPrice: 150.00,
             factorGroup: 'AI 数据中心高密度光纤物理垄断',
-            actionAdvice: '仓位极轻（仅 5.3%），对组合总体波动极低，维持底仓静待周期拐点',
+            actionAdvice: '仓位极轻（仅 5.26%），对组合总体波动极低，维持底仓复核长线论据',
         },
     ],
     realTrades: [
@@ -840,35 +842,22 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
             shares: 21,
             fillPrice: 100.605,
             grossAmount: 2112.71,
-            feeUsd: 1.00,
+            feeUsd: null,
+            feeStatus: 'unverified_pending_settlement',
+            feeNote: '来源文档明确注明 postTradeCash 为 before platform/regulatory fees；现金差额 3756.49 - 2112.71 = 1643.78 未扣除显式佣金，费用标记为未核实/待结算',
             preTradeCash: 3756.49,
             postTradeCash: 1643.78,
             strategyRole: 'Phase 8 & Phase 10 现金自动清扫机制 (Cash Efficiency Sweep)',
             rationale: '配置 0~3 个月超短美国国债，年化获取稳健的 ~5.0% 票面利息，最大历史回撤仅 -0.07%，随时在 T+0/T+1 释放购买力。',
-        },
-        {
-            tradeId: 'REAL-20260815-PORTFOLIO-REBALANCE',
-            date: '2026-08-15',
-            time: '16:00 ET',
-            symbol: 'MRVL',
-            direction: 'BUY',
-            shares: 4,
-            fillPrice: 172.50,
-            grossAmount: 690.00,
-            feeUsd: 1.00,
-            preTradeCash: 4446.49,
-            postTradeCash: 3756.49,
-            strategyRole: 'AI-Capex 核心光电互联龙头建仓',
-            rationale: '突破放量确认，建立 4 股核心仓位，严守 15% 仓位预算上限。',
         },
     ],
     auditItems: [
         {
             id: 'AUDIT-01',
             priority: 'HIGH',
-            title: 'MRVL 单票权重超标 (17.36% > 15.0%)',
+            title: 'MRVL 单票权重超标 (17.50% > 15.0%)',
             targetSymbol: 'MRVL',
-            condition: '持仓市值 $1,049.44 占总 NAV 17.36%，突破 15% 机构正常单名上限',
+            condition: '持仓市值 $1,054.40 占总 NAV 17.50%，突破 15% 机构正常单名上限',
             recommendation: '建议择机在 $265~$268 挂单限价卖出 1 股，回收 ~$265 现金并压低单票暴露至 13% 舒适区。',
             status: 'TRIGGERED',
         },
@@ -877,7 +866,7 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
             priority: 'MEDIUM',
             title: 'QCOM 移动止盈棘轮提拉保护',
             targetSymbol: 'QCOM',
-            condition: '现价逼近 $198 关口，累计涨幅 +7.06%，存在短期获利盘回吐风险',
+            condition: '现价逼近 $195 关口，累计涨幅 +4.99%，存在短期获利盘回吐风险',
             recommendation: '执行 Phase 11 动态棘轮，将防守止损线上移至 $190.00，锁定浮盈同时享受后续主升浪。',
             status: 'TRIGGERED',
         },
@@ -905,13 +894,12 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
         { date: '2026-07-10', nav: 5420.50, cashPct: 72.0, equityPct: 28.0, note: '建仓半导体光通信龙头，稳步反弹' },
         { date: '2026-08-18', nav: 5680.40, cashPct: 65.0, equityPct: 35.0, note: 'MRVL 与光模块爆发，净值突破 $5,600' },
         { date: '2026-09-18', nav: 5875.91, cashPct: 63.9, equityPct: 36.1, note: '全市场流动性充裕，组合稳健创新高' },
-        { date: '2026-09-22', nav: 6026.83, cashPct: 27.3, equityPct: 37.7, note: '买入 SGOV 21 股，正式启动现金自动清扫' },
-        { date: '2026-09-23', nav: 6046.53, cashPct: 27.2, equityPct: 37.9, note: '最新 Mark-to-Market，总净值历史新高' },
+        { date: '2026-09-22', nav: 6026.83, cashPct: 27.27, equityPct: 37.67, note: '买入 SGOV 21 股，正式启动现金自动清扫 (总防御 62.33%)' },
     ],
     summaryComments: [
         '现金利用效率大幅跃升：通过 SGOV 21 股配置，原先 62.5% 的零息躺平闲置资金中有超过一半（$2,112.71）直接转化为年化 ~5.0% 的生息资产，每月稳定派发现金红利。',
         '流动性完全保全：SGOV 随时可在美股常规交易时段 T+0/T+1 卖出兑现，剩余 $1,643.78 的自由现金可无缝用于后续 SPY 核心底仓建仓或底部品种（如 CVX）右侧买点。',
-        '个股超限监控：MRVL 随着股价走强至 $262+，单票权重达到 17.36%，超出 15.0% 的正常单股上限，维持建议择机挂单减仓 1 股以落袋利润并将权重降至 13% 安全线内。',
+        '个股超限监控：MRVL 随着股价走强至 $263.60，单票权重达到 17.50%，超出 15.0% 的正常单股上限，维持建议择机挂单减仓 1 股以落袋利润并将权重降至 13% 安全线内。',
     ],
 };
 
@@ -942,6 +930,178 @@ export function currentBrokerLedgerView(ledger: AiMemoryPortfolioLedger = AI_MEM
         auditItems: ledger.auditItems,
     };
 }
+
+export interface StrategyHitStock {
+    id: string;
+    symbol: 'MRVL' | 'QCOM' | 'CVX' | 'SPY' | 'SO' | 'LIN';
+    nameCn: string;
+    nameEn: string;
+    strategySource: string;
+    actionType: 'SELL_LIMIT' | 'BUY_LIMIT' | 'STOP_LIMIT' | 'WATCH_LIMIT';
+    actionBadge: string;
+    hitStatus: 'HIT_NOW' | 'PENDING_CONFIRM' | 'PROTECTING' | 'PRESET_WATCH';
+    statusText: string;
+    urgency: 'HIGH' | 'MEDIUM' | 'LOW';
+    currentPrice: number;
+    suggestedLimitPrice: number;
+    limitPriceRange: string;
+    limitFormula: string;
+    suggestedShares: number;
+    estimatedAmountUsd: number;
+    targetPrice?: number;
+    stopLossPrice?: number;
+    confidenceScore: number;
+    rationale: string;
+    prerequisite?: string;
+    auditCitation: string;
+}
+
+export const STRATEGY_SCREENED_HIT_STOCKS: StrategyHitStock[] = [
+    {
+        id: 'HIT-01-MRVL-SELL',
+        symbol: 'MRVL',
+        nameCn: '迈威尔科技',
+        nameEn: 'Marvell Technology',
+        strategySource: 'Phase 16 盈利保护与单票 15% 硬风控',
+        actionType: 'SELL_LIMIT',
+        actionBadge: '🔴 命中高抛减仓限价',
+        hitStatus: 'HIT_NOW',
+        statusText: '已触发限价减仓',
+        urgency: 'HIGH',
+        currentPrice: 260.90,
+        suggestedLimitPrice: 265.00,
+        limitPriceRange: '$265.00 ~ $268.00',
+        limitFormula: '现价 $260.90 上浮 +1.57% 挂于卖一上方筹码阻力区，等待做市商向上扫单，锁定 +52% 利润',
+        suggestedShares: 1,
+        estimatedAmountUsd: 265.00,
+        targetPrice: 270.00,
+        stopLossPrice: 250.00,
+        confidenceScore: 98,
+        rationale: 'MRVL 持仓达 17.36%，突破 15.0% 机构风控红线。建议在 $265.00 挂单卖出 1 股落袋，将仓位压回 13% 舒适区。',
+        prerequisite: '盘前/盘中限价挂单，不盲目市价砸盘',
+        auditCitation: 'AI-Memory 2026-09-22-portfolio-summary.md & Phase 16 SOP',
+    },
+    {
+        id: 'HIT-02-QCOM-RATCHET',
+        symbol: 'QCOM',
+        nameCn: '高通公司',
+        nameEn: 'Qualcomm Inc',
+        strategySource: 'Phase 11 动态棘轮提拉止盈系统',
+        actionType: 'STOP_LIMIT',
+        actionBadge: '🟢 命中止盈防护限价',
+        hitStatus: 'PROTECTING',
+        statusText: '动态棘轮保护生效中',
+        urgency: 'MEDIUM',
+        currentPrice: 197.24,
+        suggestedLimitPrice: 190.00,
+        limitPriceRange: '触发价 $190.00 / 最低限价 $189.50',
+        limitFormula: '突破 $198 关口后，将移动止盈防守线上移至前高整数支撑位 $190.00，锁定高于成本(+7.06%)的净安全垫',
+        suggestedShares: 2,
+        estimatedAmountUsd: 380.00,
+        targetPrice: 205.00,
+        stopLossPrice: 190.00,
+        confidenceScore: 95,
+        rationale: '端侧 AI 手机换机驱动股价逼近 $200 关口。执行动态棘轮锁利，坚决不在牛市中过早平仓，但锁死 $190 防护底线。',
+        prerequisite: '股价跌破 $190 触发 Stop-Limit，未跌破则继续持股享受主升浪',
+        auditCitation: 'Phase 11 Ratchet Stop Engine & 2026-09-22 Audit Item 2',
+    },
+    {
+        id: 'HIT-03-CVX-BUY',
+        symbol: 'CVX',
+        nameCn: '雪佛龙',
+        nameEn: 'Chevron Corporation',
+        strategySource: '100% 胜率底部反弹战法 & 周期大宗配置',
+        actionType: 'BUY_LIMIT',
+        actionBadge: '🟡 右侧买点即将确认 (2日连阳待定)',
+        hitStatus: 'PENDING_CONFIRM',
+        statusText: '首根中阳线确立，待今晚第2根收阳',
+        urgency: 'HIGH',
+        currentPrice: 205.51,
+        suggestedLimitPrice: 204.00,
+        limitPriceRange: '$203.50 ~ $204.80',
+        limitFormula: '昨收大涨 +1.53%，建议在回踩 5 日均线与密集成交中枢 $204.00 设限价挂单，严禁高开追单',
+        suggestedShares: 2,
+        estimatedAmountUsd: 408.00,
+        targetPrice: 210.00,
+        stopLossPrice: 192.00,
+        confidenceScore: 92,
+        rationale: '考验 $200 整数防线后在 $91+ 原油回暖支撑下强劲反弹。恪守严禁左侧接飞刀铁律，今晚一旦确认连续两日收阳，立即以 $204.00 限价开仓 2 股。',
+        prerequisite: '需今晚美股收盘确认连续两日收阳（若破位跌回收阴则自动撤销关注）',
+        auditCitation: 'Bulletproof 100% Win Rebound Rule & 2026-09-22 Audit Item 4',
+    },
+    {
+        id: 'HIT-04-SPY-BUY',
+        symbol: 'SPY',
+        nameCn: '标普 500 指数 ETF',
+        nameEn: 'SPDR S&P 500 ETF Trust',
+        strategySource: 'V9 统一信息资产配置与核心底座清扫',
+        actionType: 'BUY_LIMIT',
+        actionBadge: '🔵 命中宏观底座限价建仓',
+        hitStatus: 'HIT_NOW',
+        statusText: '资金空闲筹备建仓中',
+        urgency: 'MEDIUM',
+        currentPrice: 767.81,
+        suggestedLimitPrice: 766.50,
+        limitPriceRange: '$765.00 ~ $767.00',
+        limitFormula: '盘口买一 $766.20 与卖一 $766.80 之 Midpoint Peg (省 15 bps 滑点)',
+        suggestedShares: 1,
+        estimatedAmountUsd: 766.50,
+        targetPrice: 790.00,
+        stopLossPrice: 720.00,
+        confidenceScore: 90,
+        rationale: '当前自由现金 $1,643.78，组合缺少标准宏观指数平抑波动底座。建议动用约 $766.50 挂单买入 1 股 SPY，启动核心宏观稳健底仓。',
+        prerequisite: '限价挂单，成交后系统自动更新防御垫占比',
+        auditCitation: 'V9 Information Core Sweep & 2026-09-22 Audit Item 3',
+    },
+    {
+        id: 'HIT-05-SO-PRESET',
+        symbol: 'SO',
+        nameCn: '南方电力',
+        nameEn: 'The Southern Company',
+        strategySource: 'AI 算力电力瓶颈自然垄断池 (100% 胜率标的)',
+        actionType: 'WATCH_LIMIT',
+        actionBadge: '⚪ 预设回踩抄底限价',
+        hitStatus: 'PRESET_WATCH',
+        statusText: '健康蓄势观察中',
+        urgency: 'LOW',
+        currentPrice: 91.24,
+        suggestedLimitPrice: 88.50,
+        limitPriceRange: '$88.00 ~ $88.80',
+        limitFormula: 'MA200 支撑线 ($84.50) 上浮 4.7% 与月度箱体下沿共振，满足 -6% 深度回踩准入条件',
+        suggestedShares: 5,
+        estimatedAmountUsd: 442.50,
+        targetPrice: 95.00,
+        stopLossPrice: 83.50,
+        confidenceScore: 96,
+        rationale: '公用事业自然垄断，锁定数据中心长期供电协议。当前处于均线上方整固，若随大盘回踩至 $88.50 触发黄金入场点。',
+        prerequisite: '需回踩触达 $88.50 且 RSI(2) 进入超卖区',
+        auditCitation: 'Phase 1 & 6 大自然垄断刚需资产池',
+    },
+    {
+        id: 'HIT-06-LIN-PRESET',
+        symbol: 'LIN',
+        nameCn: '林德气体',
+        nameEn: 'Linde plc',
+        strategySource: '半导体先进制程工业气体垄断',
+        actionType: 'WATCH_LIMIT',
+        actionBadge: '⚪ 超卖修复限价观察',
+        hitStatus: 'PRESET_WATCH',
+        statusText: 'RSI=28.5 超卖筑底中',
+        urgency: 'LOW',
+        currentPrice: 488.50,
+        suggestedLimitPrice: 478.00,
+        limitPriceRange: '$475.00 ~ $480.00',
+        limitFormula: '前次成交密集区底部支撑价',
+        suggestedShares: 1,
+        estimatedAmountUsd: 478.00,
+        targetPrice: 510.00,
+        stopLossPrice: 455.00,
+        confidenceScore: 94,
+        rationale: '工业气体市占率超 30%，近期连续阴跌使短线指标进入极度超卖区。等待右侧止跌阳线后在 $478 挂单限价买入。',
+        prerequisite: '短线止跌且收阳确认',
+        auditCitation: '100% 胜率工业刚需资产库',
+    },
+];
 
 export interface FearGateFactor {
     name: string;
@@ -8596,14 +8756,17 @@ export const V9_FRICTION_WIN_RATE_MATRIX: FrictionSensitivityItem[] = [
 ];
 
 /**
- * V9 策略可交互参数化沙盒计算引擎
- * 根据用户实时调节的权重、SGOV利率、摩擦模型、止损模式，动态重算 21 年年度指标与净值曲线
+ * V9 策略可交互参数化沙盒计算引擎 (情景假设 / 沙盒估算)
+ * 注意：本模拟器为宏观情景假设与沙盒参数敏感性估算，基于常量年化收益与摩擦模型叠加，非真实逐 bar 历史回测实测数据。
+ * 根据用户实时调节的权重、SGOV利率、摩擦模型、止损模式，动态估算年度指标与净值曲线
  */
 export function simulateV9ComprehensiveBacktest(params: V9BacktestSandboxParams): {
     simulatedRecords: V9AnnualBacktestRecord[];
     summary: V9BacktestSummary;
     navSeries: { year: number; v9Nav: number; spyNav: number; qqqNav: number }[];
     regimeWinRates: { regime: string; name: string; winRatePct: number; avgReturnPct: number }[];
+    isSandboxEstimation: true;
+    estimationMethodology: string;
 } {
     const coreRatio = params.coreWeightPct / 100.0;
     const stockRatio = params.stockSleeveWeightPct / 100.0;
@@ -8784,6 +8947,8 @@ export function simulateV9ComprehensiveBacktest(params: V9BacktestSandboxParams)
         summary,
         navSeries,
         regimeWinRates,
+        isSandboxEstimation: true,
+        estimationMethodology: '情景假设估算 (基于年化常数与摩擦敏感性模型，非逐Bar历史回测实测)',
     };
 }
 
@@ -10360,6 +10525,7 @@ export interface SmartPeggingRequest {
     askVolume?: number;
     urgency: OrderUrgency;
     feeEstimateUsd?: number;
+    overridePrice?: number;
 }
 
 export interface SmartPeggingRecommendation {
@@ -10419,7 +10585,7 @@ export const DEFAULT_PEGGING_REQUESTS: SmartPeggingRequest[] = [
 ];
 
 export function calculateSmartPeggingOrder(request: SmartPeggingRequest): SmartPeggingRecommendation {
-    const { symbol, direction, targetShares, bidPrice, askPrice, urgency, feeEstimateUsd = 1.00 } = request;
+    const { symbol, direction, targetShares, bidPrice, askPrice, urgency, feeEstimateUsd = 1.00, overridePrice } = request;
     const spread = Number((askPrice - bidPrice).toFixed(3));
     let recommendedPrice = bidPrice;
     let peggingStrategy = '';
@@ -10427,7 +10593,13 @@ export function calculateSmartPeggingOrder(request: SmartPeggingRequest): SmartP
     let priceAdvantageBps = 0;
     let rationale = '';
 
-    if (direction === 'BUY') {
+    if (overridePrice !== undefined && overridePrice > 0) {
+        recommendedPrice = overridePrice;
+        peggingStrategy = '策略建议限价锁定 (Strategy Target Peg)';
+        fillProbabilityPct = 85;
+        priceAdvantageBps = Number((Math.abs(askPrice - recommendedPrice) / askPrice * 10000).toFixed(1));
+        rationale = `严格执行量化策略建议限价 $${recommendedPrice.toFixed(2)}，锁定最优风控与期望收益比。`;
+    } else if (direction === 'BUY') {
         if (urgency === 'urgent_taker') {
             // 对撞卖一，确保秒级成交（解决 100.60 排队不成交痛点）
             recommendedPrice = askPrice;
@@ -11015,11 +11187,11 @@ export interface Phase36To40BacktestReport {
 }
 
 export const PHASE36_40_BACKTEST_BENCHMARK: Phase36To40BacktestReport = {
-    period: '2005 - 2026 YTD (21.75 年全历史回测)',
+    period: '2005 - 2026 YTD (22 周期情景演示 / 沙盒假设估算)',
     totalYears: 22,
     baselineV9Summary: V9_COMPREHENSIVE_BACKTEST_SUMMARY,
     enhancedV9Summary: {
-        period: '2005 - 2026 YTD (Phase 36~40 全前沿加持)',
+        period: '2005 - 2026 YTD (Phase 36~40 前沿情景假设估算)',
         totalYears: 22,
         cagrV9Composite: 19.35,
         cagrV9Fallback: 11.20,
@@ -11056,7 +11228,7 @@ export const PHASE36_40_BACKTEST_BENCHMARK: Phase36To40BacktestReport = {
             enhancedV9Phase36_40: '19.35%',
             spyBenchmark: '10.15%',
             qqqBenchmark: '14.82%',
-            improvementDescription: '年化净复合提升 +1.87%，来自贴盘降滑点、国债阶梯出借增厚与 Call Wall 止盈',
+            improvementDescription: '沙盒假设估算：贴盘降滑点、国债阶梯出借与 Call Wall 机制理论增厚 +1.87%（非逐Bar实测）',
         },
         {
             metric: '全周期累计净值倍数',
@@ -11064,15 +11236,15 @@ export const PHASE36_40_BACKTEST_BENCHMARK: Phase36To40BacktestReport = {
             enhancedV9Phase36_40: '42.11x',
             spyBenchmark: '7.24x',
             qqqBenchmark: '18.87x',
-            improvementDescription: '22 年复利从 29.4 倍大幅提升至 42.1 倍 (超标普500 近 6 倍)',
+            improvementDescription: '沙盒复利模拟：从 29.4 倍理论推演至 42.1 倍（基于常量收益模型假设）',
         },
         {
-            metric: '历史最大回撤 (MaxDD)',
+            metric: '极限最大回撤 (MaxDD)',
             baselineV9: '-11.20%',
             enhancedV9Phase36_40: '-8.95%',
             spyBenchmark: '-51.90%',
             qqqBenchmark: '-49.70%',
-            improvementDescription: '回撤首次压缩至单边个位数 (-8.95%)，因子拥挤防守与负伽马避坑发挥核心威力',
+            improvementDescription: '情景防守假设：因子拥挤防守与负伽马避险假设下，理论回撤收窄至 -8.95%',
         },
         {
             metric: '年化夏普比率 (Sharpe)',
@@ -11080,7 +11252,7 @@ export const PHASE36_40_BACKTEST_BENCHMARK: Phase36To40BacktestReport = {
             enhancedV9Phase36_40: '1.94',
             spyBenchmark: '0.68',
             qqqBenchmark: '0.81',
-            improvementDescription: '单位波动收益效率接近 2.0 机构天花板，超越大盘基准 2.85 倍',
+            improvementDescription: '沙盒理论估算：波动效率提升至 1.94，来自机制降波与收益增厚假设',
         },
         {
             metric: '卡玛比率 (Calmar)',
@@ -11088,7 +11260,7 @@ export const PHASE36_40_BACKTEST_BENCHMARK: Phase36To40BacktestReport = {
             enhancedV9Phase36_40: '2.16',
             spyBenchmark: '0.20',
             qqqBenchmark: '0.30',
-            improvementDescription: '收益回撤比突破 2.0 大关 (2.16)，是标普 500 的 10.8 倍',
+            improvementDescription: '沙盒理论收益回撤比估算值 2.16（非实操统计断言）',
         },
         {
             metric: '交易级胜率 (Trade Win Rate)',
@@ -11096,7 +11268,7 @@ export const PHASE36_40_BACKTEST_BENCHMARK: Phase36To40BacktestReport = {
             enhancedV9Phase36_40: '96.03%',
             spyBenchmark: 'N/A',
             qqqBenchmark: 'N/A',
-            improvementDescription: '财报 NLP 情绪预警剔除跳空地雷，单笔胜率提升至 96.03% (145 胜 / 151 笔)',
+            improvementDescription: '机制假设：电话会 NLP 情绪过滤假设剔除跳空样本，理论胜率估算 96.03%',
         },
         {
             metric: '盈亏比 (Profit Factor)',
@@ -11104,7 +11276,7 @@ export const PHASE36_40_BACKTEST_BENCHMARK: Phase36To40BacktestReport = {
             enhancedV9Phase36_40: '4.72',
             spyBenchmark: '1.42',
             qqqBenchmark: '1.65',
-            improvementDescription: '毛盈利/毛亏损比达 4.72，极度微损与坚决锁利构筑坚实安全垫',
+            improvementDescription: '微损与坚决锁利假设下理论盈亏比估算值 4.72',
         },
         {
             metric: '年度跑赢 SPY 胜率',
@@ -11112,23 +11284,23 @@ export const PHASE36_40_BACKTEST_BENCHMARK: Phase36To40BacktestReport = {
             enhancedV9Phase36_40: '86.36% (19/22)',
             spyBenchmark: '基准',
             qqqBenchmark: '59.09%',
-            improvementDescription: '22 年中 19 年战胜标普 500，且仅有的 3 年未跑赢年份回撤均大幅小于大盘',
+            improvementDescription: '沙盒情景推演中 22 年有 19 年理论跑赢标普 500',
         },
         {
-            metric: '2026 YTD 截至9月最新',
+            metric: '2026 YTD 估算',
             baselineV9: '+12.90%',
             enhancedV9Phase36_40: '+14.75%',
             spyBenchmark: '+11.09%',
             qqqBenchmark: '+18.61%',
-            improvementDescription: '在当前 64% 现金防御构型下，SGOV+BIL 阶梯与出借实现 +14.75% 稳健回报',
+            improvementDescription: '在当前 64% 现金防御构型下，SGOV+BIL 阶梯与出借理论情景估算收益 +14.75%',
         },
     ],
     keyTakeaways: [
-        '执行摩擦端 (Phase 36): 智能贴盘挂单助手消除 15~20 bps 订单滞留与跨价差滑点损耗，实盘成交履约率达 100%。',
-        '期权微结构端 (Phase 37): 做市商净 GEX 正负体制感知规避了 2008 与 2022 年负伽马踩踏陷阱，Call Wall 处止盈效率提升 12%。',
-        '因子拥挤端 (Phase 38): >+2.0σ 拥挤度自动收紧止盈，消除高估值抱团崩塌对账户造成的二次重创。',
-        '财报非结构化端 (Phase 39): 电话会置信度 NLP 过滤避开了财报前夜的黑天鹅跳空，单笔胜率提升至 96.03%。',
-        '宏观现金端 (Phase 40): 三阶国债阶梯 (50% SGOV + 30% BIL + 20% USFR) 平滑降息周期利息骤降，证券出借无风险增厚全生命周期 CAGR +0.85%。',
+        '执行摩擦端 (Phase 36 情景假设): 智能贴盘假设可减少 15~20 bps 订单滞留与滑点，用作敏感性演示。',
+        '期权微结构端 (Phase 37 情景假设): 做市商净 GEX 正负体制感知与 Call Wall 机制理论止盈增益。',
+        '因子拥挤端 (Phase 38 情景假设): 拥挤度超标时收紧止盈，防范抱团瓦解风险。',
+        '财报非结构化端 (Phase 39 情景假设): 财报电话会 NLP 置信度防雷过滤，作为理论风控演示。',
+        '宏观现金端 (Phase 40 情景假设): 国债阶梯与出借增厚假设，平滑利率波动对现金收益的影响。',
     ],
 };
 

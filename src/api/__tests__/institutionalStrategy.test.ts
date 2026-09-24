@@ -286,36 +286,80 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
 
     it('8b. should verify AI_MEMORY_PORTFOLIO_LEDGER as of 2026-09-22 with SGOV 21 shares and individual holdings', () => {
         expect(AI_MEMORY_PORTFOLIO_LEDGER.asOfDate).toBe('2026-09-22');
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.sourceFile).toBe('AI-Memory/domains/quant-strategy/memory/portfolio/2026-09-22-portfolio-summary.md');
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.totalNav).toBe(6026.83);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.dayPnlUsd).toBeNull();
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.dayPnlPct).toBeNull();
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.equityTotal).toBe(2270.34);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.sgovReserve).toBe(2112.71);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.totalDefenseCash).toBe(3756.49);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.workingCash).toBe(1643.78);
         expect(AI_MEMORY_PORTFOLIO_LEDGER.holdings.length).toBe(5);
 
         const sgov = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'SGOV');
         expect(sgov).toBeDefined();
         expect(sgov?.shares).toBe(21);
         expect(sgov?.assetClass).toBe('Cash ETF');
+        expect(sgov?.currentPrice).toBe(100.605);
+        expect(sgov?.marketValue).toBe(2112.71);
+        expect(sgov?.navWeightPct).toBe(35.05);
 
         const mrvl = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'MRVL');
         expect(mrvl?.shares).toBe(4);
+        expect(mrvl?.currentPrice).toBe(263.60);
+        expect(mrvl?.marketValue).toBe(1054.40);
+        expect(mrvl?.navWeightPct).toBe(17.50);
 
         const mxl = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'MXL');
         expect(mxl?.shares).toBe(6);
+        expect(mxl?.currentPrice).toBe(85.05);
+        expect(mxl?.marketValue).toBe(510.30);
+        expect(mxl?.navWeightPct).toBe(8.47);
 
         const qcom = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'QCOM');
         expect(qcom?.shares).toBe(2);
+        expect(qcom?.currentPrice).toBe(194.44);
+        expect(qcom?.marketValue).toBe(388.88);
+        expect(qcom?.navWeightPct).toBe(6.45);
 
         const glw = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'GLW');
         expect(glw?.shares).toBe(2);
+        expect(glw?.currentPrice).toBe(158.38);
+        expect(glw?.marketValue).toBe(316.76);
+        expect(glw?.navWeightPct).toBe(5.26);
 
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.workingCash).toBe(1643.78);
+        // Verify realTrade reconciliation: only authentic 9/22 SGOV buy is present, unverified 8/15 trade removed
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.realTrades.length).toBe(1);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.realTrades.some(t => t.tradeId === 'REAL-20260815-PORTFOLIO-REBALANCE')).toBe(false);
+        const sgovTrade = AI_MEMORY_PORTFOLIO_LEDGER.realTrades.find(t => t.tradeId === 'REAL-20260922-SGOV-BUY');
+        expect(sgovTrade).toBeDefined();
+        if (sgovTrade) {
+            expect(sgovTrade.grossAmount).toBe(2112.71);
+            expect(sgovTrade.feeUsd).toBeNull();
+            expect(sgovTrade.feeStatus).toBe('unverified_pending_settlement');
+            expect(sgovTrade.preTradeCash - sgovTrade.grossAmount).toBeCloseTo(sgovTrade.postTradeCash, 2);
+        }
+
+        // Verify milestones are cleanly reconciled to 2026-09-22 without 9/23 forward contamination
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.navMilestones.some(m => m.date === '2026-09-23')).toBe(false);
+        const m922 = AI_MEMORY_PORTFOLIO_LEDGER.navMilestones.find(m => m.date === '2026-09-22');
+        expect(m922?.nav).toBe(6026.83);
     });
 
     it('8c. should derive currentBrokerLedgerView from 09-22 ledger with sleeve classification', () => {
         const view = currentBrokerLedgerView();
         expect(view.asOfDate).toBe('2026-09-22');
+        expect(view.totalNav).toBe(6026.83);
+        expect(view.dayPnlUsd).toBeNull();
+        expect(view.dayPnlPct).toBeNull();
+        expect(view.equityTotal).toBe(2270.34);
+        expect(view.defenseCash).toBe(3756.49);
         expect(view.workingCash).toBe(1643.78);
+        expect(view.sgovReserve).toBe(2112.71);
         expect(view.holdings.find((h) => h.symbol === 'SGOV')?.shares).toBe(21);
         expect(view.stockSleeveBreach).toBe(true);
         expect(view.singleNameBreach).toBe(true);
-        expect(view.maxNamePct).toBeGreaterThan(15);
+        expect(view.maxNamePct).toBe(17.50);
         expect(view.defensePct + view.equityPct).toBeCloseTo(100.0, 0);
         expect(view.canonicalStatus).toContain('SGOV 计入现金袖');
         expect(view.holdings.every((h) => !('ma20' in h))).toBe(true);
@@ -2738,6 +2782,8 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         expect(baseResult.summary.cagrV9Composite).toBeGreaterThan(15.0);
         expect(baseResult.summary.annualWinRateVsSpy).toBeGreaterThan(75.0);
         expect(baseResult.regimeWinRates.length).toBe(4);
+        expect(baseResult.isSandboxEstimation).toBe(true);
+        expect(baseResult.estimationMethodology).toContain('情景假设估算');
 
         // 2. 极端恶劣配置 (无门控、无企稳盲目抄底、A股微结构摩擦)
         const stressResult = simulateV9ComprehensiveBacktest({
@@ -3306,12 +3352,18 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
 
         // 4. 胜率进一步跃升
         expect(enhancedResult.summary.tradeLevelWinRate).toBeGreaterThanOrEqual(95.0);
+
+        // 5. 校验沙盒估算与情景假设口径
+        expect(enhancedResult.isSandboxEstimation).toBe(true);
+        expect(enhancedResult.estimationMethodology).toContain('情景假设估算');
     });
 
     it('Test 96: Phase 36~40 全周期量化回测基准表与消融实证完整性', () => {
         const benchmark = PHASE36_40_BACKTEST_BENCHMARK;
         expect(benchmark.totalYears).toBe(22);
         expect(benchmark.comparisonTable.length).toBe(9);
+        expect(benchmark.period).toContain('情景演示 / 沙盒假设估算');
+        expect(benchmark.enhancedV9Summary.period).toContain('前沿情景假设估算');
 
         // 验证消融实验 ABL-05 至 ABL-09 成功注入
         const abl5 = V9_ABLATION_STUDY_DATA.find(a => a.experimentId === 'ABL-05-SMART-PEGGING');

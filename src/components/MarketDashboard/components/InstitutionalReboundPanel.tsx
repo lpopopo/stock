@@ -1181,9 +1181,15 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                             <div className="shadow-nav-stat">
                                 <span className="lbl">总资产规模 (NAV)</span>
                                 <span className="val font-mono text-gold">${ledgerView.totalNav.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                                <span className={`pnl font-mono font-bold ${ledgerView.dayPnlPct >= 0 ? 'text-green' : 'text-red'}`}>
-                                    切片日损益 {ledgerView.dayPnlUsd >= 0 ? '+' : ''}${ledgerView.dayPnlUsd.toFixed(2)} ({ledgerView.dayPnlPct >= 0 ? '+' : ''}{ledgerView.dayPnlPct.toFixed(2)}%)
-                                </span>
+                                {ledgerView.dayPnlUsd !== null && ledgerView.dayPnlPct !== null ? (
+                                    <span className={`pnl font-mono font-bold ${ledgerView.dayPnlPct >= 0 ? 'text-green' : 'text-red'}`}>
+                                        切片日损益 {ledgerView.dayPnlUsd >= 0 ? '+' : ''}${ledgerView.dayPnlUsd.toFixed(2)} ({ledgerView.dayPnlPct >= 0 ? '+' : ''}{ledgerView.dayPnlPct.toFixed(2)}%)
+                                    </span>
+                                ) : (
+                                    <span className="pnl font-mono text-muted" style={{ fontSize: '12px', color: '#94a3b8' }}>
+                                        切片日损益 未核实 (9/22 快照无官方日损益)
+                                    </span>
+                                )}
                             </div>
                         </div>
 
@@ -6630,14 +6636,26 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     {/* Card 1.5: Phase 36~40 沙盒常量对照表 (SIMULATED) */}
                     <div className="gates-eval-card" style={{ marginBottom: '18px', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
                         <div className="gates-card-header" style={{ background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.1))' }}>
-                            <span className="gates-card-icon">🏆</span>
-                            <span className="gates-card-title">Phase 36~40 策略优化前后全周期 (2005 - 2026 YTD) 沙盒常量对照表 (SIMULATED)</span>
+                            <span className="gates-card-icon">🧪</span>
+                            <span className="gates-card-title">Phase 36~40 前沿机制情景演示与沙盒假设估算 (非逐Bar历史实测)</span>
                             <span className="gates-badge badge-pass" style={{ background: '#10b981', color: '#000', fontWeight: 'bold' }}>
-                                沙盒常量对照 / SIMULATED
+                                情景演示 / 沙盒假设估算
                             </span>
                         </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '10px 0 14px' }}>
-                            全面将 Phase 36（智能挂单贴盘）、Phase 37（做市商净 GEX 正负体制与 Call Wall 止盈）、Phase 38（因子拥挤度 Z-Score 预警与防踩踏）、Phase 39（财报逐字稿 NLP 置信度防雷）与 Phase 40（国债阶梯与蓝筹融券收益增厚）五大机构前沿模块并入全周期量化引擎。
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '10px 0 10px' }}>
+                            全面将 Phase 36（智能挂单贴盘）、Phase 37（做市商净 GEX 正负体制与 Call Wall 止盈）、Phase 38（因子拥挤度 Z-Score 预警与防踩踏）、Phase 39（财报逐字稿 NLP 置信度防雷）与 Phase 40（国债阶梯与蓝筹融券收益增厚）五大机构前沿机制纳入情景演示引擎。
+                        </div>
+                        <div style={{
+                            padding: '8px 12px',
+                            background: 'rgba(234, 179, 8, 0.1)',
+                            border: '1px solid rgba(234, 179, 8, 0.3)',
+                            borderRadius: '6px',
+                            color: '#facc15',
+                            fontSize: '11px',
+                            lineHeight: 1.5,
+                            marginBottom: '14px',
+                        }}>
+                            ⚠️ <strong>口径说明：</strong>本卡片指标为情景假设与沙盒理论估算（基于年化常量与摩擦假设敏感性模拟），非逐 bar 真实历史回测实测数据，不代表历史实测或策略已优化成功，仅供机制研究与演示参考。
                         </div>
 
                         {/* 优化核心突破指标横幅 */}
@@ -6648,46 +6666,46 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                             marginBottom: '16px',
                         }}>
                             <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>年化复合收益 (CAGR)</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>年化复合收益 (CAGR) (沙盒估算)</div>
                                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#10b981', marginTop: '2px' }}>
                                     17.48% ➔ 19.35%
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#10b981', marginTop: '2px' }}>净增厚 +1.87% (超标普 +9.20%)</div>
+                                <div style={{ fontSize: '11px', color: '#10b981', marginTop: '2px' }}>净增厚 +1.87% (理论敏感性估算)</div>
                             </div>
                             <div style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.25)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>全周期资产倍数</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>全周期资产倍数 (沙盒估算)</div>
                                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6', marginTop: '2px' }}>
                                     29.43x ➔ 42.11x
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#3b82f6', marginTop: '2px' }}>22 年净增 +12.68 倍本金</div>
+                                <div style={{ fontSize: '11px', color: '#3b82f6', marginTop: '2px' }}>22 年复利理论推演值</div>
                             </div>
                             <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>历史极限最大回撤</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>极限最大回撤 (情景假设)</div>
                                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#10b981', marginTop: '2px' }}>
                                     -11.20% ➔ -8.95%
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#10b981', marginTop: '2px' }}>首次压制在个位数 (-8.95%)</div>
+                                <div style={{ fontSize: '11px', color: '#10b981', marginTop: '2px' }}>前沿防守假设下理论回撤</div>
                             </div>
                             <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>夏普比率 (Sharpe)</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>夏普比率 (Sharpe) (沙盒估算)</div>
                                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f59e0b', marginTop: '2px' }}>
                                     1.62 ➔ 1.94
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#f59e0b', marginTop: '2px' }}>收益波动效率超大盘 2.85 倍</div>
+                                <div style={{ fontSize: '11px', color: '#f59e0b', marginTop: '2px' }}>收益波动效率理论估算</div>
                             </div>
                             <div style={{ background: 'rgba(168, 85, 247, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(168, 85, 247, 0.25)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>卡玛比率 (Calmar)</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>卡玛比率 (Calmar) (沙盒估算)</div>
                                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#a855f7', marginTop: '2px' }}>
                                     1.56 ➔ 2.16
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#a855f7', marginTop: '2px' }}>突破 2.0 大关 (标普的 10.8 倍)</div>
+                                <div style={{ fontSize: '11px', color: '#a855f7', marginTop: '2px' }}>收益回撤比理论估算</div>
                             </div>
                             <div style={{ background: 'rgba(20, 184, 166, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(20, 184, 166, 0.25)' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>个股单笔交易胜率</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>个股单笔交易胜率 (情景假设)</div>
                                 <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#14b8a6', marginTop: '2px' }}>
                                     94.70% ➔ 96.03%
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#14b8a6', marginTop: '2px' }}>145 胜 / 151 笔 (财报跳空回避)</div>
+                                <div style={{ fontSize: '11px', color: '#14b8a6', marginTop: '2px' }}>NLP防雷假设下样本推演</div>
                             </div>
                         </div>
 
@@ -6698,10 +6716,10 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     <tr style={{ background: 'rgba(255,255,255,0.04)', textAlign: 'left' }}>
                                         <th style={{ padding: '10px 8px' }}>量化绩效核心维度</th>
                                         <th style={{ padding: '10px 8px' }}>基准 V9 (2005-2026)</th>
-                                        <th style={{ padding: '10px 8px', color: '#10b981', fontWeight: 'bold' }}>Phase 36~40 全前沿增强版</th>
+                                        <th style={{ padding: '10px 8px', color: '#10b981', fontWeight: 'bold' }}>Phase 36~40 全前沿增强版 (沙盒估算)</th>
                                         <th style={{ padding: '10px 8px' }}>标普500 (SPY)</th>
                                         <th style={{ padding: '10px 8px' }}>纳指100 (QQQ)</th>
-                                        <th style={{ padding: '10px 8px' }}>底层归因与量化实证机制</th>
+                                        <th style={{ padding: '10px 8px' }}>情景假设归因与理论机制说明</th>
                                     </tr>
                                 </thead>
                                 <tbody>
