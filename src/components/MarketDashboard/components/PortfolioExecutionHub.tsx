@@ -4,6 +4,7 @@ import {
     AI_MEMORY_PORTFOLIO_LEDGER,
     STRATEGY_SCREENED_HIT_STOCKS,
     calculateSmartPeggingOrder,
+    streamAiStrategyAnalysis,
     type AiMemoryHolding,
     type AiMemoryRealTrade,
     type AiMemoryNavMilestone,
@@ -33,6 +34,43 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
     const [orderShares, setOrderShares] = useState(1);
     const [customLimitPrice, setCustomLimitPrice] = useState<number | null>(265.00);
     const [copied, setCopied] = useState(false);
+
+    // Antigravity 实时多因子策略诊断状态
+    const [analyzingStock, setAnalyzingStock] = useState<StrategyHitStock | null>(null);
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+    const [aiAnalysisContent, setAiAnalysisContent] = useState('');
+    const [isAiStreaming, setIsAiStreaming] = useState(false);
+    const [aiCopied, setAiCopied] = useState(false);
+
+    const handleTriggerAiAnalysis = (stock: StrategyHitStock) => {
+        setAnalyzingStock(stock);
+        setIsAiModalOpen(true);
+        setAiAnalysisContent('');
+        setIsAiStreaming(true);
+        setAiCopied(false);
+
+        streamAiStrategyAnalysis(
+            stock,
+            (chunk) => {
+                setAiAnalysisContent((prev) => prev + chunk);
+            },
+            () => {
+                setIsAiStreaming(false);
+            },
+            (err) => {
+                setIsAiStreaming(false);
+                setAiAnalysisContent((prev) => prev + `\n\n> ⚠️ [诊断提示] ${err}`);
+            }
+        );
+    };
+
+    const handleCopyAiAnalysis = () => {
+        if (!aiAnalysisContent) return;
+        navigator.clipboard.writeText(aiAnalysisContent).then(() => {
+            setAiCopied(true);
+            setTimeout(() => setAiCopied(false), 2000);
+        });
+    };
 
     // 实时盘口参考价 (2026-09-23 真实收盘基准)
     const quoteMap: Record<string, { bid: number; ask: number }> = {
@@ -557,30 +595,51 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                             </div>
                                         </div>
 
-                                        <button
-                                            onClick={() => handlePresetOrder(
-                                                hit.symbol as any,
-                                                hit.actionType === 'SELL_LIMIT' ? 'SELL' : 'BUY',
-                                                hit.suggestedShares,
-                                                hit.suggestedLimitPrice
-                                            )}
-                                            style={{
-                                                padding: '7px 12px',
-                                                background: isSell ? 'rgba(239, 68, 68, 0.25)' : isStop ? 'rgba(16, 185, 129, 0.25)' : 'rgba(59, 130, 246, 0.25)',
-                                                border: `1px solid ${themeColor}`,
-                                                color: '#fff',
-                                                borderRadius: '6px',
-                                                fontSize: '12px',
-                                                cursor: 'pointer',
-                                                fontWeight: 'bold',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '6px',
-                                            }}
-                                        >
-                                            ⚡ 装入挂单小票 (锁定限价 ${hit.suggestedLimitPrice.toFixed(2)})
-                                        </button>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '8px' }}>
+                                            <button
+                                                onClick={() => handleTriggerAiAnalysis(hit)}
+                                                style={{
+                                                    padding: '7px 8px',
+                                                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))',
+                                                    border: '1px solid rgba(168, 85, 247, 0.5)',
+                                                    color: '#e9d5ff',
+                                                    borderRadius: '6px',
+                                                    fontSize: '11px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '4px',
+                                                }}
+                                            >
+                                                🤖 AI 实时诊断
+                                            </button>
+                                            <button
+                                                onClick={() => handlePresetOrder(
+                                                    hit.symbol as any,
+                                                    hit.actionType === 'SELL_LIMIT' ? 'SELL' : 'BUY',
+                                                    hit.suggestedShares,
+                                                    hit.suggestedLimitPrice
+                                                )}
+                                                style={{
+                                                    padding: '7px 10px',
+                                                    background: isSell ? 'rgba(239, 68, 68, 0.25)' : isStop ? 'rgba(16, 185, 129, 0.25)' : 'rgba(59, 130, 246, 0.25)',
+                                                    border: `1px solid ${themeColor}`,
+                                                    color: '#fff',
+                                                    borderRadius: '6px',
+                                                    fontSize: '11px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '4px',
+                                                }}
+                                            >
+                                                ⚡ 挂单小票 (${hit.suggestedLimitPrice.toFixed(2)})
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -716,31 +775,51 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                             </div>
                         </div>
 
-                        {/* 筛选标签切换 */}
-                        <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '8px' }}>
-                            {[
-                                { key: 'ALL', label: `全部标的 (${hitStocks.length})` },
-                                { key: 'HIT_NOW', label: `已触发限价 (${hitStocks.filter(h => h.hitStatus === 'HIT_NOW').length})` },
-                                { key: 'PENDING_CONFIRM', label: `待右侧确认 (${hitStocks.filter(h => h.hitStatus === 'PENDING_CONFIRM').length})` },
-                                { key: 'PROTECTING', label: `移动止盈中 (${hitStocks.filter(h => h.hitStatus === 'PROTECTING').length})` },
-                            ].map((tab) => (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => setHitFilter(tab.key as any)}
-                                    style={{
-                                        padding: '4px 10px',
-                                        fontSize: '12px',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        background: hitFilter === tab.key ? '#2563eb' : 'transparent',
-                                        color: hitFilter === tab.key ? '#fff' : 'var(--text-muted)',
-                                        cursor: 'pointer',
-                                        fontWeight: hitFilter === tab.key ? 'bold' : 'normal',
-                                    }}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
+                        {/* 筛选标签与全局 AI 诊断 */}
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button
+                                onClick={() => handleTriggerAiAnalysis(hitStocks[0])}
+                                style={{
+                                    padding: '5px 12px',
+                                    fontSize: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid rgba(168, 85, 247, 0.6)',
+                                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(99, 102, 241, 0.3))',
+                                    color: '#f3e8ff',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                }}
+                            >
+                                🤖 唤起 Antigravity 策略总检 (MRVL)
+                            </button>
+                            <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '8px' }}>
+                                {[
+                                    { key: 'ALL', label: `全部标的 (${hitStocks.length})` },
+                                    { key: 'HIT_NOW', label: `已触发限价 (${hitStocks.filter(h => h.hitStatus === 'HIT_NOW').length})` },
+                                    { key: 'PENDING_CONFIRM', label: `待右侧确认 (${hitStocks.filter(h => h.hitStatus === 'PENDING_CONFIRM').length})` },
+                                    { key: 'PROTECTING', label: `移动止盈中 (${hitStocks.filter(h => h.hitStatus === 'PROTECTING').length})` },
+                                ].map((tab) => (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setHitFilter(tab.key as any)}
+                                        style={{
+                                            padding: '4px 10px',
+                                            fontSize: '12px',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            background: hitFilter === tab.key ? '#2563eb' : 'transparent',
+                                            color: hitFilter === tab.key ? '#fff' : 'var(--text-muted)',
+                                            cursor: 'pointer',
+                                            fontWeight: hitFilter === tab.key ? 'bold' : 'normal',
+                                        }}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
 
@@ -912,32 +991,52 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                             </div>
                                         </div>
 
-                                        {/* 操作按钮 */}
-                                        <button
-                                            onClick={() => handlePresetOrder(
-                                                hit.symbol as any,
-                                                hit.actionType === 'SELL_LIMIT' ? 'SELL' : 'BUY',
-                                                hit.suggestedShares,
-                                                hit.suggestedLimitPrice
-                                            )}
-                                            style={{
-                                                width: '100%',
-                                                padding: '9px 14px',
-                                                background: isSell ? 'rgba(239, 68, 68, 0.25)' : isStop ? 'rgba(16, 185, 129, 0.25)' : 'rgba(59, 130, 246, 0.25)',
-                                                border: `1px solid ${themeColor}`,
-                                                color: '#fff',
-                                                borderRadius: '6px',
-                                                fontSize: '12px',
-                                                cursor: 'pointer',
-                                                fontWeight: 'bold',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '6px',
-                                            }}
-                                        >
-                                            ⚡ 装入 Phase 36 下单小票 (自动带入建议限价 ${hit.suggestedLimitPrice.toFixed(2)})
-                                        </button>
+                                        {/* 操作按钮组：AI 诊断 + 小票装入 */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '8px' }}>
+                                            <button
+                                                onClick={() => handleTriggerAiAnalysis(hit)}
+                                                style={{
+                                                    padding: '9px 12px',
+                                                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))',
+                                                    border: '1px solid rgba(168, 85, 247, 0.5)',
+                                                    color: '#e9d5ff',
+                                                    borderRadius: '6px',
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px',
+                                                }}
+                                            >
+                                                🤖 AI 深度诊断
+                                            </button>
+                                            <button
+                                                onClick={() => handlePresetOrder(
+                                                    hit.symbol as any,
+                                                    hit.actionType === 'SELL_LIMIT' ? 'SELL' : 'BUY',
+                                                    hit.suggestedShares,
+                                                    hit.suggestedLimitPrice
+                                                )}
+                                                style={{
+                                                    padding: '9px 14px',
+                                                    background: isSell ? 'rgba(239, 68, 68, 0.25)' : isStop ? 'rgba(16, 185, 129, 0.25)' : 'rgba(59, 130, 246, 0.25)',
+                                                    border: `1px solid ${themeColor}`,
+                                                    color: '#fff',
+                                                    borderRadius: '6px',
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px',
+                                                }}
+                                            >
+                                                ⚡ 装入 Phase 36 下单小票 (${hit.suggestedLimitPrice.toFixed(2)})
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -1235,6 +1334,185 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Antigravity 实时多因子策略诊断弹窗 (AI Strategy Audit Modal) */}
+            {isAiModalOpen && analyzingStock && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 99999,
+                    background: 'rgba(0, 0, 0, 0.78)',
+                    backdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px',
+                }}>
+                    <div style={{
+                        background: '#090d16',
+                        border: '1px solid rgba(168, 85, 247, 0.45)',
+                        borderRadius: '16px',
+                        width: '100%',
+                        maxWidth: '860px',
+                        maxHeight: '88vh',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 35px rgba(168, 85, 247, 0.25)',
+                        overflow: 'hidden',
+                        animation: 'fadeIn 0.2s ease-out',
+                    }}>
+                        {/* 弹窗头部 */}
+                        <div style={{
+                            padding: '16px 22px',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: 'linear-gradient(90deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95))',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '10px',
+                                    background: 'linear-gradient(135deg, #a855f7, #6366f1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '20px',
+                                    boxShadow: '0 0 15px rgba(168, 85, 247, 0.5)',
+                                }}>
+                                    🤖
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        Antigravity 实时多因子策略诊断 · {analyzingStock.symbol}
+                                        <span style={{ fontSize: '11px', background: 'rgba(168, 85, 247, 0.2)', color: '#d8b4fe', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
+                                            {analyzingStock.nameCn}
+                                        </span>
+                                        <span style={{ fontSize: '11px', background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
+                                            建议限价 ${analyzingStock.suggestedLimitPrice.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                        来源模型：{analyzingStock.strategySource} · {isAiStreaming ? '⚡ 正在连接本地 Antigravity 模型 (127.0.0.1:8045) 流式推演中...' : '✅ 诊断推演完成'}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsAiModalOpen(false)}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--text-muted)',
+                                    fontSize: '20px',
+                                    cursor: 'pointer',
+                                    padding: '4px 8px',
+                                    lineHeight: 1,
+                                }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* 诊断正文内容 (支持打字机光标动画) */}
+                        <div style={{
+                            padding: '22px',
+                            overflowY: 'auto',
+                            flex: 1,
+                            fontSize: '13px',
+                            lineHeight: 1.75,
+                            color: '#e2e8f0',
+                            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                            whiteSpace: 'pre-wrap',
+                            background: 'rgba(15, 23, 42, 0.6)',
+                        }}>
+                            {aiAnalysisContent ? (
+                                <div>
+                                    {aiAnalysisContent}
+                                    {isAiStreaming && (
+                                        <span style={{
+                                            display: 'inline-block',
+                                            width: '8px',
+                                            height: '14px',
+                                            background: '#a855f7',
+                                            marginLeft: '4px',
+                                            verticalAlign: 'middle',
+                                            boxShadow: '0 0 8px #a855f7',
+                                        }} />
+                                    )}
+                                </div>
+                            ) : (
+                                <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                    <div style={{ fontSize: '28px', marginBottom: '10px' }}>⚡</div>
+                                    <div style={{ fontSize: '14px', color: '#cbd5e1' }}>正在装配实时盘口与持仓上下文，唤起 Antigravity 本地大模型...</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                                        已挂载 Phase 1~40 六门控仲裁调度器与做市商 GEX 盘口微结构
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 底部操作工具栏 */}
+                        <div style={{
+                            padding: '14px 22px',
+                            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: 'rgba(9, 13, 22, 0.98)',
+                        }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                {isAiStreaming ? '正在由 Antigravity 量化双脑实时运算...' : '该诊断已结合 AI-Memory 账本 ($6,046.53) 与盘口深度校验'}
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    onClick={handleCopyAiAnalysis}
+                                    disabled={!aiAnalysisContent}
+                                    style={{
+                                        padding: '8px 14px',
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        color: '#fff',
+                                        borderRadius: '6px',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    {aiCopied ? '✓ 已复制研报' : '📋 复制研报'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setIsAiModalOpen(false);
+                                        handlePresetOrder(
+                                            analyzingStock.symbol as any,
+                                            analyzingStock.actionType === 'SELL_LIMIT' ? 'SELL' : 'BUY',
+                                            analyzingStock.suggestedShares,
+                                            analyzingStock.suggestedLimitPrice
+                                        );
+                                    }}
+                                    style={{
+                                        padding: '8px 16px',
+                                        background: '#2563eb',
+                                        border: 'none',
+                                        color: '#fff',
+                                        borderRadius: '6px',
+                                        fontSize: '12px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                    }}
+                                >
+                                    ⚡ 确认并装入 Phase 36 下单小票 (${analyzingStock.suggestedLimitPrice.toFixed(2)})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
