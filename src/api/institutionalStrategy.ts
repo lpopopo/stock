@@ -11368,9 +11368,13 @@ export async function streamAiStrategyAnalysis(
     stock: StrategyHitStock,
     onChunk: (chunk: string) => void,
     onFinish: () => void,
-    onError: (err: string) => void
+    onError: (err: string) => void,
+    options?: { apiKey?: string; model?: string }
 ): Promise<void> {
     try {
+        const apiKey = options?.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('AGY_API_KEY') || '' : '');
+        const model = options?.model || (typeof window !== 'undefined' ? localStorage.getItem('AGY_MODEL') || 'gemini-3.1-pro-high' : 'gemini-3.1-pro-high');
+
         const prompt = `
 【受检策略命中个股基本数据】：
 - 股票代码：${stock.symbol} (${stock.nameCn} / ${stock.nameEn})
@@ -11395,13 +11399,18 @@ export async function streamAiStrategyAnalysis(
 请作为顶级量化对冲基金资深投资总监与执行交易员，对该标的的策略命中逻辑、建议挂单限价有效性、做市商盘口博弈、组合风控冲击及具体挂单执行 SOP 进行极度严密、实战、无废话的深度诊断。使用 Markdown 格式。
 `;
 
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+        if (apiKey) {
+            headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+
         const response = await fetch('/api/ai/v1/chat/completions', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers,
             body: JSON.stringify({
-                model: 'gemini-3.1-pro-high',
+                model,
                 messages: [
                     {
                         role: 'system',

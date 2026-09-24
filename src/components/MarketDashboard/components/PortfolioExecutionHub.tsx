@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ColorScheme } from '../../../types/market.types';
 import {
     AI_MEMORY_PORTFOLIO_LEDGER,
@@ -42,6 +42,33 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
     const [isAiStreaming, setIsAiStreaming] = useState(false);
     const [aiCopied, setAiCopied] = useState(false);
 
+    // Option C: 8045 本地代理服务与模型配置状态
+    const [apiKey, setApiKey] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('AGY_API_KEY') || '' : ''));
+    const [selectedModel, setSelectedModel] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('AGY_MODEL') || 'gemini-3.1-pro-high' : 'gemini-3.1-pro-high'));
+    const [showAiSettings, setShowAiSettings] = useState(false);
+    const [proxyOnline, setProxyOnline] = useState<boolean | null>(null);
+
+    // 探测 8045 本地代理服务健康度
+    useEffect(() => {
+        fetch('/api/ai/health')
+            .then(res => res.json())
+            .then(d => {
+                if (d && d.status === 'ok') setProxyOnline(true);
+                else setProxyOnline(false);
+            })
+            .catch(() => setProxyOnline(false));
+    }, [isAiModalOpen]);
+
+    const handleSaveApiKey = (newKey: string) => {
+        setApiKey(newKey);
+        localStorage.setItem('AGY_API_KEY', newKey);
+    };
+
+    const handleSelectModel = (model: string) => {
+        setSelectedModel(model);
+        localStorage.setItem('AGY_MODEL', model);
+    };
+
     const handleTriggerAiAnalysis = (stock: StrategyHitStock) => {
         setAnalyzingStock(stock);
         setIsAiModalOpen(true);
@@ -60,7 +87,8 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
             (err) => {
                 setIsAiStreaming(false);
                 setAiAnalysisContent((prev) => prev + `\n\n> ⚠️ [诊断提示] ${err}`);
-            }
+            },
+            { apiKey, model: selectedModel }
         );
     };
 
@@ -1385,7 +1413,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                     🤖
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                         Antigravity 实时多因子策略诊断 · {analyzingStock.symbol}
                                         <span style={{ fontSize: '11px', background: 'rgba(168, 85, 247, 0.2)', color: '#d8b4fe', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
                                             {analyzingStock.nameCn}
@@ -1393,27 +1421,125 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                         <span style={{ fontSize: '11px', background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
                                             建议限价 ${analyzingStock.suggestedLimitPrice.toFixed(2)}
                                         </span>
+                                        <span style={{
+                                            fontSize: '11px',
+                                            background: proxyOnline ? 'rgba(16, 185, 129, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                                            color: proxyOnline ? '#10b981' : '#f59e0b',
+                                            padding: '2px 8px',
+                                            borderRadius: '4px',
+                                            border: `1px solid ${proxyOnline ? 'rgba(16, 185, 129, 0.3)' : 'rgba(234, 179, 8, 0.3)'}`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                        }}>
+                                            {proxyOnline ? '🟢 8045 本地代理已就绪' : '🟡 离线量化引擎'}
+                                        </span>
                                     </div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                        来源模型：{analyzingStock.strategySource} · {isAiStreaming ? '⚡ 正在连接本地 Antigravity 模型 (127.0.0.1:8045) 流式推演中...' : '✅ 诊断推演完成'}
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
+                                        模型: {selectedModel} · 策略: {analyzingStock.strategySource} · {isAiStreaming ? '⚡ 正在通过本地 8045 端口流式推演中...' : '✅ 诊断推演完成'}
                                     </div>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setIsAiModalOpen(false)}
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: 'var(--text-muted)',
-                                    fontSize: '20px',
-                                    cursor: 'pointer',
-                                    padding: '4px 8px',
-                                    lineHeight: 1,
-                                }}
-                            >
-                                ✕
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                    onClick={() => setShowAiSettings(!showAiSettings)}
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        color: '#cbd5e1',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                    }}
+                                >
+                                    ⚙️ {showAiSettings ? '收起配置' : '配置 Key/模型'}
+                                </button>
+                                <button
+                                    onClick={() => setIsAiModalOpen(false)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--text-muted)',
+                                        fontSize: '20px',
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        lineHeight: 1,
+                                    }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
                         </div>
+
+                        {/* 可折叠设置栏 (Option C 配置) */}
+                        {showAiSettings && (
+                            <div style={{
+                                padding: '12px 22px',
+                                background: 'rgba(15, 23, 42, 0.95)',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '16px',
+                                flexWrap: 'wrap',
+                                fontSize: '12px',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '240px' }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>🔑 API Key:</span>
+                                    <input
+                                        type="password"
+                                        placeholder="输入 API Key (选填，自动存入 localStorage)"
+                                        value={apiKey}
+                                        onChange={(e) => handleSaveApiKey(e.target.value)}
+                                        style={{
+                                            flex: 1,
+                                            background: 'rgba(0,0,0,0.5)',
+                                            border: '1px solid rgba(255,255,255,0.2)',
+                                            color: '#fff',
+                                            borderRadius: '6px',
+                                            padding: '4px 8px',
+                                            fontSize: '11px',
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>🧠 推演模型:</span>
+                                    <select
+                                        value={selectedModel}
+                                        onChange={(e) => handleSelectModel(e.target.value)}
+                                        style={{
+                                            background: '#1e293b',
+                                            border: '1px solid rgba(255,255,255,0.2)',
+                                            color: '#fff',
+                                            borderRadius: '6px',
+                                            padding: '4px 8px',
+                                            fontSize: '11px',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        <option value="gemini-3.1-pro-high">Gemini 3.1 Pro (Antigravity High)</option>
+                                        <option value="deepseek-chat">DeepSeek V3 / R1</option>
+                                        <option value="gpt-4o">GPT-4o Omniscient</option>
+                                        <option value="qwen2.5-coder">Qwen 2.5 Coder</option>
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={() => handleTriggerAiAnalysis(analyzingStock)}
+                                    style={{
+                                        padding: '4px 12px',
+                                        background: 'rgba(168, 85, 247, 0.25)',
+                                        border: '1px solid rgba(168, 85, 247, 0.5)',
+                                        color: '#d8b4fe',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px',
+                                        fontWeight: 'bold',
+                                    }}
+                                >
+                                    🔄 重新发起推演
+                                </button>
+                            </div>
+                        )}
 
                         {/* 诊断正文内容 (支持打字机光标动画) */}
                         <div style={{
