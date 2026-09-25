@@ -37,19 +37,14 @@ import {
     fetchLivePortfolioQuotes,
     type LivePortfolioQuote,
 } from '../api/market';
+import { fetchAiMemoryWatchlist } from '../api/institutionalStrategy';
+
+
 
 const WATCHLIST_STORAGE_KEY = 'MARKET_WATCHLIST_ITEMS';
 const COLOR_SCHEME_KEY = 'MARKET_COLOR_SCHEME';
-
-// 初始默认自选股标配
-const DEFAULT_WATCHLIST: WatchlistStock[] = [
-    { code: 'NVDA', rawCode: 'usNVDA', name: '英伟达', market: 'US', addedAt: Date.now() },
-    { code: 'AAPL', rawCode: 'usAAPL', name: '苹果', market: 'US', addedAt: Date.now() },
-    { code: '600519', rawCode: 'sh600519', name: '贵州茅台', market: 'A', addedAt: Date.now() },
-    { code: '300750', rawCode: 'sz300750', name: '宁德时代', market: 'A', addedAt: Date.now() },
-    { code: 'BABA', rawCode: 'usBABA', name: '阿里巴巴', market: 'US', addedAt: Date.now() },
-    { code: '00700', rawCode: 'hk00700', name: '腾讯控股', market: 'HK', addedAt: Date.now() },
-];
+// 标记 localStorage 是否曾经被 AI-Memory 初始化过，避免重复覆盖用户的增删操作
+const WATCHLIST_AI_INIT_KEY = 'MARKET_WATCHLIST_AI_INIT';
 
 function loadSavedWatchlist(): WatchlistStock[] {
     try {
@@ -61,8 +56,9 @@ function loadSavedWatchlist(): WatchlistStock[] {
     } catch {
         // ignore
     }
-    return DEFAULT_WATCHLIST;
+    return [];  // 空列表：等 AI-Memory feed 异步填充
 }
+
 
 function loadSavedColorScheme(): ColorScheme {
     const stored = localStorage.getItem(COLOR_SCHEME_KEY);
@@ -194,6 +190,23 @@ export const useMarketStore = create<MarketState>((set, get) => ({
                 lastUpdated: new Date().toLocaleTimeString(),
             });
 
+            // 若用户从未初始化过自选池（localStorage 为空），则从 AI-Memory Feed 加载自选池
+            const hasAiInit = localStorage.getItem(WATCHLIST_AI_INIT_KEY);
+            const currentWatchlist = get().watchlist;
+            if (!hasAiInit && currentWatchlist.length === 0) {
+                try {
+                    const aiWatchlist = await fetchAiMemoryWatchlist();
+                    if (aiWatchlist.length > 0) {
+                        localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(aiWatchlist));
+                        localStorage.setItem(WATCHLIST_AI_INIT_KEY, '1');
+                        set({ watchlist: aiWatchlist });
+                        console.log(`[AI-Memory] 自选池已从 AI-Memory 初始化，共 ${aiWatchlist.length} 只标的`);
+                    }
+                } catch (e) {
+                    console.warn('[AI-Memory] 自选池初始化失败，将保持空列表：', e);
+                }
+            }
+
             // 联动刷新自选股列表
             get().refreshWatchlist();
         } catch (e) {
@@ -201,6 +214,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
             set({ isLoading: false });
         }
     },
+
 
     refreshWatchlist: async () => {
         const { watchlist } = get();

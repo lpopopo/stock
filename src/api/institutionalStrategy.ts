@@ -25,6 +25,12 @@ export interface BottomReboundStock {
     signalStatus: 'buy' | 'wait' | 'holding' | 'exit';
     signalStatusText: string;
     signalReason: string;
+    /** 前向实盘验证 BUY：人工确认，非正式授权 */
+    forwardLiveValidation?: boolean;
+    isFormal?: boolean;
+    isOrderAuthorized?: boolean;
+    sourceBarLastDate?: string;
+    barsAsOf?: string;
 }
 
 export interface AuditedTradeRecord {
@@ -117,8 +123,8 @@ export const BOTTOM_REBOUND_UNIVERSE: BottomReboundStock[] = [
         rsi2: 48.2,
         consecutiveGreenDays: 2,
         signalStatus: 'wait',
-        signalStatusText: '🟡 均线上方健康蓄势',
-        signalReason: '运行于MA200牛熊分界线上方，当前处于回踩整固，等待-6%深度回踩触发。',
+        signalStatusText: '[归档研究] 🟡 均线上方健康蓄势',
+        signalReason: '历史归档研究样本，未获实盘正式准入，严禁作为当前入场买点。',
     },
     {
         code: 'CVX',
@@ -134,9 +140,9 @@ export const BOTTOM_REBOUND_UNIVERSE: BottomReboundStock[] = [
         distanceToMa200Pct: 5.67,
         rsi2: 78.4,
         consecutiveGreenDays: 3,
-        signalStatus: 'holding',
-        signalStatusText: '🟢 持仓中 (接近止盈目标)',
-        signalReason: '右侧企稳启动并放量上攻，浮盈已达 +1.8%，逼近 TP 2.2% 与 RSI>=85 止盈区。',
+        signalStatus: 'wait',
+        signalStatusText: '[归档研究] 🟡 历史归档观察',
+        signalReason: '历史归档研究标的，已拒绝实盘部署 (REJECTED_FOR_LIVE_DEPLOYMENT)，未获实盘正式准入与实盘授权。',
     },
     {
         code: 'LIN',
@@ -153,8 +159,8 @@ export const BOTTOM_REBOUND_UNIVERSE: BottomReboundStock[] = [
         rsi2: 28.5,
         consecutiveGreenDays: 0,
         signalStatus: 'wait',
-        signalStatusText: '🟡 观察回踩深度',
-        signalReason: '短线小幅阴跌回踩，RSI(2)已探至28超卖区，等待右侧两日连阳形成买点。',
+        signalStatusText: '[归档研究] 🟡 观察回踩深度',
+        signalReason: '历史归档研究样本，未获实盘正式准入，严禁作为当前入场买点。',
     },
     {
         code: 'LMT',
@@ -171,8 +177,8 @@ export const BOTTOM_REBOUND_UNIVERSE: BottomReboundStock[] = [
         rsi2: 62.1,
         consecutiveGreenDays: 1,
         signalStatus: 'wait',
-        signalStatusText: '🟡 强势运行',
-        signalReason: '多头趋势排列稳固，距离均线乖离率偏高，保持耐心等待缩量回踩机会。',
+        signalStatusText: '[归档研究] 🟡 强势运行',
+        signalReason: '历史归档研究样本，未获实盘正式准入，严禁作为当前入场买点。',
     },
     {
         code: 'XLP',
@@ -189,8 +195,8 @@ export const BOTTOM_REBOUND_UNIVERSE: BottomReboundStock[] = [
         rsi2: 54.0,
         consecutiveGreenDays: 2,
         signalStatus: 'wait',
-        signalStatusText: '🟡 稳健观察',
-        signalReason: '两日连阳确认底部支撑，处于正常配置观察窗口，风险敞口极低。',
+        signalStatusText: '[归档研究] 🟡 稳健观察',
+        signalReason: '历史归档研究样本，未获实盘正式准入，严禁作为当前入场买点。',
     },
     {
         code: 'SCHD',
@@ -207,8 +213,8 @@ export const BOTTOM_REBOUND_UNIVERSE: BottomReboundStock[] = [
         rsi2: 66.8,
         consecutiveGreenDays: 2,
         signalStatus: 'wait',
-        signalStatusText: '🟡 现金流压舱石',
-        signalReason: '股息收益率达 3.4%，处于稳步复利通道，长期回撤极小。',
+        signalStatusText: '[归档研究] 🟡 现金流压舱石',
+        signalReason: '历史归档研究样本，未获实盘正式准入，严禁作为当前入场买点。',
     },
 ];
 
@@ -280,11 +286,11 @@ export const BOTTOM_REBOUND_RULES = [
 export const V9_STRATEGY_CONFIG = {
     strategyName: 'V9 机构双轨配置策略 (Institutional Core & Satellite)',
     indexCoreTarget: 70,       // 70% 宽基指数核心 (SPY/QQQ 顺势)
-    stockAlphaTarget: 30,      // 30% 个股 Alpha 袖 (Rule E + 100Win Rebound)
+    stockAlphaTarget: 30,      // 30% 个股 Alpha 袖 (V9 Rule E, 当前新买入授权为 0)
     cashBufferRule: '在无有效开仓授权或恐惧之门触发时保留现金',
     rebalanceFrequency: '月度再平衡 (偏离 >5% 时触发微调)',
     coreRule: 'SPY / QQQ 站上 MA150/MA200 保持做多；跌破时自动降仓至现金',
-    alphaRule: '严守自然垄断底部品种与高胜率重入六门过滤',
+    alphaRule: 'V9 Rule E 518标的选拔、信息/技术/风控过滤与集中度约束 (当前买入授权为 0)',
 };
 
 export interface UnifiedStrategyTier {
@@ -652,6 +658,7 @@ export interface AiMemoryHolding {
     shares: number;
     costBasis: number;
     currentPrice: number;
+    liveQuotePrice?: number;
     marketValue: number;
     navWeightPct: number;
     pnlAmount: number;
@@ -666,6 +673,7 @@ export interface AiMemoryHolding {
     dayChange?: number;
     dayChangePct?: number;
     isLivePrice?: boolean;
+    amountSource?: 'broker_screen' | 'live_quote';
 }
 
 export interface AiMemoryRealTrade {
@@ -728,20 +736,20 @@ export interface AiMemoryPortfolioLedger {
 }
 
 export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
-    sourceFile: 'AI-Memory/domains/quant-strategy/memory/portfolio/2026-09-22-portfolio-summary.md',
-    auditTimestamp: '2026-09-22 23:12 +08:00 (美东 11:12 ET)',
-    asOfDate: '2026-09-22',
-    totalNav: 6026.83,
-    dayPnlUsd: null,
-    dayPnlPct: null,
-    workingCash: 1643.78,
-    workingCashPct: 27.27,
-    sgovReserve: 2112.71,
-    sgovReservePct: 35.05,
-    totalDefenseCash: 3756.49,
-    totalDefensePct: 62.33,
-    equityTotal: 2270.34,
-    equityPct: 37.67,
+    sourceFile: 'AI-Memory/domains/quant-strategy/memory/portfolio/2026-09-25-broker-screen-observation.json',
+    auditTimestamp: '2026-09-25 12:29 Asia/Shanghai (broker screen canonical)',
+    asOfDate: '2026-09-25',
+    totalNav: 5214.45,
+    dayPnlUsd: 16.33,
+    dayPnlPct: 0.31,
+    workingCash: 840.62,
+    workingCashPct: 16.12,
+    sgovReserve: 2113.65,
+    sgovReservePct: 40.53,
+    totalDefenseCash: 2954.27,
+    totalDefensePct: 56.66,
+    equityTotal: 2259.38,
+    equityPct: 43.33,
     monthlyDividendEstimateUsd: 8.80,
     holdings: [
         {
@@ -750,91 +758,96 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
             assetClass: 'Cash ETF',
             shares: 21,
             costBasis: 100.605,
-            currentPrice: 100.605,
-            marketValue: 2112.71,
-            navWeightPct: 35.05,
-            pnlAmount: 0.00,
-            pnlPct: 0.00,
+            currentPrice: 100.65,
+            marketValue: 2113.65,
+            navWeightPct: 40.53,
+            pnlAmount: 0.95,
+            pnlPct: 0.04,
             aiRole: 'cash-efficiency-sweep / 无风险年化 ~5.0% 票息储备',
             statusBadge: '生息现金储备',
             statusType: 'success',
             factorGroup: '0-3月美国超短国债 (久期 0.1 年)',
-            actionAdvice: '安心持有收息，年化 ~5.0%，随时 T+0/T+1 释放购买力配合右侧买点',
+            actionAdvice: '安心持有收息；正式信号缺失时不发起新买入',
+            amountSource: 'broker_screen',
         },
         {
             symbol: 'MRVL',
             name: '迈威尔科技',
             assetClass: 'Equity Stock',
             shares: 4,
-            costBasis: 172.50,
-            currentPrice: 263.60,
-            marketValue: 1054.40,
-            navWeightPct: 17.50,
-            pnlAmount: 364.40,
-            pnlPct: 52.81,
+            costBasis: 263.745,
+            currentPrice: 261.11,
+            marketValue: 1044.44,
+            navWeightPct: 20.03,
+            pnlAmount: -10.54,
+            pnlPct: -1.00,
             aiRole: 'profit-protection / defensive hold / 超 15% 建议减仓 1 股',
             statusBadge: '超限 15% 警报',
             statusType: 'warning',
-            stopPrice: 235.00,
+            stopPrice: 223.00,
             targetPrice: 268.00,
             factorGroup: 'AI ASIC & DSP 光电互联',
-            actionAdvice: '占 NAV 达 17.50%，超出 15% 正常单名红线，建议择机在 $265~$268 挂单减仓 1 股落袋',
+            actionAdvice: '占截图 NAV 约 20%，超出 15% 单名红线；无正式卖出授权，仅风险观察',
+            amountSource: 'broker_screen',
         },
         {
             symbol: 'MXL',
             name: '迈凌半导体',
             assetClass: 'Equity Stock',
             shares: 6,
-            costBasis: 91.40,
-            currentPrice: 85.05,
-            marketValue: 510.30,
-            navWeightPct: 8.47,
-            pnlAmount: -38.10,
-            pnlPct: -6.95,
+            costBasis: 90.7,
+            currentPrice: 86.0,
+            marketValue: 516.0,
+            navWeightPct: 9.90,
+            pnlAmount: -28.2,
+            pnlPct: -5.18,
             aiRole: 'defensive hold / no add / review remains open',
             statusBadge: '防守持有',
             statusType: 'info',
             stopPrice: 78.00,
             targetPrice: 95.00,
             factorGroup: '高速光模块 PAM4 驱动芯片',
-            actionAdvice: '底部筑底修复中，仓位舒适安全（8.47% < 10%），严格禁止左侧加仓摊低',
+            actionAdvice: '截图成本为准；严格禁止左侧加仓摊低',
+            amountSource: 'broker_screen',
         },
         {
             symbol: 'QCOM',
             name: '高通公司',
             assetClass: 'Equity Stock',
             shares: 2,
-            costBasis: 185.20,
-            currentPrice: 194.44,
-            marketValue: 388.88,
-            navWeightPct: 6.45,
-            pnlAmount: 18.48,
-            pnlPct: 4.99,
-            aiRole: 'long-term hold / 单日暴涨冷静期 / 移动止盈棘轮提拉保护',
+            costBasis: 186.67,
+            currentPrice: 194.56,
+            marketValue: 389.12,
+            navWeightPct: 7.46,
+            pnlAmount: 15.78,
+            pnlPct: 4.23,
+            aiRole: 'long-term hold / 棘轮止盈观察',
             statusBadge: '棘轮止盈中',
             statusType: 'success',
             stopPrice: 190.00,
             targetPrice: 205.00,
             factorGroup: '端侧 AI 算力与无线射频',
-            actionAdvice: '单日大涨后进入冷静期，坚守 MA20 与 MA50 支撑上方，估值具备现金流安全垫，防守止盈上移至 $190',
+            actionAdvice: '无抄底加仓；防守止盈观察 $190',
+            amountSource: 'broker_screen',
         },
         {
             symbol: 'GLW',
             name: '康宁光通信',
             assetClass: 'Equity Stock',
             shares: 2,
-            costBasis: 187.20,
-            currentPrice: 158.38,
-            marketValue: 316.76,
-            navWeightPct: 5.26,
-            pnlAmount: -57.64,
-            pnlPct: -15.40,
+            costBasis: 181.5,
+            currentPrice: 154.91,
+            marketValue: 309.82,
+            navWeightPct: 5.94,
+            pnlAmount: -53.18,
+            pnlPct: -14.65,
             aiRole: 'reduce-review / defensive hold / no add',
             statusBadge: '底仓观察',
             statusType: 'info',
             stopPrice: 150.00,
             factorGroup: 'AI 数据中心高密度光纤物理垄断',
-            actionAdvice: '仓位极轻（仅 5.26%），对组合总体波动极低，维持底仓复核长线论据',
+            actionAdvice: '仓位极轻；截图成本 181.5 为准，禁止左侧加仓',
+            amountSource: 'broker_screen',
         },
     ],
     realTrades: [
@@ -899,12 +912,13 @@ export const AI_MEMORY_PORTFOLIO_LEDGER: AiMemoryPortfolioLedger = {
         { date: '2026-07-10', nav: 5420.50, cashPct: 72.0, equityPct: 28.0, note: '建仓半导体光通信龙头，稳步反弹' },
         { date: '2026-08-18', nav: 5680.40, cashPct: 65.0, equityPct: 35.0, note: 'MRVL 与光模块爆发，净值突破 $5,600' },
         { date: '2026-09-18', nav: 5875.91, cashPct: 63.9, equityPct: 36.1, note: '全市场流动性充裕，组合稳健创新高' },
-        { date: '2026-09-22', nav: 6026.83, cashPct: 27.27, equityPct: 37.67, note: '买入 SGOV 21 股，正式启动现金自动清扫 (总防御 62.33%)' },
+        { date: '2026-09-22', nav: 6026.83, cashPct: 27.27, equityPct: 37.67, note: '买入 SGOV 21 股（历史归档金额；已被 9/25 截图废止）' },
+        { date: '2026-09-25', nav: 5214.45, cashPct: 16.12, equityPct: 43.33, note: '券商截图权威基线（研究对账 RECONCILED）' },
     ],
     summaryComments: [
-        '现金利用效率大幅跃升：通过 SGOV 21 股配置，原先 62.5% 的零息躺平闲置资金中有超过一半（$2,112.71）直接转化为年化 ~5.0% 的生息资产，每月稳定派发现金红利。',
-        '流动性完全保全：SGOV 随时可在美股常规交易时段 T+0/T+1 卖出兑现，剩余 $1,643.78 的自由现金可无缝用于后续 SPY 核心底仓建仓或底部品种（如 CVX）右侧买点。',
-        '个股超限监控：MRVL 随着股价走强至 $263.60，单票权重达到 17.50%，超出 15.0% 的正常单股上限，维持建议择机挂单减仓 1 股以落袋利润并将权重降至 13% 安全线内。',
+        '权威基线：券商截图净值 $5,214.45，现金 $840.62；既往审计/归档金额已废止。',
+        'MRVL 截图权重约 20.0%，超出 15% 单名红线；个股袖约 43.3%，超出 30% 上限。仍无正式交易指令。',
+        '正式策略 V9 Rule E：新买入授权 0；研究对账 RECONCILED 仅解锁准确风险计量，不授予下单权限。',
     ],
 };
 
@@ -936,15 +950,170 @@ export function currentBrokerLedgerView(ledger: AiMemoryPortfolioLedger = AI_MEM
     };
 }
 
+export interface AiMemoryStrategyFeed {
+    version: string;
+    feed_source?: 'AI_MEMORY_LIVE' | 'OFFLINE_MIRROR_READONLY' | 'UNAVAILABLE';
+    is_live?: boolean;
+    is_stale?: boolean;
+    stale_reason?: string;
+    generated_at_utc: string;
+    quotes_as_of_utc?: string;
+    quotes_source?: string;
+    quotes_status?: string;
+    research_daily_bars?: {
+        target_asof?: string;
+        updated_at_utc?: string;
+        bars_dir?: string;
+        decision_grade?: boolean;
+        refresh_skipped?: boolean;
+        fresh_count?: number;
+        error_count?: number;
+        stale_count?: number;
+        note?: string;
+    };
+    forward_live_validation?: {
+        enabled: boolean;
+        mode: 'HUMAN_IN_THE_LOOP';
+        pool: string;
+        formal_new_buy_authorization: number;
+        broker_submission: false;
+        buy_candidate_count: number;
+        note: string;
+    };
+    forward_validation_buys?: StrategyHitStock[];
+    model_session?: string | null;
+    model_session_status?: string;
+    model_generated_at_utc?: string | null;
+    last_formal_completed_session?: string | null;
+    nyse_session_status: string;
+    portfolio_as_of_date?: string;
+    portfolio_source?: string;
+    broker_reconciliation_status?: string;
+    account_reconciled?: boolean;
+    account_observation?: {
+        source: 'USER_SUPPLIED_BROKER_SCREENSHOTS';
+        reconciliation_status: string;
+        displayed_local_time: string;
+        reported_nav: number;
+        reported_securities_value: number;
+        reported_cash: number;
+        reported_day_pnl: number;
+        reported_unrealized_pnl: number;
+        positions_displayed_local_time: string;
+        positions_count: number;
+        orders_verified: boolean;
+        fills_and_fees_verified: boolean;
+        positions_amounts_canonical?: boolean;
+        prior_audit_amounts_superseded?: boolean;
+        estimated_nav_from_quotes: number;
+    } | null;
+    portfolio_review?: {
+        status: 'HUMAN_REVIEW_ONLY';
+        source: string;
+        strategy: string;
+        price_time_note: string;
+        is_order_authorized: false;
+        items: Array<{
+            id: string;
+            priority: 'HIGH' | 'MEDIUM' | 'LOW';
+            title: string;
+            evidence: string;
+            review_action: string;
+            next_condition: string;
+            is_order_authorized: false;
+        }>;
+    } | null;
+    strategy_module_analysis?: {
+        status: 'MODULE_REVIEW_THEN_ACCOUNT_SUMMARY';
+        source: 'USER_SUPPLIED_BROKER_SCREENSHOTS';
+        modules: Array<{
+            id: 'INDEX_CORE' | 'STOCK_SLEEVE' | 'CASH_RESERVE';
+            name: string;
+            rule: string;
+            observed_value_usd: number;
+            observed_weight_pct: number;
+            positions: string[];
+            analysis: string;
+            advisory_action: string;
+            review_action: string;
+            operation_status: string;
+            operation_status_text: string;
+            formal_action_count: number;
+            is_order_authorized: false;
+        }>;
+        account_summary: {
+            reported_nav: number;
+            reported_securities_value: number;
+            reported_cash: number;
+            positions_count: number;
+            formal_action_count: number;
+            risk_flags: string[];
+            unverified: string[];
+            conclusion: string;
+            is_order_authorized: false;
+        };
+    } | null;
+    is_formal_generation_available?: boolean;
+    governance?: {
+        formal_version: string;
+        code_authority: string;
+        ratification_document: string;
+        decision_document?: string;
+        formal_generation_expected: string;
+        formal_generation_local_status: string;
+        is_formal_generation_available?: boolean;
+        new_buy_authorization: number;
+        broker_submission_enabled: boolean;
+        status: string;
+    };
+    formal_strategy?: {
+        name: string;
+        document?: string;
+        new_buy_authorization: number;
+        status: string;
+    };
+    new_buy_authorization?: number;
+    ratified_official_strategy: {
+        name: string;
+        document: string;
+        code_authority?: string;
+        new_buy_authorization: number;
+        broker_submission?: boolean;
+        status: string;
+    };
+    candidate_rebound_strategy: {
+        name: string;
+        status: string;
+        research_line_closed: boolean;
+        promoted?: boolean;
+        new_buy_authorization?: number;
+        disclaimer?: string;
+    };
+    formal_actions?: StrategyHitStock[];
+    audit_observations?: StrategyHitStock[];
+    research_observations?: Array<StrategyHitStock & {
+        screeningStatus: 'PROVISIONAL_TECHNICAL_PRE_SCREEN' | 'FORWARD_BUY_CANDIDATE';
+        sourceBarLastDate: string;
+        forwardLiveValidation?: boolean;
+        barsAsOf?: string;
+    }>;
+    hit_stocks: StrategyHitStock[];
+    historical_warmup_diagnostic?: any;
+    closed_hits_0923?: any[];
+    intraday_hits_0924?: any[];
+    natural_monopoly_white_horses: BottomReboundStock[];
+    portfolio_ledger: AiMemoryPortfolioLedger;
+}
+
 export interface StrategyHitStock {
     id: string;
-    symbol: 'MRVL' | 'QCOM' | 'CVX' | 'SPY' | 'SO' | 'LIN';
+    symbol: 'MRVL' | 'QCOM' | 'CVX' | 'SPY' | 'SO' | 'LIN' | string;
     nameCn: string;
     nameEn: string;
     strategySource: string;
-    actionType: 'SELL_LIMIT' | 'BUY_LIMIT' | 'STOP_LIMIT' | 'WATCH_LIMIT';
+    actionType: 'SELL_LIMIT' | 'BUY_LIMIT' | 'STOP_LIMIT' | 'WATCH_LIMIT' | 'RESEARCH_OBSERVATION' | 'AUDIT_OBSERVATION';
     actionBadge: string;
-    hitStatus: 'HIT_NOW' | 'PENDING_CONFIRM' | 'PROTECTING' | 'PRESET_WATCH';
+    hitStatus: 'HIT_NOW' | 'PENDING_CONFIRM' | 'PROTECTING' | 'PRESET_WATCH' | 'RESEARCH_ONLY' | 'FORWARD_BUY_CANDIDATE';
     statusText: string;
     urgency: 'HIGH' | 'MEDIUM' | 'LOW';
     currentPrice: number;
@@ -963,160 +1132,654 @@ export interface StrategyHitStock {
     dayChangePct?: number;
     lastUpdatedTime?: string;
     isLivePrice?: boolean;
+    isFormal?: boolean;
+    isOrderAuthorized?: boolean;
+    isActionable?: boolean;
+    signalTier?: 'FORMAL_EXECUTION' | 'BROKER_PORTFOLIO_REVIEW' | 'RESEARCH_SHADOW_ONLY' | 'FORWARD_LIVE_VALIDATION' | 'HISTORICAL_DIAGNOSTIC' | 'HISTORICAL_AUDIT_OBSERVATION';
+    forwardLiveValidation?: boolean;
+    screeningStatus?: 'PROVISIONAL_TECHNICAL_PRE_SCREEN' | 'FORWARD_BUY_CANDIDATE';
+    sourceBarLastDate?: string;
+    barsAsOf?: string;
 }
 
+export interface StrategyFeedValidationResult {
+    isValid: boolean;
+    isUsableForDisplay: boolean;
+    canExecuteFormalActions: boolean;
+    canBuy: boolean;
+    rejectionReason?: string;
+    staleReason?: string;
+    validatedFeed: AiMemoryStrategyFeed | null;
+}
+
+/**
+ * 集中校验策略 Feed 结构、版本、生成时间、世代与授权字段
+ * 覆盖 Codex Defect 4 的全量边界防线
+ */
+export const CURRENT_RATIFIED_FEED_VERSION = 'ai-memory-unified-feed-v2';
+export const MAX_FEED_FRESHNESS_MS = 24 * 60 * 60 * 1000; // 24小时TTL
+export const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000; // 允许最大 5 分钟未来时间漂移
+
+/**
+ * 集中校验策略 Feed 结构、精确版本、合理时间戳、世代、会话、券商对账与授权一致性
+ * 覆盖 Codex Defect 2 与全量边界防线
+ */
+export function validateStrategyFeed(rawFeed: unknown): StrategyFeedValidationResult {
+    if (!rawFeed || typeof rawFeed !== 'object') {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: 'FEED_EMPTY_OR_NOT_AN_OBJECT',
+            validatedFeed: null,
+        };
+    }
+
+    const feed = rawFeed as Partial<AiMemoryStrategyFeed>;
+
+    // 1. 精确当前 Schema 版本一致性校验 (必须为当前批准版本，拒绝前缀相似但版本不匹配的旧数据)
+    if (!feed.version || typeof feed.version !== 'string' || feed.version !== CURRENT_RATIFIED_FEED_VERSION) {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: `FEED_VERSION_MISMATCH: expected exact schema ${CURRENT_RATIFIED_FEED_VERSION}, got ${String(feed.version)}`,
+            validatedFeed: null,
+        };
+    }
+
+    // 2. 生成时间有效性、时钟漂移与过期校验
+    if (!feed.generated_at_utc || typeof feed.generated_at_utc !== 'string') {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: 'MISSING_GENERATED_AT_UTC',
+            validatedFeed: null,
+        };
+    }
+
+    const genDate = new Date(feed.generated_at_utc);
+    if (isNaN(genDate.getTime())) {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: 'INVALID_GENERATED_AT_UTC_DATE',
+            validatedFeed: null,
+        };
+    }
+
+    const now = Date.now();
+    // 拦截未来时间戳（超出 5 分钟容错）
+    if (genDate.getTime() > now + MAX_CLOCK_SKEW_MS) {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: 'FUTURE_GENERATED_AT_UTC: generation timestamp is in the future',
+            validatedFeed: null,
+        };
+    }
+
+    // 检查是否过期 (超过 24 小时)
+    const isFeedExpired = (now - genDate.getTime()) > MAX_FEED_FRESHNESS_MS;
+
+    // 3. 治理元数据与策略定义完整性校验
+    const gov = feed.governance;
+    const strat = feed.ratified_official_strategy || feed.formal_strategy;
+    if (!gov || !strat) {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: 'MISSING_GOVERNANCE_OR_STRATEGY_DEFINITION',
+            validatedFeed: null,
+        };
+    }
+
+    const feedBuyAuth = feed.new_buy_authorization;
+    const govBuyAuth = gov.new_buy_authorization;
+    const stratBuyAuth = strat.new_buy_authorization;
+
+    if (
+        typeof feedBuyAuth !== 'number' || feedBuyAuth < 0 ||
+        typeof govBuyAuth !== 'number' || govBuyAuth < 0 ||
+        typeof stratBuyAuth !== 'number' || stratBuyAuth < 0
+    ) {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: 'MISSING_NEW_BUY_AUTHORIZATION',
+            validatedFeed: null,
+        };
+    }
+
+    // 4. 矛盾授权字段刚性 Fail-Closed (冲突则彻底拒绝，防伪造注入)
+    if (feedBuyAuth !== govBuyAuth || feedBuyAuth !== stratBuyAuth) {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: `CONFLICTING_AUTHORIZATION_FIELDS: new_buy_authorization mismatch (root=${feedBuyAuth}, gov=${govBuyAuth}, strat=${stratBuyAuth})`,
+            validatedFeed: null,
+        };
+    }
+
+    if (gov.formal_generation_local_status === 'MISSING_IN_THIS_WORKTREE' && gov.is_formal_generation_available === true) {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: 'CONFLICTING_AUTHORIZATION_FIELDS: generation missing in worktree but marked available',
+            validatedFeed: null,
+        };
+    }
+
+    if (gov.formal_generation_local_status === 'PRESENT' && gov.is_formal_generation_available === false) {
+        return {
+            isValid: false,
+            isUsableForDisplay: false,
+            canExecuteFormalActions: false,
+            canBuy: false,
+            rejectionReason: 'CONFLICTING_AUTHORIZATION_FIELDS: generation present but marked unavailable',
+            validatedFeed: null,
+        };
+    }
+
+    const canBuy = feedBuyAuth > 0;
+
+    // 5. 正式世代、已完成模型会话、账户对账、feed_source 与 is_stale 权威状态判定
+    const isOffline = feed.feed_source === 'OFFLINE_MIRROR_READONLY' || feed.feed_source !== 'AI_MEMORY_LIVE';
+    const isUpstreamStale = Boolean(feed.is_stale);
+
+    const isGenMissing = gov.formal_generation_local_status !== 'PRESENT' ||
+        gov.is_formal_generation_available !== true ||
+        (feed.is_formal_generation_available !== undefined && feed.is_formal_generation_available !== true);
+
+    const isSessionMissing = !feed.model_session ||
+        feed.model_session === 'NONE' ||
+        Boolean(feed.model_session_status?.includes('FAIL_CLOSED')) ||
+        Boolean(feed.model_session_status?.includes('PAUSED'));
+
+    const isCompletedSessionMissing = !feed.last_formal_completed_session ||
+        feed.last_formal_completed_session === 'NONE';
+
+    const isBrokerUnverified = feed.account_reconciled !== true ||
+        feed.broker_reconciliation_status !== 'RECONCILED';
+
+    // 核心约束：canExecuteFormalActions 绝对不能在离线或过期 feed 上返回 true！
+    const canExecuteFormalActions = !isOffline &&
+        !isUpstreamStale &&
+        !isFeedExpired &&
+        !isGenMissing &&
+        !isSessionMissing &&
+        !isCompletedSessionMissing &&
+        !isBrokerUnverified;
+
+    const isStale = Boolean(
+        feed.is_stale ||
+        isOffline ||
+        isFeedExpired ||
+        isGenMissing ||
+        isSessionMissing ||
+        isCompletedSessionMissing ||
+        isBrokerUnverified
+    );
+
+    const staleReason = feed.stale_reason || (
+        isOffline ? '策略源为离线/只读镜像，禁止执行正式动作' :
+        isFeedExpired ? 'FEED_EXPIRED_GENERATED_AT_UTC: 策略数据已超过24小时有效期 (EXPIRED)，执行 Fail-Closed 保护' :
+        isGenMissing ? '本机缺失正式世代 (GEN_MISSING)，执行 Fail-Closed 保护' :
+        (isSessionMissing || isCompletedSessionMissing) ? '无已核验策略模型完成会话，执行 Fail-Closed 保护' :
+        isBrokerUnverified ? '券商账户状态未对账，执行 Fail-Closed 保护' :
+        isUpstreamStale ? '上游标记策略状态失效 (is_stale: true)' : undefined
+    );
+
+    // 6. 每条 formal_actions 深度语义验证（正式身份、授权、合法动作类型、正整数股数、正限价；严禁通过伪造布尔值取得授权）
+    const rawFormal = feed.formal_actions || [];
+    const sanitizedFormalActions: StrategyHitStock[] = [];
+
+    if (canExecuteFormalActions) {
+        for (const act of rawFormal) {
+            // 必须具备正式身份与正式分层
+            if (act.isFormal !== true || act.signalTier !== 'FORMAL_EXECUTION') continue;
+            // 必须具备明确订单授权与可执行性
+            if (act.isOrderAuthorized !== true || act.isActionable !== true) continue;
+            // 动作类型必须为合法限价动作
+            if (act.actionType !== 'BUY_LIMIT' && act.actionType !== 'SELL_LIMIT') continue;
+            // 股数必须为正整数
+            if (typeof act.suggestedShares !== 'number' || act.suggestedShares <= 0 || !Number.isInteger(act.suggestedShares)) continue;
+            // 限价必须为大于 0 的有效浮点数
+            if (typeof act.suggestedLimitPrice !== 'number' || act.suggestedLimitPrice <= 0 || isNaN(act.suggestedLimitPrice)) continue;
+            // BUY 动作必须在总买入授权允许时才可放行
+            if (act.actionType === 'BUY_LIMIT' && !canBuy) continue;
+            // 标的代码必须为有效非空字符串
+            if (!act.symbol || typeof act.symbol !== 'string') continue;
+
+            sanitizedFormalActions.push(act);
+        }
+    }
+
+    // 7. 信号清洗：正式动作仍 Fail-Closed；前向实盘验证 BUY 候选保留展示但不授予自动下单
+    const rawHits = feed.hit_stocks || [];
+    const sanitizedHits: StrategyHitStock[] = rawHits.map(h => {
+        if (h.signalTier === 'FORWARD_LIVE_VALIDATION' || h.forwardLiveValidation === true) {
+            return {
+                ...h,
+                isFormal: false,
+                isOrderAuthorized: false,
+                isActionable: false,
+                signalTier: 'FORWARD_LIVE_VALIDATION' as const,
+                forwardLiveValidation: true,
+                actionBadge: h.actionBadge || '🟢 前向实盘验证 BUY · 人工确认（不自动下单）',
+            };
+        }
+        if (!canExecuteFormalActions || h.signalTier !== 'FORMAL_EXECUTION' || !sanitizedFormalActions.some(f => f.id === h.id)) {
+            const brokerReview = h.signalTier === 'BROKER_PORTFOLIO_REVIEW' &&
+                h.actionType === 'AUDIT_OBSERVATION' &&
+                feed.account_observation?.source === 'USER_SUPPLIED_BROKER_SCREENSHOTS' &&
+                feed.portfolio_review?.status === 'HUMAN_REVIEW_ONLY';
+            return {
+                ...h,
+                isFormal: false,
+                isOrderAuthorized: false,
+                isActionable: false,
+                suggestedShares: 0,
+                suggestedLimitPrice: 0.0,
+                signalTier: brokerReview ? 'BROKER_PORTFOLIO_REVIEW' as const : 'HISTORICAL_AUDIT_OBSERVATION' as const,
+                actionBadge: brokerReview ? '📋 实盘持仓人工复核 · 无下单授权' :
+                    h.actionBadge?.includes('非实盘') ? h.actionBadge : '📋 归档历史示例 (非实盘/不可下单)',
+            };
+        }
+        return h;
+    });
+
+    const forwardBuys = (feed.forward_validation_buys || []).map(h => ({
+        ...h,
+        isFormal: false,
+        isOrderAuthorized: false,
+        isActionable: false,
+        suggestedShares: 0,
+        signalTier: 'FORWARD_LIVE_VALIDATION' as const,
+        forwardLiveValidation: true,
+    }));
+
+    const sanitizedResearchObservations = (feed.research_observations || []).map(item => {
+        if (item.signalTier === 'FORWARD_LIVE_VALIDATION' || item.forwardLiveValidation === true || item.screeningStatus === 'FORWARD_BUY_CANDIDATE') {
+            return {
+                ...item,
+                isFormal: false,
+                isOrderAuthorized: false,
+                isActionable: false,
+                suggestedShares: 0,
+                signalTier: 'FORWARD_LIVE_VALIDATION' as const,
+                screeningStatus: 'FORWARD_BUY_CANDIDATE' as const,
+                forwardLiveValidation: true,
+                hitStatus: 'FORWARD_BUY_CANDIDATE' as const,
+                actionBadge: item.actionBadge || '🟢 前向实盘验证 BUY · 人工确认（不自动下单）',
+            };
+        }
+        return {
+            ...item,
+            isFormal: false,
+            isOrderAuthorized: false,
+            isActionable: false,
+            suggestedShares: 0,
+            suggestedLimitPrice: 0,
+            signalTier: 'RESEARCH_SHADOW_ONLY' as const,
+        };
+    });
+
+    const validatedFeed: AiMemoryStrategyFeed = {
+        ...(feed as AiMemoryStrategyFeed),
+        is_stale: isStale,
+        stale_reason: staleReason,
+        formal_actions: sanitizedFormalActions,
+        hit_stocks: sanitizedHits,
+        research_observations: sanitizedResearchObservations,
+        forward_validation_buys: forwardBuys,
+        forward_live_validation: feed.forward_live_validation
+            ? {
+                ...feed.forward_live_validation,
+                formal_new_buy_authorization: 0,
+                broker_submission: false,
+                buy_candidate_count: forwardBuys.length,
+              }
+            : undefined,
+    };
+
+    return {
+        isValid: true,
+        isUsableForDisplay: true,
+        canExecuteFormalActions,
+        canBuy,
+        staleReason,
+        validatedFeed,
+    };
+}
+
+export interface TicketAuthorizationResult {
+    isAuthorized: boolean;
+    reason: string;
+    matchedAction?: StrategyHitStock;
+    authorizedTicketText?: string;
+    authorizedLimitPrice?: number;
+    authorizedShares?: number;
+}
+
+/**
+ * 生成正式授权挂单小票（刚性锁定 formalAction 的 suggestedLimitPrice 与 suggestedShares）
+ * 依据 DECISION.md Rule 5：行情变动与盘口推算绝不得改写已授权限价
+ */
+export function generateAuthorizedExecutionTicket(
+    action: StrategyHitStock,
+    options?: {
+        bidPrice?: number;
+        askPrice?: number;
+        feeEstimateUsd?: number;
+    }
+): SmartPeggingRecommendation {
+    const symbol = action.symbol;
+    const direction = action.actionType === 'BUY_LIMIT' ? 'BUY' : 'SELL';
+    const targetShares = action.suggestedShares;
+    const recommendedPrice = action.suggestedLimitPrice;
+    const bidPrice = options?.bidPrice ?? action.currentPrice ?? recommendedPrice;
+    const askPrice = options?.askPrice ?? action.currentPrice ?? recommendedPrice;
+    const feeEstimateUsd = options?.feeEstimateUsd ?? 1.00;
+
+    return calculateSmartPeggingOrder({
+        symbol,
+        direction,
+        targetShares,
+        bidPrice,
+        askPrice,
+        urgency: 'midpoint',
+        feeEstimateUsd,
+        overridePrice: recommendedPrice, // 核心：强制锁定正式策略建议限价，不受行情或手工输入改写
+    });
+}
+
+/**
+ * 统一订单小票授权校验器（物理封锁任何无授权交易入口，覆盖 Codex Defect 3 与限价刚性锁定）
+ */
+export function checkTicketAuthorization(
+    symbol: string,
+    action: 'BUY' | 'SELL',
+    shares: number,
+    feed: AiMemoryStrategyFeed | null,
+    limitPrice?: number
+): TicketAuthorizationResult {
+    if (!symbol || typeof symbol !== 'string') {
+        return { isAuthorized: false, reason: '标的代码无效' };
+    }
+
+    if (!feed) {
+        return { isAuthorized: false, reason: '策略数据不可用 / 待人工核对 (Fail-Closed: 禁止下单)' };
+    }
+
+    if (typeof shares !== 'number' || shares <= 0 || !Number.isInteger(shares)) {
+        return { isAuthorized: false, reason: '下单股数必须为大于 0 的整数' };
+    }
+
+    const validation = validateStrategyFeed(feed);
+    if (!validation.isValid) {
+        return { isAuthorized: false, reason: `策略未通过实盘权威校验: ${validation.rejectionReason || '结构非法'}` };
+    }
+
+    if (!validation.canExecuteFormalActions || feed.is_stale || feed.feed_source === 'OFFLINE_MIRROR_READONLY') {
+        return { isAuthorized: false, reason: `策略源为离线/只读镜像或实盘受限 (${feed.stale_reason || validation.staleReason || '已降级'})，禁止生成下单小票` };
+    }
+
+    if (action === 'BUY') {
+        const buyAuth = feed.new_buy_authorization ?? feed.governance?.new_buy_authorization ?? 0;
+        if (buyAuth <= 0 || !validation.canBuy) {
+            return { isAuthorized: false, reason: '正式策略 V9 Rule E 新开仓/买入授权为 0，严禁生成 BUY 挂单' };
+        }
+    }
+
+    const upperSymbol = symbol.trim().toUpperCase();
+    const formalActions = validation.validatedFeed?.formal_actions || [];
+
+    // 1. 查找该标的所有经过清洗并获订单授权的正式动作
+    const symbolActions = formalActions.filter(a =>
+        a.symbol?.toUpperCase() === upperSymbol &&
+        a.isOrderAuthorized === true &&
+        a.suggestedShares > 0
+    );
+
+    if (symbolActions.length === 0) {
+        return { isAuthorized: false, reason: `${symbol} 未获正式实盘交易授权 (仅供研究/审计参考，禁止实盘下单)` };
+    }
+
+    // 2. 校验买卖方向匹配
+    const expectedActionType = action === 'BUY' ? 'BUY_LIMIT' : 'SELL_LIMIT';
+    const directionActions = symbolActions.filter(a => a.actionType === expectedActionType);
+
+    if (directionActions.length === 0) {
+        const authorizedDirections = Array.from(
+            new Set(symbolActions.map(a => a.actionType === 'BUY_LIMIT' ? 'BUY' : 'SELL'))
+        );
+        return {
+            isAuthorized: false,
+            reason: `${symbol} 动作方向不匹配：正式策略仅获 [${authorizedDirections.join(', ')}] 授权，禁止执行 [${action}]`,
+        };
+    }
+
+    // 3. 校验小票股数：必须与正式动作建议股数严格一致（支持同一标的多动作分批/多档匹配）
+    const matchedFormal = directionActions.find(a => a.suggestedShares === shares);
+
+    if (!matchedFormal) {
+        const authorizedSharesList = directionActions.map(a => a.suggestedShares);
+        const authorizedSharesStr = authorizedSharesList.map(s => `${s} 股`).join(' / ');
+        const maxShares = Math.max(...authorizedSharesList);
+        const minShares = Math.min(...authorizedSharesList);
+
+        if (shares > maxShares) {
+            return {
+                isAuthorized: false,
+                reason: `下单股数 (${shares} 股) 大于正式策略授权建议股数 (${authorizedSharesStr})，严禁超额下单`,
+            };
+        } else if (shares < minShares) {
+            return {
+                isAuthorized: false,
+                reason: `下单股数 (${shares} 股) 小于正式策略授权建议股数 (${authorizedSharesStr})，必须与正式建议严格一致`,
+            };
+        } else {
+            return {
+                isAuthorized: false,
+                reason: `下单股数 (${shares} 股) 与正式策略授权建议股数 (${authorizedSharesStr}) 不一致，必须与正式建议严格一致`,
+            };
+        }
+    }
+
+    // 4. 校验小票限价（若提供限价）：必须与正式动作建议限价严格一致，禁止手工改价或盘口推算偏离 (DECISION.md Rule 5)
+    if (limitPrice !== undefined) {
+        if (typeof limitPrice !== 'number' || isNaN(limitPrice) || limitPrice <= 0) {
+            return { isAuthorized: false, reason: '下单限价必须为大于 0 的有效数值' };
+        }
+        const formalPrice = matchedFormal.suggestedLimitPrice;
+        if (formalPrice !== undefined && Math.abs(formalPrice - limitPrice) > 1e-4) {
+            return {
+                isAuthorized: false,
+                reason: `小票限价 ($${limitPrice.toFixed(2)}) 偏离正式策略授权限价 ($${formalPrice.toFixed(2)})，盘口推算与手工改价不可改写策略限价 (DECISION.md Rule 5)`,
+            };
+        }
+    }
+
+    const authorizedTicket = generateAuthorizedExecutionTicket(matchedFormal);
+
+    return {
+        isAuthorized: true,
+        reason: '授权通过',
+        matchedAction: matchedFormal,
+        authorizedLimitPrice: matchedFormal.suggestedLimitPrice,
+        authorizedShares: matchedFormal.suggestedShares,
+        authorizedTicketText: authorizedTicket.ticketText,
+    };
+}
+
+/**
+ * 实时拉取 AI-Memory 量化策略核心的实时分析与筛选数据 Feed
+ */
+export async function fetchLiveStrategyAnalysisFeed(forceRefresh = false): Promise<AiMemoryStrategyFeed | null> {
+    const res = await fetchValidatedStrategyFeed(forceRefresh);
+    if (!res.isValid || !res.isUsableForDisplay) {
+        return null;
+    }
+    return res.validatedFeed;
+}
+
+export async function fetchValidatedStrategyFeed(forceRefresh = false): Promise<StrategyFeedValidationResult> {
+    let rawFeed: any = null;
+    try {
+        const url = forceRefresh ? '/api/ai-memory/strategy-hits?refresh=true' : '/api/ai-memory/strategy-hits';
+        const res = await fetch(url);
+        if (res.ok) {
+            rawFeed = await res.json();
+        }
+    } catch {
+        // Fallback to static public mirror
+    }
+
+    if (!rawFeed) {
+        try {
+            const fallbackRes = await fetch('/data/strategy_analysis_feed.json');
+            if (fallbackRes.ok) {
+                const data = await fallbackRes.json();
+                rawFeed = {
+                    ...data,
+                    feed_source: 'OFFLINE_MIRROR_READONLY',
+                    is_stale: true,
+                    stale_reason: data.stale_reason || 'AI-Memory 实时服务不可用，当前加载只读静态镜像',
+                };
+            }
+        } catch {
+            // Ignore fallback errors
+        }
+    }
+
+    return validateStrategyFeed(rawFeed);
+}
+
+/**
+ * 从 AI-Memory strategy_analysis_feed.json 中加载个人自选池
+ * 返回映射好的 WatchlistStock 数组，供 market.store.ts 初始化使用
+ */
+export async function fetchAiMemoryWatchlist(): Promise<Array<{
+    code: string;
+    rawCode: string;
+    name: string;
+    market: 'US' | 'A' | 'HK';
+    addedAt: number;
+    theme?: string;
+}>> {
+    try {
+        const res = await fetch('/data/strategy_analysis_feed.json');
+        if (!res.ok) return [];
+        const data = await res.json();
+        const pw = data?.personal_watchlist;
+        if (!pw || !Array.isArray(pw.tickers)) return [];
+        const now = Date.now();
+        return pw.tickers.map((t: {
+            symbol: string;
+            rawCode?: string;
+            name?: string;
+            nameEn?: string;
+            market?: string;
+            theme?: string;
+        }) => ({
+            code: t.symbol,
+            rawCode: t.rawCode ?? `us${t.symbol}`,
+            name: t.name || t.nameEn || t.symbol,
+            market: (t.market === 'A' ? 'A' : t.market === 'HK' ? 'HK' : 'US') as 'US' | 'A' | 'HK',
+            addedAt: now,
+            theme: t.theme,
+        }));
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * 本地归档静态命中列表（仅作无网络情况下的纯只读历史参考，严禁作为实盘选股或下单依据）
+ * 依据 DECISION.md 与 CURRENT_STRATEGY.md，stock 仓库不得内置第二正式动作来源。
+ * 本常量所有标的严格为无授权、零股数、零限价的只读历史示例 (HISTORICAL_AUDIT_OBSERVATION)。
+ */
 export const STRATEGY_SCREENED_HIT_STOCKS: StrategyHitStock[] = [
     {
-        id: 'HIT-01-MRVL-SELL',
+        id: 'HIT-01-MRVL-OBSERVE',
         symbol: 'MRVL',
         nameCn: '迈威尔科技',
         nameEn: 'Marvell Technology',
-        strategySource: 'Phase 16 盈利保护与单票 15% 硬风控',
-        actionType: 'SELL_LIMIT',
-        actionBadge: '🔴 命中高抛减仓限价',
-        hitStatus: 'HIT_NOW',
-        statusText: '已触发限价减仓',
-        urgency: 'HIGH',
+        strategySource: 'Phase 16 盈利保护与单票 15% 集中度观察 (历史归档规则)',
+        signalTier: 'HISTORICAL_AUDIT_OBSERVATION',
+        isFormal: false,
+        isOrderAuthorized: false,
+        isActionable: false,
+        actionType: 'AUDIT_OBSERVATION',
+        actionBadge: '📋 归档历史示例 (非实盘/不可下单)',
+        hitStatus: 'PENDING_CONFIRM',
+        statusText: '2026-09-22 归档持仓超限观察 (未对账禁止下单)',
+        urgency: 'LOW',
         currentPrice: 260.90,
-        suggestedLimitPrice: 265.00,
-        limitPriceRange: '$265.00 ~ $268.00',
-        limitFormula: '现价 $260.90 上浮 +1.57% 挂于卖一上方筹码阻力区，等待做市商向上扫单，锁定 +52% 利润',
-        suggestedShares: 1,
-        estimatedAmountUsd: 265.00,
+        suggestedLimitPrice: 0.0,
+        limitPriceRange: 'N/A (无下单建议)',
+        limitFormula: '历史归档示例，未获实盘正式授权，禁止生成下单限价与股数',
+        suggestedShares: 0,
+        estimatedAmountUsd: 0.0,
         targetPrice: 270.00,
         stopLossPrice: 250.00,
-        confidenceScore: 98,
-        rationale: 'MRVL 持仓达 17.36%，突破 15.0% 机构风控红线。建议在 $265.00 挂单卖出 1 股落袋，将仓位压回 13% 舒适区。',
-        prerequisite: '盘前/盘中限价挂单，不盲目市价砸盘',
-        auditCitation: 'AI-Memory 2026-09-22-portfolio-summary.md & Phase 16 SOP',
+        confidenceScore: 0,
+        rationale: 'MRVL 2026-09-22 归档持仓达 17.26%。仅作为历史归档观察展示，未通过收盘对账与人工审核，绝不构成任何实盘委托或下单建议。',
+        prerequisite: '仅供研究对账，严禁实盘下单',
+        auditCitation: 'AI-Memory portfolio-summary & DECISION.md',
     },
     {
-        id: 'HIT-02-QCOM-RATCHET',
+        id: 'HIT-02-QCOM-OBSERVE',
         symbol: 'QCOM',
         nameCn: '高通公司',
         nameEn: 'Qualcomm Inc',
-        strategySource: 'Phase 11 动态棘轮提拉止盈系统',
-        actionType: 'STOP_LIMIT',
-        actionBadge: '🟢 命中止盈防护限价',
-        hitStatus: 'PROTECTING',
-        statusText: '动态棘轮保护生效中',
-        urgency: 'MEDIUM',
+        strategySource: 'Phase 11 动态棘轮提拉观察 (历史归档规则)',
+        signalTier: 'HISTORICAL_AUDIT_OBSERVATION',
+        isFormal: false,
+        isOrderAuthorized: false,
+        isActionable: false,
+        actionType: 'AUDIT_OBSERVATION',
+        actionBadge: '📋 归档历史示例 (非实盘/不可下单)',
+        hitStatus: 'PENDING_CONFIRM',
+        statusText: '2026-09-22 归档棘轮跟踪观察 (未对账禁止下单)',
+        urgency: 'LOW',
         currentPrice: 197.24,
-        suggestedLimitPrice: 190.00,
-        limitPriceRange: '触发价 $190.00 / 最低限价 $189.50',
-        limitFormula: '突破 $198 关口后，将移动止盈防守线上移至前高整数支撑位 $190.00，锁定高于成本(+7.06%)的净安全垫',
-        suggestedShares: 2,
-        estimatedAmountUsd: 380.00,
+        suggestedLimitPrice: 0.0,
+        limitPriceRange: 'N/A (无下单建议)',
+        limitFormula: '历史归档示例，未获实盘正式授权，禁止生成下单限价与股数',
+        suggestedShares: 0,
+        estimatedAmountUsd: 0.0,
         targetPrice: 205.00,
         stopLossPrice: 190.00,
-        confidenceScore: 95,
-        rationale: '端侧 AI 手机换机驱动股价逼近 $200 关口。执行动态棘轮锁利，坚决不在牛市中过早平仓，但锁死 $190 防护底线。',
-        prerequisite: '股价跌破 $190 触发 Stop-Limit，未跌破则继续持股享受主升浪',
-        auditCitation: 'Phase 11 Ratchet Stop Engine & 2026-09-22 Audit Item 2',
-    },
-    {
-        id: 'HIT-03-CVX-BUY',
-        symbol: 'CVX',
-        nameCn: '雪佛龙',
-        nameEn: 'Chevron Corporation',
-        strategySource: '100% 胜率底部反弹战法 & 周期大宗配置',
-        actionType: 'BUY_LIMIT',
-        actionBadge: '🟢 命中右侧买点限价 (两连阳已确立)',
-        hitStatus: 'HIT_NOW',
-        statusText: '两连阳右侧反弹确立 · 准予挂单入场',
-        urgency: 'HIGH',
-        currentPrice: 207.84,
-        suggestedLimitPrice: 204.00,
-        limitPriceRange: '$203.50 ~ $204.80',
-        limitFormula: '昨收大涨 +1.53%，今盘中再收阳 (+1.13%) 站稳 $207，两连阳已确立！建议回踩 5 日均线与密集成交中枢 $204.00 挂限价买单，严禁追高',
-        suggestedShares: 2,
-        estimatedAmountUsd: 408.00,
-        targetPrice: 210.00,
-        stopLossPrice: 192.00,
-        confidenceScore: 92,
-        rationale: '考验 $200 整数防线后在原油回暖支撑下强劲反弹，连续两日收阳右侧信号正式确立！以 $204.00 限价开仓 2 股。',
-        prerequisite: '两连阳已确立，严禁市价追高，挂单于 $204.00 回踩密集成交区',
-        auditCitation: 'Bulletproof 100% Win Rebound Rule & 2026-09-22 Audit Item 4',
-    },
-    {
-        id: 'HIT-04-SPY-BUY',
-        symbol: 'SPY',
-        nameCn: '标普 500 指数 ETF',
-        nameEn: 'SPDR S&P 500 ETF Trust',
-        strategySource: 'V9 统一信息资产配置与核心底座清扫',
-        actionType: 'BUY_LIMIT',
-        actionBadge: '🔵 命中宏观底座限价建仓',
-        hitStatus: 'HIT_NOW',
-        statusText: '资金空闲筹备建仓中',
-        urgency: 'MEDIUM',
-        currentPrice: 767.81,
-        suggestedLimitPrice: 766.50,
-        limitPriceRange: '$765.00 ~ $767.00',
-        limitFormula: '盘口买一 $766.20 与卖一 $766.80 之 Midpoint Peg (省 15 bps 滑点)',
-        suggestedShares: 1,
-        estimatedAmountUsd: 766.50,
-        targetPrice: 790.00,
-        stopLossPrice: 720.00,
-        confidenceScore: 90,
-        rationale: '当前自由现金 $1,643.78，组合缺少标准宏观指数平抑波动底座。建议动用约 $766.50 挂单买入 1 股 SPY，启动核心宏观稳健底仓。',
-        prerequisite: '限价挂单，成交后系统自动更新防御垫占比',
-        auditCitation: 'V9 Information Core Sweep & 2026-09-22 Audit Item 3',
-    },
-    {
-        id: 'HIT-05-SO-PRESET',
-        symbol: 'SO',
-        nameCn: '南方电力',
-        nameEn: 'The Southern Company',
-        strategySource: 'AI 算力电力瓶颈自然垄断池 (100% 胜率标的)',
-        actionType: 'WATCH_LIMIT',
-        actionBadge: '⚪ 预设回踩抄底限价',
-        hitStatus: 'PRESET_WATCH',
-        statusText: '健康蓄势观察中',
-        urgency: 'LOW',
-        currentPrice: 91.24,
-        suggestedLimitPrice: 88.50,
-        limitPriceRange: '$88.00 ~ $88.80',
-        limitFormula: 'MA200 支撑线 ($84.50) 上浮 4.7% 与月度箱体下沿共振，满足 -6% 深度回踩准入条件',
-        suggestedShares: 5,
-        estimatedAmountUsd: 442.50,
-        targetPrice: 95.00,
-        stopLossPrice: 83.50,
-        confidenceScore: 96,
-        rationale: '公用事业自然垄断，锁定数据中心长期供电协议。当前处于均线上方整固，若随大盘回踩至 $88.50 触发黄金入场点。',
-        prerequisite: '需回踩触达 $88.50 且 RSI(2) 进入超卖区',
-        auditCitation: 'Phase 1 & 6 大自然垄断刚需资产池',
-    },
-    {
-        id: 'HIT-06-LIN-PRESET',
-        symbol: 'LIN',
-        nameCn: '林德气体',
-        nameEn: 'Linde plc',
-        strategySource: '半导体先进制程工业气体垄断',
-        actionType: 'WATCH_LIMIT',
-        actionBadge: '⚪ 超卖修复限价观察',
-        hitStatus: 'PRESET_WATCH',
-        statusText: 'RSI=28.5 超卖筑底中',
-        urgency: 'LOW',
-        currentPrice: 488.50,
-        suggestedLimitPrice: 478.00,
-        limitPriceRange: '$475.00 ~ $480.00',
-        limitFormula: '前次成交密集区底部支撑价',
-        suggestedShares: 1,
-        estimatedAmountUsd: 478.00,
-        targetPrice: 510.00,
-        stopLossPrice: 455.00,
-        confidenceScore: 94,
-        rationale: '工业气体市占率超 30%，近期连续阴跌使短线指标进入极度超卖区。等待右侧止跌阳线后在 $478 挂单限价买入。',
-        prerequisite: '短线止跌且收阳确认',
-        auditCitation: '100% 胜率工业刚需资产库',
+        confidenceScore: 0,
+        rationale: '仅作为历史归档动态棘轮跟踪样本，依据 CURRENT_STRATEGY.md，未获正式实盘准入，严禁生成下单小票。',
+        prerequisite: '仅供研究对账，严禁实盘下单',
+        auditCitation: 'Phase 11 Ratchet Stop Engine & DECISION.md',
     },
 ];
 
 /**
- * 盘口现价实时重算：策略筛选命中个股与建议挂单限价
+ * 盘口现价实时重算：仅更新行情展示字段，绝不改写信号身份、授权、建议限价与止损价 (DECISION.md Rule 5)
  */
 export function recalculateHitStocksWithLiveQuotes(
-    baseHits: StrategyHitStock[] = STRATEGY_SCREENED_HIT_STOCKS,
+    baseHits: StrategyHitStock[] = [],
     quotes?: Record<string, LivePortfolioQuote>
 ): StrategyHitStock[] {
     if (!quotes || Object.keys(quotes).length === 0) {
@@ -1134,82 +1797,74 @@ export function recalculateHitStocksWithLiveQuotes(
         const dayChangePct = quote.changePct;
         const updatedTime = quote.updatedTime;
 
-        let suggestedLimitPrice = hit.suggestedLimitPrice;
-        let limitFormula = hit.limitFormula;
-        let limitPriceRange = hit.limitPriceRange;
-        let actionBadge = hit.actionBadge;
-        let hitStatus = hit.hitStatus;
-        let statusText = hit.statusText;
-        let rationale = hit.rationale;
-        let prerequisite = hit.prerequisite;
-
-        if (hit.symbol === 'MRVL') {
-            if (livePrice >= 265) {
-                suggestedLimitPrice = Number((livePrice * 1.015).toFixed(2));
-                limitPriceRange = `$${suggestedLimitPrice.toFixed(2)} ~ $${(suggestedLimitPrice + 3).toFixed(2)}`;
-            } else {
-                suggestedLimitPrice = 265.00;
-                limitPriceRange = '$265.00 ~ $268.00';
-            }
-            const premiumPct = Number((((suggestedLimitPrice - livePrice) / livePrice) * 100).toFixed(2));
-            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，挂单于阻力位 $${suggestedLimitPrice.toFixed(2)} (${premiumPct >= 0 ? `上浮 +${premiumPct}%` : `${premiumPct}%`})，做市商向上脉冲扫单`;
-        } else if (hit.symbol === 'QCOM') {
-            if (livePrice > 200) {
-                suggestedLimitPrice = Number((livePrice - 5).toFixed(2));
-                limitPriceRange = `触发价 $${suggestedLimitPrice.toFixed(2)} / 最低限价 $${(suggestedLimitPrice - 0.5).toFixed(2)}`;
-            } else {
-                suggestedLimitPrice = 190.00;
-                limitPriceRange = '触发价 $190.00 / 最低限价 $189.50';
-            }
-            const cushionPct = Number((((livePrice - 185.20) / 185.20) * 100).toFixed(2));
-            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，动态棘轮止盈线设于 $${suggestedLimitPrice.toFixed(2)}，锁定安全垫 (${cushionPct >= 0 ? '+' : ''}${cushionPct}%)`;
-        } else if (hit.symbol === 'CVX') {
-            suggestedLimitPrice = Number((Math.min(204.00, livePrice * 0.995)).toFixed(2));
-            limitPriceRange = `$${(suggestedLimitPrice - 0.8).toFixed(2)} ~ $${suggestedLimitPrice.toFixed(2)}`;
-            const isGreenToday = dayChangePct >= 0;
-            if (isGreenToday) {
-                actionBadge = '🟢 命中右侧买点限价 (两连阳已确立)';
-                hitStatus = 'HIT_NOW';
-                statusText = '两连阳右侧反弹确立 · 准予挂单入场';
-                rationale = `昨收大涨 +1.53%，今晚盘中再度收阳 (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%) 逼近 $208，两连阳右侧反弹信号正式确立！满足 100% 胜率底部反弹战法黄金入场准则。`;
-                prerequisite = '两连阳已右侧确认，严禁市价追高，挂单于回踩均线与筹码中枢处 ($204.00 附近)';
-                limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，两连阳已确立！建议回踩 5 日均线与密集成交区 $${suggestedLimitPrice.toFixed(2)} 挂限价买单，严禁追高`;
-            } else {
-                actionBadge = '🟡 盘中转阴待定 (等待收阳)';
-                hitStatus = 'PENDING_CONFIRM';
-                statusText = '盘中出现阴线分歧，等待收盘确认是否收阳';
-                limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，盘中受压回踩，等待企稳信号`;
-            }
-        } else if (hit.symbol === 'SPY') {
-            suggestedLimitPrice = Number((livePrice - 0.5).toFixed(2));
-            limitPriceRange = `$${(suggestedLimitPrice - 1).toFixed(2)} ~ $${suggestedLimitPrice.toFixed(2)}`;
-            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，采用 Midpoint Peg 盘口中位数挂买单，节约 15 bps 滑点`;
-        } else if (hit.symbol === 'SO') {
-            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，MA200 支撑线附近设预设限价单`;
-        } else if (hit.symbol === 'LIN') {
-            limitFormula = `现价 $${livePrice.toFixed(2)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)，超卖筑底反弹关注区`;
-        }
-
-        const estimatedAmountUsd = Number((suggestedLimitPrice * hit.suggestedShares).toFixed(2));
-
+        // 行情适配只更新非授权展示字段，绝不改写信号身份、授权、建议限价和止损价
         return {
             ...hit,
             currentPrice: livePrice,
             dayChange,
             dayChangePct,
-            suggestedLimitPrice,
-            limitFormula,
-            limitPriceRange,
-            estimatedAmountUsd,
-            actionBadge,
-            hitStatus,
-            statusText,
-            rationale,
-            prerequisite,
             lastUpdatedTime: updatedTime,
             isLivePrice: true,
         };
     });
+}
+
+export function normalizeAiMemoryHolding(rawHolding: any): AiMemoryHolding {
+    const defaultHolding = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(d => d.symbol === rawHolding?.symbol);
+    const shares = Number(rawHolding?.shares ?? defaultHolding?.shares ?? 0);
+    const costBasis = Number(rawHolding?.costBasis ?? rawHolding?.costPrice ?? defaultHolding?.costBasis ?? 0);
+    const currentPrice = Number(rawHolding?.currentPrice ?? rawHolding?.price ?? defaultHolding?.currentPrice ?? costBasis);
+    const marketValue = rawHolding?.marketValue !== undefined && rawHolding?.marketValue !== null
+        ? Number(rawHolding.marketValue)
+        : defaultHolding?.marketValue !== undefined
+        ? Number(defaultHolding.marketValue)
+        : Number((shares * currentPrice).toFixed(2));
+
+    const pnlAmount = rawHolding?.pnlAmount !== undefined && rawHolding?.pnlAmount !== null
+        ? Number(rawHolding.pnlAmount)
+        : rawHolding?.unrealizedPnlUsd !== undefined && rawHolding?.unrealizedPnlUsd !== null
+        ? Number(rawHolding.unrealizedPnlUsd)
+        : defaultHolding?.pnlAmount !== undefined
+        ? Number(defaultHolding.pnlAmount)
+        : Number(((currentPrice - costBasis) * shares).toFixed(2));
+
+    const pnlPct = rawHolding?.pnlPct !== undefined && rawHolding?.pnlPct !== null
+        ? Number(rawHolding.pnlPct)
+        : rawHolding?.unrealizedPnlPct !== undefined && rawHolding?.unrealizedPnlPct !== null
+        ? Number(rawHolding.unrealizedPnlPct)
+        : defaultHolding?.pnlPct !== undefined
+        ? Number(defaultHolding.pnlPct)
+        : (costBasis > 0 ? Number((((currentPrice - costBasis) / costBasis) * 100).toFixed(2)) : 0);
+
+    const navWeightPct = rawHolding?.navWeightPct !== undefined && rawHolding?.navWeightPct !== null
+        ? Number(rawHolding.navWeightPct)
+        : Number(defaultHolding?.navWeightPct ?? 0);
+
+    return {
+        ...defaultHolding,
+        ...rawHolding,
+        symbol: String(rawHolding?.symbol || defaultHolding?.symbol || ''),
+        name: String(rawHolding?.name || rawHolding?.nameCn || defaultHolding?.name || rawHolding?.symbol || ''),
+        assetClass: (rawHolding?.assetClass || defaultHolding?.assetClass || 'Equity Stock') as any,
+        shares: isNaN(shares) ? 0 : shares,
+        costBasis: isNaN(costBasis) ? 0 : costBasis,
+        currentPrice: isNaN(currentPrice) ? 0 : currentPrice,
+        marketValue: isNaN(marketValue) ? 0 : marketValue,
+        navWeightPct: isNaN(navWeightPct) ? 0 : navWeightPct,
+        pnlAmount: isNaN(pnlAmount) ? 0 : pnlAmount,
+        pnlPct: isNaN(pnlPct) ? 0 : pnlPct,
+        aiRole: String(rawHolding?.aiRole || defaultHolding?.aiRole || 'defensive hold'),
+        statusBadge: String(rawHolding?.statusBadge || defaultHolding?.statusBadge || '正常持仓'),
+        statusType: (rawHolding?.statusType || defaultHolding?.statusType || 'info') as any,
+        factorGroup: String(rawHolding?.factorGroup || rawHolding?.theme || defaultHolding?.factorGroup || ''),
+        actionAdvice: String(rawHolding?.actionAdvice || defaultHolding?.actionAdvice || '依据量化规则持续跟踪'),
+        dayChange: typeof rawHolding?.dayChange === 'number' ? rawHolding.dayChange : undefined,
+        dayChangePct: typeof rawHolding?.dayChangePct === 'number' ? rawHolding.dayChangePct : undefined,
+        liveQuotePrice: typeof rawHolding?.liveQuotePrice === 'number' ? rawHolding.liveQuotePrice : undefined,
+        amountSource: rawHolding?.amountSource === 'broker_screen' || rawHolding?.amountSource === 'live_quote'
+            ? rawHolding.amountSource
+            : defaultHolding?.amountSource,
+    };
 }
 
 /**
@@ -1219,23 +1874,71 @@ export function recalculatePortfolioLedgerWithLiveQuotes(
     baseLedger: AiMemoryPortfolioLedger = AI_MEMORY_PORTFOLIO_LEDGER,
     quotes?: Record<string, LivePortfolioQuote>
 ): AiMemoryPortfolioLedger {
+    const rawHoldings = (baseLedger?.holdings && baseLedger.holdings.length > 0)
+        ? baseLedger.holdings
+        : AI_MEMORY_PORTFOLIO_LEDGER.holdings;
+    const normalizedHoldings = rawHoldings.map(normalizeAiMemoryHolding);
+
+    const safeLedger: AiMemoryPortfolioLedger = {
+        ...AI_MEMORY_PORTFOLIO_LEDGER,
+        ...(baseLedger || {}),
+        totalNav: Number(baseLedger?.totalNav ?? AI_MEMORY_PORTFOLIO_LEDGER.totalNav ?? 0),
+        workingCash: Number(baseLedger?.workingCash ?? AI_MEMORY_PORTFOLIO_LEDGER.workingCash ?? 0),
+        workingCashPct: Number(baseLedger?.workingCashPct ?? AI_MEMORY_PORTFOLIO_LEDGER.workingCashPct ?? 0),
+        sgovReserve: Number(baseLedger?.sgovReserve ?? AI_MEMORY_PORTFOLIO_LEDGER.sgovReserve ?? 0),
+        sgovReservePct: Number(baseLedger?.sgovReservePct ?? AI_MEMORY_PORTFOLIO_LEDGER.sgovReservePct ?? 0),
+        totalDefenseCash: Number(baseLedger?.totalDefenseCash ?? AI_MEMORY_PORTFOLIO_LEDGER.totalDefenseCash ?? 0),
+        totalDefensePct: Number(baseLedger?.totalDefensePct ?? AI_MEMORY_PORTFOLIO_LEDGER.totalDefensePct ?? 0),
+        equityTotal: Number(baseLedger?.equityTotal ?? AI_MEMORY_PORTFOLIO_LEDGER.equityTotal ?? 0),
+        equityPct: Number(baseLedger?.equityPct ?? AI_MEMORY_PORTFOLIO_LEDGER.equityPct ?? 0),
+        monthlyDividendEstimateUsd: Number(baseLedger?.monthlyDividendEstimateUsd ?? AI_MEMORY_PORTFOLIO_LEDGER.monthlyDividendEstimateUsd ?? 8.8),
+        realTrades: (baseLedger?.realTrades && baseLedger.realTrades.length > 0)
+            ? baseLedger.realTrades
+            : AI_MEMORY_PORTFOLIO_LEDGER.realTrades,
+        navMilestones: (baseLedger?.navMilestones && baseLedger.navMilestones.length > 0)
+            ? baseLedger.navMilestones
+            : AI_MEMORY_PORTFOLIO_LEDGER.navMilestones,
+        summaryComments: (baseLedger?.summaryComments && baseLedger.summaryComments.length > 0)
+            ? baseLedger.summaryComments
+            : AI_MEMORY_PORTFOLIO_LEDGER.summaryComments,
+        auditItems: (baseLedger?.auditItems && baseLedger.auditItems.length > 0)
+            ? baseLedger.auditItems
+            : AI_MEMORY_PORTFOLIO_LEDGER.auditItems,
+        holdings: normalizedHoldings,
+    };
+
     if (!quotes || Object.keys(quotes).length === 0) {
-        return baseLedger;
+        return safeLedger;
     }
 
     let dayPnlSum = 0;
     let hasValidDayPnl = false;
 
-    const updatedHoldings = baseLedger.holdings.map((holding) => {
+    const updatedHoldings = safeLedger.holdings.map((holding) => {
         const quote = quotes[holding.symbol];
         if (!quote || quote.price <= 0) {
             return holding;
         }
 
+        // Screen-canonical rows keep screenshot price/MV/PnL; only attach live quote as reference.
+        if (holding.amountSource === 'broker_screen') {
+            if (typeof quote.change === 'number') {
+                dayPnlSum += quote.change * holding.shares;
+                hasValidDayPnl = true;
+            }
+            return {
+                ...holding,
+                liveQuotePrice: quote.price,
+                dayChangePct: typeof quote.changePct === 'number' ? quote.changePct : holding.dayChangePct,
+                isLivePrice: false,
+            };
+        }
+
         const currentPrice = quote.price;
         const marketValue = Number((holding.shares * currentPrice).toFixed(2));
-        const pnlAmount = Number(((currentPrice - holding.costBasis) * holding.shares).toFixed(2));
-        const pnlPct = Number((((currentPrice - holding.costBasis) / holding.costBasis) * 100).toFixed(2));
+        const cost = holding.costBasis || 0;
+        const pnlAmount = Number(((currentPrice - cost) * holding.shares).toFixed(2));
+        const pnlPct = cost > 0 ? Number((((currentPrice - cost) / cost) * 100).toFixed(2)) : 0;
 
         if (typeof quote.change === 'number') {
             dayPnlSum += quote.change * holding.shares;
@@ -1245,6 +1948,7 @@ export function recalculatePortfolioLedgerWithLiveQuotes(
         return {
             ...holding,
             currentPrice,
+            liveQuotePrice: currentPrice,
             marketValue,
             pnlAmount,
             pnlPct,
@@ -1261,7 +1965,10 @@ export function recalculatePortfolioLedgerWithLiveQuotes(
 
     const equityHoldings = updatedHoldings.filter((h) => h.assetClass === 'Equity Stock');
     const equityTotal = Number(equityHoldings.reduce((sum, h) => sum + h.marketValue, 0).toFixed(2));
-    const totalNav = Number((totalDefenseCash + equityTotal).toFixed(2));
+    const screenCanonicalLedger = updatedHoldings.every((h) => h.amountSource === 'broker_screen');
+    const totalNav = screenCanonicalLedger && Number(baseLedger.totalNav) > 0
+        ? Number(baseLedger.totalNav)
+        : Number((totalDefenseCash + equityTotal).toFixed(2));
 
     const totalDefensePct = Number(((totalDefenseCash / totalNav) * 100).toFixed(2));
     const equityPct = Number(((equityTotal / totalNav) * 100).toFixed(2));
@@ -1276,10 +1983,14 @@ export function recalculatePortfolioLedgerWithLiveQuotes(
         };
     });
 
-    const dayPnlUsd = hasValidDayPnl ? Number(dayPnlSum.toFixed(2)) : null;
-    const dayPnlPct = hasValidDayPnl && (totalNav - dayPnlSum) > 0
-        ? Number(((dayPnlSum / (totalNav - dayPnlSum)) * 100).toFixed(2))
-        : null;
+    const dayPnlUsd = screenCanonicalLedger && typeof baseLedger.dayPnlUsd === 'number'
+        ? baseLedger.dayPnlUsd
+        : (hasValidDayPnl ? Number(dayPnlSum.toFixed(2)) : null);
+    const dayPnlPct = screenCanonicalLedger && typeof baseLedger.dayPnlPct === 'number'
+        ? baseLedger.dayPnlPct
+        : (hasValidDayPnl && (totalNav - (dayPnlSum || 0)) > 0
+            ? Number(((dayPnlSum / (totalNav - dayPnlSum)) * 100).toFixed(2))
+            : null);
 
     const mrvlHolding = finalHoldings.find((h) => h.symbol === 'MRVL');
     const qcomHolding = finalHoldings.find((h) => h.symbol === 'QCOM');
@@ -1302,33 +2013,18 @@ export function recalculatePortfolioLedgerWithLiveQuotes(
         if (item.targetSymbol === 'CVX') {
             const cvxQuote = quotes['CVX'];
             if (cvxQuote && cvxQuote.price > 0) {
-                const isGreenToday = cvxQuote.changePct >= 0;
-                if (isGreenToday) {
-                    return {
-                        ...item,
-                        priority: 'HIGH' as const,
-                        title: '底部品种 CVX 右侧两连阳已达成！',
-                        condition: `昨收大涨 +1.53%，今日现价 $${cvxQuote.price.toFixed(2)} (+${cvxQuote.changePct.toFixed(2)}%)，两连阳右侧信号正式确立！`,
-                        recommendation: `已触发 100% 胜率反弹战法买点！建议动用工作现金（余 $${workingCash.toFixed(2)}）在回踩 $204~$205 处限价买入 2 股，严防市价追高。`,
-                        status: 'TRIGGERED' as const,
-                    };
-                } else {
-                    return {
-                        ...item,
-                        priority: 'LOW' as const,
-                        title: '底部品种 CVX 跟踪 (等待收阳)',
-                        condition: `今日现价 $${cvxQuote.price.toFixed(2)} (${cvxQuote.changePct.toFixed(2)}%) 盘中走弱，暂未确立连阳`,
-                        recommendation: '恪守不接飞刀铁律，保持观望。',
-                        status: 'WATCHING' as const,
-                    };
-                }
+                return {
+                    ...item,
+                    condition: `CVX 现价 $${cvxQuote.price.toFixed(2)} (${cvxQuote.changePct >= 0 ? '+' : ''}${cvxQuote.changePct.toFixed(2)}%)，距 MA200 约 -1.4%，底部品种研究已归档且正式买入授权为 0`,
+                    status: 'WATCHING' as const,
+                };
             }
         }
         return item;
     });
 
     return {
-        ...baseLedger,
+        ...safeLedger,
         totalNav,
         dayPnlUsd,
         dayPnlPct,
@@ -11571,6 +12267,15 @@ export const PHASE36_40_BACKTEST_BENCHMARK: Phase36To40BacktestReport = {
 // ============================================================================
 
 export function generateSynthesizedStrategyAnalysis(stock: StrategyHitStock): string {
+    if (stock.signalTier !== 'FORMAL_EXECUTION' || stock.isOrderAuthorized !== true) {
+        const isBrokerReview = stock.signalTier === 'BROKER_PORTFOLIO_REVIEW';
+        return `### ${isBrokerReview ? '实盘持仓人工复核' : '研究观察'} · ${stock.symbol}\n\n` +
+            `身份：${stock.actionBadge}\n` +
+            `来源：${stock.strategySource}\n` +
+            `复核依据：${stock.limitFormula}\n` +
+            `下一步条件：${stock.prerequisite || '等待正式策略和账户状态核验'}\n` +
+            `当前无获授权交易股数或限价；这份记录不能用于下单。`;
+    }
     const isSell = stock.actionType === 'SELL_LIMIT';
     const isStop = stock.actionType === 'STOP_LIMIT';
 
@@ -11636,6 +12341,11 @@ export async function streamAiStrategyAnalysis(
     onError: (err: string) => void,
     options?: { apiKey?: string; model?: string }
 ): Promise<void> {
+    if (stock.signalTier !== 'FORMAL_EXECUTION' || stock.isOrderAuthorized !== true) {
+        onChunk(generateSynthesizedStrategyAnalysis(stock));
+        onFinish();
+        return;
+    }
     try {
         const apiKey = options?.apiKey || (typeof window !== 'undefined' ? localStorage.getItem('AGY_API_KEY') || '' : '');
         const model = options?.model || (typeof window !== 'undefined' ? localStorage.getItem('AGY_MODEL') || 'gemini-3.8-flash-high' : 'gemini-3.8-flash-high');
@@ -11740,7 +12450,3 @@ export async function streamAiStrategyAnalysis(
         }
     }
 }
-
-
-
-

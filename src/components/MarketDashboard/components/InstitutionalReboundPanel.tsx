@@ -157,6 +157,10 @@ import {
     DEFAULT_LENDING_HOLDINGS,
     evaluateTreasuryLadderAndLending,
     recalculateReboundUniverseWithLiveQuotes,
+    fetchLiveStrategyAnalysisFeed,
+    checkTicketAuthorization,
+    generateAuthorizedExecutionTicket,
+    type AiMemoryStrategyFeed,
 } from '../../../api/institutionalStrategy';
 import { useMarketStore } from '../../../store/market.store';
 
@@ -959,10 +963,24 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
 
     const summary = BOTTOM_REBOUND_100WIN_SUMMARY;
     const { livePortfolioQuotes } = useMarketStore();
+    const [aiMemoryFeed, setAiMemoryFeed] = useState<AiMemoryStrategyFeed | null>(null);
+    const [feedLoadAttempted, setFeedLoadAttempted] = useState(false);
+
+    useEffect(() => {
+        fetchLiveStrategyAnalysisFeed().then(f => {
+            if (f) setAiMemoryFeed(f);
+            setFeedLoadAttempted(true);
+        });
+    }, []);
+
     const stocks = useMemo(
-        () => recalculateReboundUniverseWithLiveQuotes(BOTTOM_REBOUND_UNIVERSE, livePortfolioQuotes),
-        [livePortfolioQuotes]
+        () => recalculateReboundUniverseWithLiveQuotes(
+            aiMemoryFeed?.natural_monopoly_white_horses || BOTTOM_REBOUND_UNIVERSE,
+            livePortfolioQuotes
+        ),
+        [aiMemoryFeed, livePortfolioQuotes]
     );
+    const forwardBuyCount = stocks.filter(s => s.signalStatus === 'buy' || s.forwardLiveValidation).length;
     const isCn = colorScheme === 'cn';
     const ledgerView = currentBrokerLedgerView();
 
@@ -974,6 +992,52 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
         <div className="institutional-rebound-panel-root">
             {/* 顶栏 Hero 战绩看板 */}
             <div className="rebound-hero-header">
+                {feedLoadAttempted && (
+                    <div style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        marginBottom: '14px',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: !aiMemoryFeed
+                            ? 'rgba(239, 68, 68, 0.15)'
+                            : aiMemoryFeed.is_stale
+                            ? 'rgba(245, 158, 11, 0.15)'
+                            : 'rgba(16, 185, 129, 0.15)',
+                        border: `1px solid ${!aiMemoryFeed ? 'rgba(239, 68, 68, 0.4)' : aiMemoryFeed.is_stale ? 'rgba(245, 158, 11, 0.4)' : 'rgba(16, 185, 129, 0.4)'}`,
+                        color: !aiMemoryFeed ? '#fca5a5' : aiMemoryFeed.is_stale ? '#fcd34d' : '#6ee7b7',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>{!aiMemoryFeed ? '⚠️' : aiMemoryFeed.is_stale ? '⏳' : '⚡'}</span>
+                            <span style={{ fontWeight: 600 }}>
+                                {!aiMemoryFeed
+                                    ? '策略数据不可用 / 待人工核对 (Fail-Closed: 停止展示任何本地自选买点)'
+                                    : aiMemoryFeed.is_stale
+                                    ? `只读离线镜像模式 (${aiMemoryFeed.stale_reason || 'AI-Memory 实时服务不可达'} · 新开仓买入授权锁定为 0)`
+                                    : `策略权威源已连接: AI-Memory (Formal: ${aiMemoryFeed.formal_strategy?.name || 'V9 Rule E'} · 买入授权 ${aiMemoryFeed.new_buy_authorization ?? 0} 股)`}
+                            </span>
+                            {aiMemoryFeed && !aiMemoryFeed.is_stale && forwardBuyCount > 0 && (
+                                <span style={{
+                                    marginLeft: 8,
+                                    padding: '2px 8px',
+                                    borderRadius: 4,
+                                    background: 'rgba(16,185,129,0.2)',
+                                    border: '1px solid rgba(16,185,129,0.45)',
+                                    color: '#6ee7b7',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                }}>
+                                    前向验证 BUY {forwardBuyCount}
+                                </span>
+                            )}
+                        </div>
+                        <span style={{ fontSize: '11px', opacity: 0.85 }}>
+                            权威策略源: AI-Memory / stock 为纯只读展示端
+                        </span>
+                    </div>
+                )}
                 <div className="hero-badge-strip">
                     <span className="source-repo-tag">🧠 跨仓库融合 · AI-Memory 归档研究</span>
                     <span className="hero-super-badge warning-badge">🔬 研究假说 · 历史已平仓样本（非实盘承诺）</span>
@@ -1090,11 +1154,37 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                 ))}
             </div>
 
-            {/* 视图 1：6 大核心标的实时监控雷达 */}
+            {/* 视图 1：6 大核心标的监控（历史归档研究样本） */}
             {subTab === 'stocks' && (
                 <div className="rebound-stocks-view">
+                    {/* 归档研究资料显著标识 (DECISION.md & Codex Round 3 Defect 4) */}
+                    <div style={{
+                        padding: '12px 16px',
+                        background: 'rgba(234, 179, 8, 0.1)',
+                        border: '1px solid rgba(234, 179, 8, 0.35)',
+                        borderRadius: '8px',
+                        marginBottom: '14px',
+                        color: '#fef08a',
+                        fontSize: '12px',
+                        lineHeight: 1.6,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '10px',
+                    }}>
+                        <span style={{ fontSize: '18px', lineHeight: 1 }}>🛡️</span>
+                        <div>
+                            <div style={{ fontWeight: 'bold', color: '#fde047', marginBottom: '2px' }}>
+                                【归档研究资料提示 · 非当前命中 / 严禁作为实盘入场买点】
+                            </div>
+                            <div>
+                                本模块展示的 6 大标的源自 Candidate 173838 历史归档研究样本（前向样本 0/30，未晋级）。
+                                当前正式策略 V9 Rule E 新买入授权锁定为 0。本面板数据纯属静态投研归档资料，<strong>绝不代表当前策略命中，严禁解释为可入场买点</strong>。本系统所有订单小票生成与复制通道均已由策略权威中枢物理锁死。
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="section-meta-tip">
-                        <span>💡 <strong>自然垄断资产池定义准则</strong>：只选业务具备物理排他性、受监管长期电价/国防刚需保障、或拥有极深宽护城河的高股息龙头，从根源切除破产与业绩归零风险。</span>
+                        <span>💡 <strong>自然垄断资产池定义准则 (历史归档研究)</strong>：只选业务具备物理排他性、受监管长期电价/国防刚需保障、或拥有极深宽护城河的高股息龙头，从根源切除破产与业绩归零风险。</span>
                     </div>
 
                     <div className="rebound-stocks-grid">
@@ -1140,9 +1230,20 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
 
                                 {/* 状态信号栏 */}
                                 <div className="card-signal-row">
-                                    <span className="signal-badge-title">战法当前状态：</span>
-                                    <span className={`status-pill status-${stk.signalStatus}`}>
-                                        {stk.signalStatusText}
+                                    <span className="signal-badge-title">
+                                        {stk.signalStatus === 'buy' || stk.forwardLiveValidation ? '前向验证状态：' : '战法归档状态：'}
+                                    </span>
+                                    <span
+                                        className={`status-pill ${stk.signalStatus === 'buy' ? 'status-buy' : 'status-wait'}`}
+                                        style={
+                                            stk.signalStatus === 'buy' || stk.forwardLiveValidation
+                                                ? { background: 'rgba(16, 185, 129, 0.18)', color: '#6ee7b7', border: '1px solid rgba(16, 185, 129, 0.4)' }
+                                                : { background: 'rgba(234, 179, 8, 0.15)', color: '#facc15', border: '1px solid rgba(234, 179, 8, 0.3)' }
+                                        }
+                                    >
+                                        {stk.signalStatus === 'buy' || stk.forwardLiveValidation
+                                            ? stk.signalStatusText
+                                            : (stk.signalStatusText.startsWith('[归档研究]') ? stk.signalStatusText : `[归档研究] ${stk.signalStatusText}`)}
                                     </span>
                                 </div>
 
@@ -1150,7 +1251,7 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     <strong>护城河解析：</strong>{stk.moatDescription}
                                 </p>
                                 <div className="card-logic-tip">
-                                    <strong>当前决策驱动：</strong>{stk.signalReason}
+                                    <strong>{stk.signalStatus === 'buy' || stk.forwardLiveValidation ? '前向验证逻辑：' : '归档研究逻辑：'}</strong>{stk.signalReason}
                                 </div>
                             </div>
                         ))}
@@ -8322,13 +8423,31 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                         <div style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '6px', color: '#93c5fd', fontSize: '12px' }}>
                             💡 提示：本页 Phase 36 券商自适应挂单与无感记账为沙盒演示工具，不是实操自动授权；本页 Phase 25/36-40 与顶部 100% 胜率研究不是同一回测引擎。
                         </div>
+                        {/* 权限拦截横幅与历史示例声明 (DECISION.md & Codex Defect 3) */}
+                        <div style={{
+                            marginTop: '10px',
+                            padding: '10px 14px',
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            borderRadius: '8px',
+                            color: '#fca5a5',
+                            fontSize: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                        }}>
+                            <span>🛡️</span>
+                            <span>
+                                <strong>统一策略权限锁死：</strong>依据 CURRENT_STRATEGY.md 与 DECISION.md，所有可生成/复制订单小票入口必须经过统一的 feed 有效性、策略授权与标的授权校验。当前正式策略 V9 Rule E 新买入授权为 0 且无有效实盘会话，所有预设均为不可执行历史示例，下单复制通道已被物理锁死。
+                            </span>
+                        </div>
                     </div>
 
                     {/* 交互调节与标的预设面板 */}
                     <div className="gates-eval-card" style={{ marginBottom: '18px' }}>
                         <div className="gates-card-header">
                             <span className="gates-card-icon">🎛️</span>
-                            <span className="gates-card-title">实盘标的快速预设与参数自适应调节</span>
+                            <span className="gates-card-title">历史研究标的预设参考 (不可执行历史示例)</span>
                             <span className="gates-badge badge-pass">
                                 撮合方式：{peggingResult.peggingStrategy}
                             </span>
@@ -8338,19 +8457,19 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                 className={`gates-preset-btn ${peggingOrder.symbol === 'SGOV' ? 'active' : ''}`}
                                 onClick={() => setPeggingOrder(DEFAULT_PEGGING_REQUESTS[0])}
                             >
-                                🟢 SGOV 实盘回放 (买入 21 股 @ 100.605)
+                                [不可执行历史示例] 🟢 SGOV 历史建仓回放 (买入 21 股 @ 100.605)
                             </button>
                             <button
                                 className={`gates-preset-btn ${peggingOrder.symbol === 'SPY' ? 'active' : ''}`}
                                 onClick={() => setPeggingOrder(DEFAULT_PEGGING_REQUESTS[1])}
                             >
-                                🔵 SPY 宽基指数暗池中位数 (买入 2 股)
+                                [不可执行历史示例] 🔵 SPY 历史测算示例 (买入 2 股)
                             </button>
                             <button
                                 className={`gates-preset-btn ${peggingOrder.symbol === 'MRVL' ? 'active' : ''}`}
                                 onClick={() => setPeggingOrder(DEFAULT_PEGGING_REQUESTS[2])}
                             >
-                                🟠 MRVL 卖一被动排队吃溢价 (卖出 1 股)
+                                [不可执行历史示例] 🟠 MRVL 历史排队示例 (卖出 1 股)
                             </button>
                         </div>
 
@@ -8456,29 +8575,87 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     {/* 小票复制与无感记账两栏网格 */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '18px' }}>
                         {/* 栏 1: 券商挂单执行小票 */}
-                        <div className="gates-eval-card">
-                            <div className="gates-card-header">
-                                <span className="gates-card-icon">📋</span>
-                                <span className="gates-card-title">沙盒演示挂单小票 (SIMULATED，点击复制)</span>
-                                <button
-                                    className="gates-preset-btn active"
-                                    onClick={() => {
-                                        navigator.clipboard?.writeText(peggingResult.ticketText);
-                                        setPeggingCopied(true);
-                                        setTimeout(() => setPeggingCopied(false), 2500);
-                                    }}
-                                    style={{ marginLeft: 'auto', fontSize: '11px' }}
-                                >
-                                    {peggingCopied ? '✅ 已复制到剪贴板！' : '📋 复制下单小票'}
-                                </button>
-                            </div>
-                            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '12px', whiteSpace: 'pre-wrap', lineHeight: '1.6', marginTop: '10px', color: '#e6edf3' }}>
-                                {peggingResult.ticketText}
-                            </div>
-                            <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                💡 <strong>贴盘决策逻辑</strong>：{peggingResult.rationale}
-                            </div>
-                        </div>
+                        {(() => {
+                            const peggingAuth = checkTicketAuthorization(
+                                peggingOrder.symbol,
+                                peggingOrder.direction,
+                                peggingOrder.targetShares,
+                                aiMemoryFeed
+                            );
+                            const authorizedTicketText = peggingAuth.isAuthorized && peggingAuth.matchedAction
+                                ? (peggingAuth.authorizedTicketText || generateAuthorizedExecutionTicket(peggingAuth.matchedAction).ticketText)
+                                : peggingResult.ticketText;
+
+                            return (
+                                <div className="gates-eval-card">
+                                    <div className="gates-card-header">
+                                        <span className="gates-card-icon">📋</span>
+                                        <span className="gates-card-title">
+                                            {peggingAuth.isAuthorized
+                                                ? '沙盒演示挂单小票 (SIMULATED，点击复制)'
+                                                : '不可执行历史演示小票 (已物理锁死 · 仅供研究参考)'}
+                                        </span>
+                                        <button
+                                            className="gates-preset-btn"
+                                            disabled={!peggingAuth.isAuthorized}
+                                            onClick={() => {
+                                                if (!peggingAuth.isAuthorized) {
+                                                    alert(`【风控拦截】下单小票已被物理锁死：${peggingAuth.reason}`);
+                                                    return;
+                                                }
+                                                // 依据 DECISION.md Rule 5：已授权小票必须从 matchedAction 使用 AI-Memory 正式动作的 suggestedLimitPrice
+                                                navigator.clipboard?.writeText(authorizedTicketText);
+                                                setPeggingCopied(true);
+                                                setTimeout(() => setPeggingCopied(false), 2500);
+                                            }}
+                                            style={{
+                                                marginLeft: 'auto',
+                                                fontSize: '11px',
+                                                opacity: !peggingAuth.isAuthorized ? 0.6 : 1,
+                                                cursor: !peggingAuth.isAuthorized ? 'not-allowed' : 'pointer',
+                                                background: !peggingAuth.isAuthorized ? 'rgba(71, 85, 105, 0.3)' : undefined,
+                                                border: !peggingAuth.isAuthorized ? '1px solid rgba(148, 163, 184, 0.25)' : undefined,
+                                                color: !peggingAuth.isAuthorized ? '#94a3b8' : undefined,
+                                            }}
+                                        >
+                                            {!peggingAuth.isAuthorized
+                                                ? `🔒 复制已被锁死 (${peggingAuth.reason.length > 14 ? peggingAuth.reason.slice(0, 12) + '...' : peggingAuth.reason})`
+                                                : (peggingCopied ? '✅ 已复制到剪贴板！' : '📋 复制下单小票')}
+                                        </button>
+                                    </div>
+                                    <div style={{
+                                        background: !peggingAuth.isAuthorized ? 'rgba(239, 68, 68, 0.08)' : 'rgba(0,0,0,0.3)',
+                                        border: !peggingAuth.isAuthorized ? '1px dashed rgba(239, 68, 68, 0.3)' : undefined,
+                                        padding: '12px',
+                                        borderRadius: '6px',
+                                        fontFamily: 'monospace',
+                                        fontSize: '12px',
+                                        whiteSpace: 'pre-wrap',
+                                        lineHeight: '1.6',
+                                        marginTop: '10px',
+                                        color: !peggingAuth.isAuthorized ? '#fca5a5' : '#e6edf3',
+                                    }}>
+                                        {!peggingAuth.isAuthorized && (
+                                            <div style={{ color: '#ef4444', fontWeight: 'bold', marginBottom: '8px' }}>
+                                                [不可执行历史示例 · 物理锁死] 🔒 {peggingAuth.reason}
+                                            </div>
+                                        )}
+                                        {authorizedTicketText}
+                                    </div>
+                                    <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                        {peggingAuth.isAuthorized && peggingAuth.matchedAction ? (
+                                            <div>
+                                                🛡️ <strong>策略授权锁定</strong>：小票限价严格锁定正式动作建议价 <strong>${peggingAuth.matchedAction.suggestedLimitPrice.toFixed(2)}</strong>。盘口实时推算价为 <strong>${peggingResult.recommendedPrice.toFixed(3)}</strong>（仅供独立参考，不可改写已授权限价）。
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                💡 <strong>贴盘决策逻辑</strong>：{peggingResult.rationale}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* 栏 2: AI-Memory 资产总账无感回写 */}
                         <div className="gates-eval-card">
@@ -8495,7 +8672,11 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                                     className="gates-preset-btn active"
                                     style={{ width: '100%', padding: '10px', textAlign: 'center', background: '#238636', borderColor: '#2ea043', fontWeight: 'bold' }}
                                     onClick={() => {
-                                        const syncRes = simulateAutoSyncToAiMemory(peggingOrder, peggingResult.recommendedPrice);
+                                        const auth = checkTicketAuthorization(peggingOrder.symbol, peggingOrder.direction, peggingOrder.targetShares, aiMemoryFeed);
+                                        const fillPrice = auth.isAuthorized && auth.matchedAction
+                                            ? auth.matchedAction.suggestedLimitPrice
+                                            : peggingResult.recommendedPrice;
+                                        const syncRes = simulateAutoSyncToAiMemory(peggingOrder, fillPrice);
                                         setSyncFeedback(syncRes.auditMessage);
                                     }}
                                 >
@@ -9453,7 +9634,7 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                     <div className="rsr-banner-card">
                         <div className="rsr-banner-head">
                             <div>
-                                <span className="source-repo-tag">🚀 AI-Memory Alpha 进攻端</span>
+                                <span className="source-repo-tag">🔬 AI-Memory 动量研究原型 (非正式实盘)</span>
                                 <h4>{RSR2_MOMENTUM_SCREENER.name}</h4>
                                 <span className="as-of-date">覆盖样本池：{RSR2_MOMENTUM_SCREENER.universe}</span>
                             </div>
@@ -9846,14 +10027,14 @@ export const InstitutionalReboundPanel: React.FC<InstitutionalReboundPanelProps>
                         <div className="v9-alloc-bar-wrap">
                             <div className="alloc-header">
                                 <span>组合目标仓位划分架构</span>
-                                <span>70% 指数核 + 30% 个股Alpha</span>
+                                <span>70% 指数核 + 30% 个股弹性防守袖</span>
                             </div>
                             <div className="alloc-progress-track">
                                 <div className="alloc-slice-core" style={{ width: '70%' }}>
                                     70% 指数核心 (SPY / QQQ 趋势追踪)
                                 </div>
                                 <div className="alloc-slice-alpha" style={{ width: '30%' }}>
-                                    30% 胜率Alpha (自然垄断底部品种)
+                                    30% 个股弹性袖 (V9 Rule E · 当前买入授权 0)
                                 </div>
                             </div>
                         </div>

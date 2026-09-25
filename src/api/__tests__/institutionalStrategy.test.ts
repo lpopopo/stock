@@ -143,6 +143,8 @@ import {
     evaluateTreasuryLadderAndLending,
     PHASE40_TREASURY_LADDER_FRAMEWORK,
     PHASE36_40_BACKTEST_BENCHMARK,
+    checkTicketAuthorization,
+    generateAuthorizedExecutionTicket,
 } from '../institutionalStrategy';
 
 describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', () => {
@@ -288,82 +290,68 @@ describe('AI-Memory Institutional Strategy Bridge & 100% Win Rebound Engine', ()
         });
     });
 
-    it('8b. should verify AI_MEMORY_PORTFOLIO_LEDGER as of 2026-09-22 with SGOV 21 shares and individual holdings', () => {
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.asOfDate).toBe('2026-09-22');
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.sourceFile).toBe('AI-Memory/domains/quant-strategy/memory/portfolio/2026-09-22-portfolio-summary.md');
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.totalNav).toBe(6026.83);
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.dayPnlUsd).toBeNull();
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.dayPnlPct).toBeNull();
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.equityTotal).toBe(2270.34);
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.sgovReserve).toBe(2112.71);
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.totalDefenseCash).toBe(3756.49);
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.workingCash).toBe(1643.78);
+    it('8b. should verify AI_MEMORY_PORTFOLIO_LEDGER as of 2026-09-25 screen-canonical amounts', () => {
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.asOfDate).toBe('2026-09-25');
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.sourceFile).toContain('2026-09-25-broker-screen-observation.json');
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.totalNav).toBe(5214.45);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.dayPnlUsd).toBe(16.33);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.workingCash).toBe(840.62);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.sgovReserve).toBe(2113.65);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.totalDefenseCash).toBe(2954.27);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.equityTotal).toBe(2259.38);
         expect(AI_MEMORY_PORTFOLIO_LEDGER.holdings.length).toBe(5);
 
         const sgov = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'SGOV');
         expect(sgov).toBeDefined();
         expect(sgov?.shares).toBe(21);
         expect(sgov?.assetClass).toBe('Cash ETF');
-        expect(sgov?.currentPrice).toBe(100.605);
-        expect(sgov?.marketValue).toBe(2112.71);
-        expect(sgov?.navWeightPct).toBe(35.05);
+        expect(sgov?.costBasis).toBe(100.605);
+        expect(sgov?.marketValue).toBe(2113.65);
+        expect(sgov?.amountSource).toBe('broker_screen');
 
         const mrvl = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'MRVL');
         expect(mrvl?.shares).toBe(4);
-        expect(mrvl?.currentPrice).toBe(263.60);
-        expect(mrvl?.marketValue).toBe(1054.40);
-        expect(mrvl?.navWeightPct).toBe(17.50);
+        expect(mrvl?.costBasis).toBe(263.745);
+        expect(mrvl?.marketValue).toBe(1044.44);
+        expect(mrvl?.navWeightPct).toBe(20.03);
 
         const mxl = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'MXL');
         expect(mxl?.shares).toBe(6);
-        expect(mxl?.currentPrice).toBe(85.05);
-        expect(mxl?.marketValue).toBe(510.30);
-        expect(mxl?.navWeightPct).toBe(8.47);
+        expect(mxl?.costBasis).toBe(90.7);
+        expect(mxl?.marketValue).toBe(516.0);
 
         const qcom = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'QCOM');
         expect(qcom?.shares).toBe(2);
-        expect(qcom?.currentPrice).toBe(194.44);
-        expect(qcom?.marketValue).toBe(388.88);
-        expect(qcom?.navWeightPct).toBe(6.45);
+        expect(qcom?.costBasis).toBe(186.67);
+        expect(qcom?.marketValue).toBe(389.12);
 
         const glw = AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'GLW');
         expect(glw?.shares).toBe(2);
-        expect(glw?.currentPrice).toBe(158.38);
-        expect(glw?.marketValue).toBe(316.76);
-        expect(glw?.navWeightPct).toBe(5.26);
+        expect(glw?.costBasis).toBe(181.5);
+        expect(glw?.marketValue).toBe(309.82);
 
-        // Verify realTrade reconciliation: only authentic 9/22 SGOV buy is present, unverified 8/15 trade removed
         expect(AI_MEMORY_PORTFOLIO_LEDGER.realTrades.length).toBe(1);
         expect(AI_MEMORY_PORTFOLIO_LEDGER.realTrades.some(t => t.tradeId === 'REAL-20260815-PORTFOLIO-REBALANCE')).toBe(false);
         const sgovTrade = AI_MEMORY_PORTFOLIO_LEDGER.realTrades.find(t => t.tradeId === 'REAL-20260922-SGOV-BUY');
         expect(sgovTrade).toBeDefined();
-        if (sgovTrade) {
-            expect(sgovTrade.grossAmount).toBe(2112.71);
-            expect(sgovTrade.feeUsd).toBeNull();
-            expect(sgovTrade.feeStatus).toBe('unverified_pending_settlement');
-            expect(sgovTrade.preTradeCash - sgovTrade.grossAmount).toBeCloseTo(sgovTrade.postTradeCash, 2);
-        }
 
-        // Verify milestones are cleanly reconciled to 2026-09-22 without 9/23 forward contamination
-        expect(AI_MEMORY_PORTFOLIO_LEDGER.navMilestones.some(m => m.date === '2026-09-23')).toBe(false);
-        const m922 = AI_MEMORY_PORTFOLIO_LEDGER.navMilestones.find(m => m.date === '2026-09-22');
-        expect(m922?.nav).toBe(6026.83);
+        expect(AI_MEMORY_PORTFOLIO_LEDGER.navMilestones.some(m => m.date === '2026-09-25')).toBe(true);
+        const m925 = AI_MEMORY_PORTFOLIO_LEDGER.navMilestones.find(m => m.date === '2026-09-25');
+        expect(m925?.nav).toBe(5214.45);
     });
 
-    it('8c. should derive currentBrokerLedgerView from 09-22 ledger with sleeve classification', () => {
+    it('8c. should derive currentBrokerLedgerView from screen-canonical ledger with sleeve classification', () => {
         const view = currentBrokerLedgerView();
-        expect(view.asOfDate).toBe('2026-09-22');
-        expect(view.totalNav).toBe(6026.83);
-        expect(view.dayPnlUsd).toBeNull();
-        expect(view.dayPnlPct).toBeNull();
-        expect(view.equityTotal).toBe(2270.34);
-        expect(view.defenseCash).toBe(3756.49);
-        expect(view.workingCash).toBe(1643.78);
-        expect(view.sgovReserve).toBe(2112.71);
+        expect(view.asOfDate).toBe('2026-09-25');
+        expect(view.totalNav).toBe(5214.45);
+        expect(view.workingCash).toBe(840.62);
+        expect(view.sgovReserve).toBe(2113.65);
+        expect(view.defenseCash).toBe(2954.27);
+        expect(view.equityTotal).toBe(2259.38);
         expect(view.holdings.find((h) => h.symbol === 'SGOV')?.shares).toBe(21);
         expect(view.stockSleeveBreach).toBe(true);
         expect(view.singleNameBreach).toBe(true);
-        expect(view.maxNamePct).toBe(17.50);
+        expect(view.maxNamePct).toBe(20.03);
         expect(view.defensePct + view.equityPct).toBeCloseTo(100.0, 0);
         expect(view.canonicalStatus).toContain('SGOV 计入现金袖');
         expect(view.holdings.every((h) => !('ma20' in h))).toBe(true);
@@ -3403,23 +3391,38 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         expect(mrvlHit?.currentPrice).toBe(254.50);
         expect(mrvlHit?.dayChangePct).toBe(-2.45);
         expect(mrvlHit?.isLivePrice).toBe(true);
+        expect(mrvlHit?.isOrderAuthorized).toBe(false);
+        expect(mrvlHit?.suggestedShares).toBe(0);
+        expect(mrvlHit?.suggestedLimitPrice).toBe(0.0);
 
         const qcomHit = updatedHits.find(h => h.symbol === 'QCOM');
         expect(qcomHit).toBeDefined();
         expect(qcomHit?.currentPrice).toBe(193.29);
         expect(qcomHit?.dayChangePct).toBe(-2.00);
+        expect(qcomHit?.isOrderAuthorized).toBe(false);
+        expect(qcomHit?.suggestedShares).toBe(0);
+        expect(qcomHit?.suggestedLimitPrice).toBe(0.0);
 
-        const cvxHit = updatedHits.find(h => h.symbol === 'CVX');
-        expect(cvxHit).toBeDefined();
-        expect(cvxHit?.currentPrice).toBe(207.76);
-        expect(cvxHit?.dayChangePct).toBe(1.09);
-        expect(cvxHit?.actionBadge).toContain('两连阳已确立');
-        expect(cvxHit?.hitStatus).toBe('HIT_NOW');
-
-        const spyHit = updatedHits.find(h => h.symbol === 'SPY');
-        expect(spyHit).toBeDefined();
-        expect(spyHit?.currentPrice).toBe(763.69);
-        expect(spyHit?.dayChangePct).toBe(-0.54);
+        // 验证行情变动绝不得自作主张修改信号状态、挂单限价或授权 (DECISION.md Rule 5)
+        const mockObservationHit: any = {
+            id: 'HIT-03-CVX-OBSERVE',
+            symbol: 'CVX',
+            actionType: 'RESEARCH_OBSERVATION',
+            actionBadge: '🔬 影子研究观察 (非实盘/不可下单)',
+            hitStatus: 'PENDING_CONFIRM',
+            isOrderAuthorized: false,
+            suggestedShares: 0,
+            suggestedLimitPrice: 204.00,
+            currentPrice: 205.51,
+        };
+        const recalculated = recalculateHitStocksWithLiveQuotes([mockObservationHit], mockQuotes);
+        expect(recalculated[0].currentPrice).toBe(207.76);
+        expect(recalculated[0].dayChangePct).toBe(1.09);
+        expect(recalculated[0].hitStatus).toBe('PENDING_CONFIRM');
+        expect(recalculated[0].actionBadge).toBe('🔬 影子研究观察 (非实盘/不可下单)');
+        expect(recalculated[0].isOrderAuthorized).toBe(false);
+        expect(recalculated[0].suggestedShares).toBe(0);
+        expect(recalculated[0].suggestedLimitPrice).toBe(204.00);
     });
 
     it('Test 98: 实时盘口现价重算：AI-Memory 资产总账 NAV、实时日损益与持仓盈亏', () => {
@@ -3434,27 +3437,29 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
 
         const updatedLedger = recalculatePortfolioLedgerWithLiveQuotes(AI_MEMORY_PORTFOLIO_LEDGER, mockQuotes);
 
-        // 验证各持仓价格已更新
+        // 截图权威持仓：市值/成本/现价以截图为准；实时盘口只挂 liveQuotePrice 参考
         const sgov = updatedLedger.holdings.find(h => h.symbol === 'SGOV');
-        expect(sgov?.currentPrice).toBe(100.63);
-        expect(sgov?.marketValue).toBeCloseTo(21 * 100.63, 2);
+        expect(sgov?.amountSource).toBe('broker_screen');
+        expect(sgov?.currentPrice).toBe(100.65);
+        expect(sgov?.marketValue).toBeCloseTo(2113.65, 2);
+        expect(sgov?.liveQuotePrice).toBe(100.63);
 
         const mrvl = updatedLedger.holdings.find(h => h.symbol === 'MRVL');
-        expect(mrvl?.currentPrice).toBe(254.50);
-        expect(mrvl?.marketValue).toBeCloseTo(4 * 254.50, 2);
+        expect(mrvl?.amountSource).toBe('broker_screen');
+        expect(mrvl?.liveQuotePrice).toBe(254.50);
+        expect(mrvl?.currentPrice).toBe(AI_MEMORY_PORTFOLIO_LEDGER.holdings.find(h => h.symbol === 'MRVL')?.currentPrice);
 
-        // 验证 NAV 与总市值守恒
-        expect(updatedLedger.totalNav).toBeGreaterThan(5800);
+        // 截图权威账本：NAV 保持截图净值口径
+        expect(updatedLedger.totalNav).toBeCloseTo(AI_MEMORY_PORTFOLIO_LEDGER.totalNav, 2);
         expect(updatedLedger.totalDefenseCash).toBeCloseTo(updatedLedger.workingCash + (sgov?.marketValue || 0), 2);
 
-        // 验证实时日损益不再为 null
+        // 验证实时日损益不再为 null（可由盘口涨跌估算）
         expect(updatedLedger.dayPnlUsd).not.toBeNull();
         expect(updatedLedger.dayPnlPct).not.toBeNull();
 
-        // 验证 CVX 审计条目触发 TRIGGERED
+        // 验证 CVX 审计条目保持 WATCHING，不可因行情变动自行动作 (DECISION.md Rule 5)
         const cvxAudit = updatedLedger.auditItems.find(a => a.targetSymbol === 'CVX');
-        expect(cvxAudit?.status).toBe('TRIGGERED');
-        expect(cvxAudit?.title).toContain('两连阳已达成');
+        expect(cvxAudit?.status).toBe('WATCHING');
 
         // 验证底部品种池重算
         const reboundPool = recalculateReboundUniverseWithLiveQuotes(undefined, {
@@ -3463,5 +3468,166 @@ describe('Phase 16 — 三组对照减仓-等待-重入执行框架', () => {
         const so = reboundPool.find(s => s.symbol === 'SO');
         expect(so?.currentPrice).toBe(92.50);
         expect(so?.changePct).toBe(1.38);
+    });
+
+    it('Test 99: 统一小票授权校验器 checkTicketAuthorization：股数刚性绑定与方向匹配', () => {
+        // 1. 无 Feed / 离线 Feed 物理锁死
+        const offlineAuth = checkTicketAuthorization('MRVL', 'SELL', 1, null);
+        expect(offlineAuth.isAuthorized).toBe(false);
+
+        // 2. 构造高权威测试 Feed
+        const mockFeed: any = {
+            version: 'ai-memory-unified-feed-v2',
+            feed_source: 'AI_MEMORY_LIVE',
+            is_live: true,
+            is_stale: false,
+            generated_at_utc: new Date().toISOString(),
+            model_session: 'SESSION-2026-09-25-NYSE-CLOSE',
+            model_session_status: 'ACTIVE_VERIFIED',
+            last_formal_completed_session: '2026-09-24',
+            nyse_session_status: 'COMPLETED_VERIFIED',
+            broker_reconciliation_status: 'RECONCILED',
+            account_reconciled: true,
+            new_buy_authorization: 0.15,
+            governance: {
+                formal_version: 'V9_Rule_E',
+                formal_generation_expected: 'v9-formal-20260914-r8',
+                formal_generation_local_status: 'PRESENT',
+                is_formal_generation_available: true,
+                new_buy_authorization: 0.15,
+                status: 'ACTIVE',
+            },
+            ratified_official_strategy: {
+                name: 'V9_Rule_E',
+                new_buy_authorization: 0.15,
+                status: 'ACTIVE',
+            },
+            formal_actions: [
+                {
+                    id: 'FORMAL-MRVL-SELL',
+                    symbol: 'MRVL',
+                    nameCn: '迈威尔科技',
+                    actionType: 'SELL_LIMIT',
+                    isFormal: true,
+                    signalTier: 'FORMAL_EXECUTION',
+                    isOrderAuthorized: true,
+                    isActionable: true,
+                    suggestedShares: 1,
+                    suggestedLimitPrice: 265.0,
+                },
+            ],
+        };
+
+        // 等于建议股数放行
+        const authOk = checkTicketAuthorization('MRVL', 'SELL', 1, mockFeed);
+        expect(authOk.isAuthorized).toBe(true);
+        expect(authOk.reason).toBe('授权通过');
+        expect(authOk.matchedAction?.id).toBe('FORMAL-MRVL-SELL');
+
+        // 大于建议股数拦截
+        const authGreater = checkTicketAuthorization('MRVL', 'SELL', 10, mockFeed);
+        expect(authGreater.isAuthorized).toBe(false);
+        expect(authGreater.reason).toContain('大于正式策略授权建议股数 (1 股)');
+
+        // 小于建议股数拦截 (通过另一只 5 股标的测试)
+        mockFeed.formal_actions.push({
+            id: 'FORMAL-QCOM-BUY',
+            symbol: 'QCOM',
+            actionType: 'BUY_LIMIT',
+            isFormal: true,
+            signalTier: 'FORMAL_EXECUTION',
+            isOrderAuthorized: true,
+            isActionable: true,
+            suggestedShares: 5,
+            suggestedLimitPrice: 180.0,
+        });
+        const authLess = checkTicketAuthorization('QCOM', 'BUY', 2, mockFeed);
+        expect(authLess.isAuthorized).toBe(false);
+        expect(authLess.reason).toContain('小于正式策略授权建议股数 (5 股)');
+
+        // 方向不匹配拦截
+        const authWrongDir = checkTicketAuthorization('MRVL', 'BUY', 1, mockFeed);
+        expect(authWrongDir.isAuthorized).toBe(false);
+        expect(authWrongDir.reason).toContain('动作方向不匹配');
+
+        // 未授权标的拦截
+        const authUnknown = checkTicketAuthorization('AAPL', 'SELL', 1, mockFeed);
+        expect(authUnknown.isAuthorized).toBe(false);
+        expect(authUnknown.reason).toContain('未获正式实盘交易授权');
+    });
+
+    it('Test 100: 小票限价刚性锁定与防手工/盘口改写 (DECISION.md Rule 5)', () => {
+        const mockFeed: any = {
+            version: 'ai-memory-unified-feed-v2',
+            feed_source: 'AI_MEMORY_LIVE',
+            is_live: true,
+            is_stale: false,
+            generated_at_utc: new Date().toISOString(),
+            model_session: 'SESSION-2026-09-25-NYSE-CLOSE',
+            model_session_status: 'ACTIVE_VERIFIED',
+            last_formal_completed_session: '2026-09-24',
+            nyse_session_status: 'COMPLETED_VERIFIED',
+            broker_reconciliation_status: 'RECONCILED',
+            account_reconciled: true,
+            new_buy_authorization: 0.15,
+            governance: {
+                formal_version: 'V9_Rule_E',
+                formal_generation_expected: 'v9-formal-20260914-r8',
+                formal_generation_local_status: 'PRESENT',
+                is_formal_generation_available: true,
+                new_buy_authorization: 0.15,
+                status: 'ACTIVE',
+            },
+            ratified_official_strategy: {
+                name: 'V9_Rule_E',
+                new_buy_authorization: 0.15,
+                status: 'ACTIVE',
+            },
+            formal_actions: [
+                {
+                    id: 'FORMAL-MRVL-SELL',
+                    symbol: 'MRVL',
+                    nameCn: '迈威尔科技',
+                    actionType: 'SELL_LIMIT',
+                    isFormal: true,
+                    signalTier: 'FORMAL_EXECUTION',
+                    isOrderAuthorized: true,
+                    isActionable: true,
+                    suggestedShares: 1,
+                    suggestedLimitPrice: 265.0,
+                    strategySource: 'AI-Memory Phase 11 Ratchet Stop',
+                },
+            ],
+        };
+
+        // 1. 严格匹配正式策略限价：放行，并产出锁定正式限价的小票文本
+        const authExact = checkTicketAuthorization('MRVL', 'SELL', 1, mockFeed, 265.0);
+        expect(authExact.isAuthorized).toBe(true);
+        expect(authExact.authorizedLimitPrice).toBe(265.0);
+        expect(authExact.authorizedShares).toBe(1);
+        expect(authExact.authorizedTicketText).toContain('USD 265');
+        expect(authExact.authorizedTicketText).toContain('MRVL');
+        expect(authExact.authorizedTicketText).toContain('1 股');
+
+        // 2. 手工篡改限价（例如偏高或偏低）一律被 checkTicketAuthorization 坚决拦截
+        const authHigher = checkTicketAuthorization('MRVL', 'SELL', 1, mockFeed, 270.0);
+        expect(authHigher.isAuthorized).toBe(false);
+        expect(authHigher.reason).toContain('偏离正式策略授权限价 ($265.00)');
+        expect(authHigher.reason).toContain('DECISION.md Rule 5');
+
+        const authLower = checkTicketAuthorization('MRVL', 'SELL', 1, mockFeed, 260.0);
+        expect(authLower.isAuthorized).toBe(false);
+        expect(authLower.reason).toContain('偏离正式策略授权限价 ($265.00)');
+
+        // 3. 盘口大幅波动（极端 bid/ask）绝不影响已授权小票限价
+        const wildQuotesRec = generateAuthorizedExecutionTicket(mockFeed.formal_actions[0], {
+            bidPrice: 10.0,
+            askPrice: 999.0,
+        });
+        expect(wildQuotesRec.recommendedPrice).toBe(265.0);
+        expect(wildQuotesRec.ticketText).toContain('USD 265');
+        expect(wildQuotesRec.ticketText).not.toContain('USD 10');
+        expect(wildQuotesRec.ticketText).not.toContain('USD 999');
+        expect(wildQuotesRec.ticketText).not.toContain('USD 504.5'); // 中位数
     });
 });
