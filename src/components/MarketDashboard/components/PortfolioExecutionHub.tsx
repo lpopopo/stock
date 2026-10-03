@@ -131,8 +131,8 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
         || accountObservation?.positions_amounts_canonical
         || accountObservation?.reconciliation_status === 'RECONCILED_SCREEN_CANONICAL'
     );
-    const displayNav = accountObservation?.reported_nav ?? ledger?.totalNav ?? 0;
-    const displayCash = accountObservation?.reported_cash ?? ledger?.workingCash ?? 0;
+    const displayNav = (ledger?.totalNav && ledger.totalNav > 0) ? ledger.totalNav : (accountObservation?.reported_nav ?? 0);
+    const displayCash = (ledger?.workingCash && ledger.workingCash > 0) ? ledger.workingCash : (accountObservation?.reported_cash ?? 0);
     const portfolioReview = aiMemoryFeed?.portfolio_review;
     const moduleAnalysis = aiMemoryFeed?.strategy_module_analysis;
     const reboundPreScreens = (aiMemoryFeed?.research_observations || []).filter(item =>
@@ -585,9 +585,9 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                         </div>
                         {accountObservation && (
                             <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '5px', lineHeight: 1.5 }}>
-                                截图 {accountObservation.displayed_local_time} · 现金 ${displayCash.toFixed(2)}
+                                截图基准 {accountObservation.displayed_local_time} · 实时可用现金 ${displayCash.toFixed(2)}
                                 {screenCanonical
-                                    ? ' · 既往审计金额已废止'
+                                    ? ' · 盘中减仓已入账 · 实时行情联动'
                                     : ` · 另按行情估值 $${(ledger?.totalNav ?? 0).toFixed(2)}（报价时点不同）`}
                             </div>
                         )}
@@ -596,7 +596,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                     {/* 现金与生息快速指标 */}
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '10px 14px', minWidth: '150px' }}>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>💵 自由现金（截图）</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>💵 自由现金 (实盘入账)</div>
                             <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#14b8a6', marginTop: '2px' }}>
                                 ${displayCash.toFixed(2)} <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>({ledger?.workingCashPct ?? 0}%)</span>
                             </div>
@@ -1100,12 +1100,12 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                 </span>
                                 {screenCanonical && (
                                     <span style={{ fontSize: '10px', color: '#6ee7b7', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', padding: '1px 6px', borderRadius: '4px' }}>
-                                        成本 / 市值 / 权重均以截图为准
+                                        盘中减仓已核算 · 独立行情实时联动
                                     </span>
                                 )}
                             </div>
                             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                截图 NAV ${displayNav.toFixed(2)} · 防御垫 {ledger?.totalDefensePct ?? 0}%
+                                实时 NAV ${displayNav.toFixed(2)} {accountObservation?.screen_baseline_nav ? `(截图基准 $${accountObservation.screen_baseline_nav.toFixed(2)})` : ''} · 防御垫 {ledger?.totalDefensePct ?? 0}%
                             </div>
                         </div>
 
@@ -1115,11 +1115,11 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                     <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--text-muted)' }}>
                                         <th style={{ padding: '10px 8px' }}>标的</th>
                                         <th style={{ padding: '10px 8px' }}>股数</th>
-                                        <th style={{ padding: '10px 8px' }}>截图成本</th>
-                                        <th style={{ padding: '10px 8px' }}>截图价</th>
-                                        <th style={{ padding: '10px 8px' }}>市值</th>
+                                        <th style={{ padding: '10px 8px' }}>成本</th>
+                                        <th style={{ padding: '10px 8px' }}>实时现价</th>
+                                        <th style={{ padding: '10px 8px' }}>实时市值</th>
                                         <th style={{ padding: '10px 8px' }}>权重</th>
-                                        <th style={{ padding: '10px 8px' }}>浮盈</th>
+                                        <th style={{ padding: '10px 8px' }}>实时浮盈</th>
                                         <th style={{ padding: '10px 8px' }}>角色</th>
                                         <th style={{ padding: '10px 8px' }}>指引</th>
                                     </tr>
@@ -1127,14 +1127,18 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                 <tbody>
                                     {(ledger?.holdings || []).map((h: AiMemoryHolding) => {
                                         const costBasis = Number(h.costBasis ?? (h as any).costPrice ?? 0);
-                                        const currentPrice = Number(h.currentPrice ?? (h as any).price ?? 0);
                                         const liveQuote = Number(h.liveQuotePrice ?? 0);
-                                        const marketValue = Number(h.marketValue ?? 0);
-                                        const pnlAmount = Number(h.pnlAmount ?? (h as any).unrealizedPnlUsd ?? 0);
-                                        const pnlPct = Number(h.pnlPct ?? (h as any).unrealizedPnlPct ?? 0);
-                                        const dayChangePct = typeof h.dayChangePct === 'number' ? h.dayChangePct : undefined;
-                                        const navWeightPct = Number(h.navWeightPct ?? 0);
+                                        const rawCurrentPrice = Number(h.currentPrice ?? (h as any).price ?? 0);
+                                        const currentPrice = liveQuote > 0 ? liveQuote : rawCurrentPrice;
                                         const shares = Number(h.shares ?? 0);
+                                        const marketValue = Number((currentPrice * shares).toFixed(2));
+                                        const pnlAmount = Number(((currentPrice - costBasis) * shares).toFixed(2));
+                                        const pnlPct = costBasis > 0 ? Number((((currentPrice - costBasis) / costBasis) * 100).toFixed(2)) : 0;
+                                        const dayChangePct = typeof h.dayChangePct === 'number' ? h.dayChangePct : undefined;
+                                        const navWeightPct = (ledger?.totalNav && ledger.totalNav > 0)
+                                            ? Number(((marketValue / ledger.totalNav) * 100).toFixed(2))
+                                            : Number(h.navWeightPct ?? 0);
+                                        const screenPrice = Number((h as any).screenPrice ?? 0);
 
                                         return (
                                             <tr key={h.symbol} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
@@ -1149,8 +1153,8 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                                 <td style={{ padding: '12px 8px', color: 'var(--text-muted)' }}>${costBasis.toFixed(2)}</td>
                                                 <td style={{ padding: '12px 8px' }}>
                                                     <div style={{ fontWeight: 'bold', color: '#fff' }}>${currentPrice.toFixed(2)}</div>
-                                                    {liveQuote > 0 && Math.abs(liveQuote - currentPrice) > 0.01 && (
-                                                        <div style={{ fontSize: '10px', color: '#64748b' }}>行情 ${liveQuote.toFixed(2)}</div>
+                                                    {screenPrice > 0 && Math.abs(screenPrice - currentPrice) > 0.01 && (
+                                                        <div style={{ fontSize: '10px', color: '#64748b' }}>截图 ${screenPrice.toFixed(2)}</div>
                                                     )}
                                                     {dayChangePct !== undefined && (
                                                         <div style={{ fontSize: '11px', fontWeight: '500', color: getPnlColor(dayChangePct) }}>
