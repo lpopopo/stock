@@ -674,6 +674,12 @@ export interface AiMemoryHolding {
     dayChangePct?: number;
     isLivePrice?: boolean;
     amountSource?: 'broker_screen' | 'live_quote';
+    managementReference?: number | null;
+    protectiveStop?: number | null;
+    twoRTrimReference?: number | null;
+    longTermExemption?: boolean | null;
+    managementStatus?: string;
+    sleeve?: 'defense' | 'stock';
 }
 
 export interface AiMemoryRealTrade {
@@ -709,7 +715,7 @@ export interface AiMemoryAuditItem {
     targetSymbol: string;
     condition: string;
     recommendation: string;
-    status: 'PENDING' | 'TRIGGERED' | 'WATCHING';
+    status: 'PENDING' | 'TRIGGERED' | 'WATCHING' | 'RESOLVED' | 'ACTIVE' | string;
 }
 
 export interface AiMemoryPortfolioLedger {
@@ -999,6 +1005,8 @@ export interface AiMemoryStrategyFeed {
         reported_cash: number;
         reported_day_pnl: number;
         reported_unrealized_pnl: number;
+        screen_baseline_nav?: number;
+        screen_baseline_cash?: number;
         positions_displayed_local_time: string;
         positions_count: number;
         orders_verified: boolean;
@@ -1864,6 +1872,20 @@ export function normalizeAiMemoryHolding(rawHolding: any): AiMemoryHolding {
         amountSource: rawHolding?.amountSource === 'broker_screen' || rawHolding?.amountSource === 'live_quote'
             ? rawHolding.amountSource
             : defaultHolding?.amountSource,
+        managementReference: rawHolding?.managementReference !== undefined
+            ? rawHolding.managementReference
+            : defaultHolding?.managementReference,
+        protectiveStop: rawHolding?.protectiveStop !== undefined
+            ? rawHolding.protectiveStop
+            : (rawHolding?.stopPrice !== undefined ? rawHolding.stopPrice : defaultHolding?.protectiveStop),
+        twoRTrimReference: rawHolding?.twoRTrimReference !== undefined
+            ? rawHolding.twoRTrimReference
+            : (rawHolding?.targetPrice !== undefined ? rawHolding.targetPrice : defaultHolding?.twoRTrimReference),
+        longTermExemption: rawHolding?.longTermExemption !== undefined
+            ? rawHolding.longTermExemption
+            : defaultHolding?.longTermExemption,
+        managementStatus: rawHolding?.managementStatus || defaultHolding?.managementStatus,
+        sleeve: rawHolding?.sleeve || defaultHolding?.sleeve,
     };
 }
 

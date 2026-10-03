@@ -555,7 +555,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                 fontWeight: '600',
                             }}>
                                 ● {screenCanonical
-                                    ? 'RECONCILED · 截图金额为准 · 新买仍 0'
+                                    ? 'RECONCILED · 10-02 实盘减仓已入账 · 4股前瞻接管(10-05)'
                                     : accountObservation
                                         ? '持仓与现金已见截图 · 订单未核对'
                                         : '账户未对账 · 只读估值'}
@@ -567,7 +567,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                             </span>
                             {accountObservation ? (
                                 <span style={{ fontSize: '13px', color: getPnlColor(accountObservation.reported_day_pnl) }}>
-                                    {accountObservation.reported_day_pnl >= 0 ? '+' : '-'}${Math.abs(accountObservation.reported_day_pnl).toFixed(2)} · 截图今日盈亏
+                                    {accountObservation.reported_day_pnl >= 0 ? '+' : '-'}${Math.abs(accountObservation.reported_day_pnl).toFixed(2)} · 今日盘口损益
                                 </span>
                             ) : ledger?.dayPnlUsd !== null && ledger?.dayPnlUsd !== undefined && ledger?.dayPnlPct !== null && ledger?.dayPnlPct !== undefined ? (
                                 <span style={{ fontSize: '14px', fontWeight: 'bold', color: getPnlColor(ledger.dayPnlUsd), display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -585,10 +585,7 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                         </div>
                         {accountObservation && (
                             <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '5px', lineHeight: 1.5 }}>
-                                截图基准 {accountObservation.displayed_local_time} · 实时可用现金 ${displayCash.toFixed(2)}
-                                {screenCanonical
-                                    ? ' · 盘中减仓已入账 · 实时行情联动'
-                                    : ` · 另按行情估值 $${(ledger?.totalNav ?? 0).toFixed(2)}（报价时点不同）`}
+                                数据基准 {accountObservation.displayed_local_time} · 实时可用现金 ${displayCash.toFixed(2)} · 正式世代: {aiMemoryFeed?.governance?.formal_version || 'v9-formal-20261002-r11'} (新买授权 $0 · 4股策略接管待命)
                             </div>
                         )}
                     </div>
@@ -688,11 +685,16 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                     }}>
                         {ledger.auditItems.map((item: AiMemoryAuditItem) => {
                             const isHigh = item.priority === 'HIGH';
-                            const isMedium = item.priority === 'MEDIUM';
                             const isCvx = item.targetSymbol === 'CVX';
-                            const badgeColor = isCvx && item.status === 'TRIGGERED' ? '#10b981' : isHigh ? '#ef4444' : isMedium ? (item.targetSymbol === 'QCOM' ? '#10b981' : '#3b82f6') : '#f59e0b';
-                            const bgColor = isCvx && item.status === 'TRIGGERED' ? 'rgba(16, 185, 129, 0.08)' : isHigh ? 'rgba(239, 68, 68, 0.08)' : isMedium ? (item.targetSymbol === 'QCOM' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)') : 'rgba(245, 158, 11, 0.08)';
-                            const borderColor = isCvx && item.status === 'TRIGGERED' ? 'rgba(16, 185, 129, 0.3)' : isHigh ? 'rgba(239, 68, 68, 0.3)' : isMedium ? (item.targetSymbol === 'QCOM' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(59, 130, 246, 0.3)') : 'rgba(245, 158, 11, 0.3)';
+                            const isResolved = item.status === 'RESOLVED';
+                            const isTriggered = item.status === 'TRIGGERED';
+                            const isActive = item.status === 'ACTIVE';
+
+                            const badgeColor = isResolved ? '#10b981' : isTriggered ? (isHigh ? '#ef4444' : '#f59e0b') : isActive ? '#3b82f6' : isCvx ? '#eab308' : '#94a3b8';
+                            const bgColor = isResolved ? 'rgba(16, 185, 129, 0.08)' : isTriggered ? (isHigh ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)') : isActive ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255, 255, 255, 0.04)';
+                            const borderColor = isResolved ? 'rgba(16, 185, 129, 0.3)' : isTriggered ? (isHigh ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)') : isActive ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255, 255, 255, 0.12)';
+
+                            const statusTagText = isResolved ? '✅ 已处置达成' : isTriggered ? '⚡ 审计重点触发' : isActive ? '🛡️ 规则持续生效' : item.status === 'WATCHING' ? '🔬 跟踪观察' : item.status;
 
                             return (
                                 <div
@@ -710,67 +712,31 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                     <div>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <span style={{ fontSize: '12px', fontWeight: 'bold', color: badgeColor }}>
-                                                📋 历史审计观察 · 待人工核对 ({item.priority})
+                                                📋 策略审计与风控决策 ({item.priority})
                                             </span>
-                                            <span style={{ fontSize: '11px', background: badgeColor, color: '#fff', padding: '1px 6px', borderRadius: '4px' }}>
-                                                {item.status}
+                                            <span style={{ fontSize: '11px', background: badgeColor, color: '#fff', padding: '2px 7px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                                {statusTagText}
                                             </span>
                                         </div>
-                                        <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#fff', marginTop: '8px' }}>
+                                        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', marginTop: '8px' }}>
                                             {item.title}
                                         </div>
                                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.5 }}>
                                             {item.condition || '账户快照仅供风险观察；正式操作以 AI-Memory 已核验动作为准。'}
                                         </div>
                                     </div>
-                                    <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        {item.targetSymbol === 'MRVL' && (
-                                            <div
-                                                style={{
-                                                    padding: '6px 12px',
-                                                    background: 'rgba(239, 68, 68, 0.2)',
-                                                    border: '1px solid rgba(239, 68, 68, 0.5)',
-                                                    color: '#fca5a5',
-                                                    borderRadius: '6px',
-                                                    fontSize: '12px',
-                                                    fontWeight: 'bold',
-                                                    width: '100%',
-                                                }}
-                                            >
-                                                📋 仓位超限观察 · 无正式卖出限价或股数授权
-                                            </div>
-                                        )}
-                                        {item.targetSymbol === 'SPY' && (
+                                    <div style={{ marginTop: '12px' }}>
+                                        {item.recommendation && (
                                             <div style={{
                                                 fontSize: '11px',
-                                                color: '#93c5fd',
-                                                background: 'rgba(59, 130, 246, 0.1)',
-                                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                                color: isResolved ? '#6ee7b7' : isHigh ? '#fca5a5' : '#93c5fd',
+                                                background: isResolved ? 'rgba(16, 185, 129, 0.12)' : isHigh ? 'rgba(239, 68, 68, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                                                border: `1px solid ${isResolved ? 'rgba(16, 185, 129, 0.3)' : isHigh ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
                                                 borderRadius: '6px',
-                                                padding: '6px 10px',
-                                                width: '100%',
-                                                textAlign: 'center',
+                                                padding: '7px 10px',
+                                                lineHeight: 1.45,
                                             }}>
-                                                🛡️ 正式新买入授权 {aiMemoryFeed?.new_buy_authorization ?? 0} · 以正式动作列表为准
-                                            </div>
-                                        )}
-                                        {item.targetSymbol === 'QCOM' && (
-                                            <div style={{ fontSize: '11px', color: '#10b981', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                                <span>历史棘轮观察 · 当前无正式限价</span>
-                                            </div>
-                                        )}
-                                        {item.targetSymbol === 'CVX' && (
-                                            <div style={{
-                                                fontSize: '11px',
-                                                color: '#f59e0b',
-                                                background: 'rgba(245, 158, 11, 0.1)',
-                                                border: '1px solid rgba(245, 158, 11, 0.3)',
-                                                borderRadius: '6px',
-                                                padding: '6px 10px',
-                                                width: '100%',
-                                                textAlign: 'center',
-                                            }}>
-                                                🔬 研究观察 · 无实盘买入授权 (禁止开仓)
+                                                <strong>策略指引：</strong>{item.recommendation}
                                             </div>
                                         )}
                                     </div>
@@ -1113,15 +1079,17 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--text-muted)' }}>
-                                        <th style={{ padding: '10px 8px' }}>标的</th>
+                                        <th style={{ padding: '10px 8px' }}>标的 / 行业</th>
                                         <th style={{ padding: '10px 8px' }}>股数</th>
-                                        <th style={{ padding: '10px 8px' }}>成本</th>
+                                        <th style={{ padding: '10px 8px' }}>成本 / 接管锚点</th>
                                         <th style={{ padding: '10px 8px' }}>实时现价</th>
                                         <th style={{ padding: '10px 8px' }}>实时市值</th>
-                                        <th style={{ padding: '10px 8px' }}>权重</th>
-                                        <th style={{ padding: '10px 8px' }}>实时浮盈</th>
-                                        <th style={{ padding: '10px 8px' }}>角色</th>
-                                        <th style={{ padding: '10px 8px' }}>指引</th>
+                                        <th style={{ padding: '10px 8px' }}>权重 (限15%)</th>
+                                        <th style={{ padding: '10px 8px' }}>持仓浮盈</th>
+                                        <th style={{ padding: '10px 8px' }}>移动保护线 (Stop)</th>
+                                        <th style={{ padding: '10px 8px' }}>2R 止盈参考</th>
+                                        <th style={{ padding: '10px 8px' }}>角色 / 接管状态</th>
+                                        <th style={{ padding: '10px 8px' }}>策略处置指引</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1140,17 +1108,51 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                             : Number(h.navWeightPct ?? 0);
                                         const screenPrice = Number((h as any).screenPrice ?? 0);
 
+                                        // 保护线与止盈计算
+                                        const protectiveStop = h.protectiveStop ? Number(h.protectiveStop) : null;
+                                        const stopBufferPct = (protectiveStop && currentPrice > 0)
+                                            ? Number((((currentPrice - protectiveStop) / currentPrice) * 100).toFixed(1))
+                                            : null;
+
+                                        const twoRTrim = h.twoRTrimReference ? Number(h.twoRTrimReference) : null;
+                                        const distTo2RPct = (twoRTrim && currentPrice > 0)
+                                            ? Number((((twoRTrim - currentPrice) / currentPrice) * 100).toFixed(1))
+                                            : null;
+
                                         return (
                                             <tr key={h.symbol} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
                                                 <td style={{ padding: '12px 8px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                         <span style={{ fontWeight: 'bold', color: '#fff', fontSize: '13px' }}>{h.symbol}</span>
                                                         <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{h.name || (h as any).nameCn}</span>
+                                                        {h.sleeve === 'defense' && (
+                                                            <span style={{ fontSize: '10px', background: 'rgba(16,185,129,0.15)', color: '#34d399', padding: '1px 5px', borderRadius: '3px' }}>
+                                                                国债防御
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>{h.factorGroup || (h as any).theme}</div>
                                                 </td>
-                                                <td style={{ padding: '12px 8px', fontWeight: 'bold', color: '#fff' }}>{shares}</td>
-                                                <td style={{ padding: '12px 8px', color: 'var(--text-muted)' }}>${costBasis.toFixed(2)}</td>
+                                                <td style={{ padding: '12px 8px' }}>
+                                                    <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '13px' }}>{shares} 股</div>
+                                                    {h.symbol === 'MXL' && shares === 3 && (
+                                                        <div style={{ fontSize: '10px', color: '#34d399', marginTop: '2px' }}>10-02 已减半仓</div>
+                                                    )}
+                                                    {h.symbol === 'MRVL' && shares === 3 && (
+                                                        <div style={{ fontSize: '10px', color: '#93c5fd', marginTop: '2px' }}>09-25 减仓合规</div>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '12px 8px' }}>
+                                                    <div style={{ color: '#fff', fontSize: '12px' }}>成本 ${costBasis.toFixed(2)}</div>
+                                                    {h.managementReference ? (
+                                                        <div style={{ fontSize: '11px', color: '#60a5fa', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <span>接管 ${Number(h.managementReference).toFixed(2)}</span>
+                                                            <span style={{ fontSize: '9px', color: '#94a3b8' }}>(10-02收盘)</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>防守底座无需锚点</div>
+                                                    )}
+                                                </td>
                                                 <td style={{ padding: '12px 8px' }}>
                                                     <div style={{ fontWeight: 'bold', color: '#fff' }}>${currentPrice.toFixed(2)}</div>
                                                     {screenPrice > 0 && Math.abs(screenPrice - currentPrice) > 0.01 && (
@@ -1166,22 +1168,65 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                                 <td style={{ padding: '12px 8px' }}>
                                                     <span style={{
                                                         fontWeight: 'bold',
-                                                        color: navWeightPct > 15 ? '#ef4444' : '#fff',
+                                                        color: navWeightPct > 15 && h.sleeve !== 'defense' ? '#ef4444' : '#fff',
                                                     }}>
                                                         {navWeightPct.toFixed(2)}%
                                                     </span>
+                                                    {navWeightPct > 15 && h.sleeve !== 'defense' && (
+                                                        <div style={{ fontSize: '9px', color: '#ef4444' }}>超 15% 上限</div>
+                                                    )}
                                                 </td>
                                                 <td style={{ padding: '12px 8px', fontWeight: 'bold', color: getPnlColor(pnlAmount) }}>
                                                     {pnlAmount >= 0 ? `+$${pnlAmount.toFixed(2)}` : `-$${Math.abs(pnlAmount).toFixed(2)}`}
-                                                    <span style={{ fontSize: '11px', marginLeft: '4px' }}>
+                                                    <div style={{ fontSize: '11px', color: getPnlColor(pnlAmount) }}>
                                                         ({pnlPct >= 0 ? `+${pnlPct.toFixed(2)}%` : `${pnlPct.toFixed(2)}%`})
-                                                    </span>
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '12px 8px' }}>
+                                                    {protectiveStop ? (
+                                                        <div>
+                                                            <div style={{ color: '#fff', fontWeight: '600', fontSize: '12px' }}>${protectiveStop.toFixed(2)}</div>
+                                                            {stopBufferPct !== null && (
+                                                                <div style={{
+                                                                    fontSize: '10px',
+                                                                    marginTop: '2px',
+                                                                    color: stopBufferPct < 0 ? '#ef4444' : stopBufferPct <= 5 ? '#f59e0b' : '#10b981',
+                                                                    fontWeight: stopBufferPct < 0 || stopBufferPct <= 5 ? 'bold' : 'normal',
+                                                                }}>
+                                                                    {stopBufferPct < 0 ? `🚨 跌破 -${Math.abs(stopBufferPct)}%` : `🛡️ 缓冲 +${stopBufferPct}%`}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span style={{ color: '#64748b', fontSize: '11px' }}>- (无风险防守)</span>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '12px 8px' }}>
+                                                    {twoRTrim ? (
+                                                        <div>
+                                                            <div style={{ color: '#38bdf8', fontWeight: '600', fontSize: '12px' }}>${twoRTrim.toFixed(2)}</div>
+                                                            {distTo2RPct !== null && (
+                                                                <div style={{
+                                                                    fontSize: '10px',
+                                                                    marginTop: '2px',
+                                                                    color: distTo2RPct <= 0 ? '#10b981' : '#94a3b8',
+                                                                    fontWeight: distTo2RPct <= 0 ? 'bold' : 'normal',
+                                                                }}>
+                                                                    {distTo2RPct <= 0 ? `🎯 已触及 (建议减半仓)` : `距目标 +${distTo2RPct}%`}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span style={{ color: '#64748b', fontSize: '11px' }}>-</span>
+                                                    )}
                                                 </td>
                                                 <td style={{ padding: '12px 8px' }}>
                                                     <span style={{
-                                                        padding: '2px 8px',
+                                                        padding: '3px 8px',
                                                         borderRadius: '4px',
                                                         fontSize: '11px',
+                                                        fontWeight: '500',
+                                                        display: 'inline-block',
                                                         background: h.statusType === 'warning' ? 'rgba(239,68,68,0.2)' :
                                                                     h.statusType === 'success' ? 'rgba(16,185,129,0.2)' :
                                                                     'rgba(59,130,246,0.2)',
@@ -1189,13 +1234,18 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                                                                h.statusType === 'success' ? '#6ee7b7' :
                                                                '#93c5fd',
                                                         border: `1px solid ${h.statusType === 'warning' ? 'rgba(239,68,68,0.3)' :
-                                                                             h.statusType === 'success' ? 'rgba(16,185,129,0.3)' :
-                                                                             'rgba(59,130,246,0.3)'}`,
+                                                                              h.statusType === 'success' ? 'rgba(16,185,129,0.3)' :
+                                                                              'rgba(59,130,246,0.3)'}`,
                                                     }}>
                                                         {h.statusBadge || h.aiRole || 'defensive hold'}
                                                     </span>
+                                                    {h.longTermExemption === false && (
+                                                        <div style={{ fontSize: '10px', color: '#93c5fd', marginTop: '3px' }}>
+                                                            🛡️ 10-05 策略前瞻接管
+                                                        </div>
+                                                    )}
                                                 </td>
-                                                <td style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '11px', maxWidth: '280px', lineHeight: 1.4 }}>
+                                                <td style={{ padding: '12px 8px', color: 'var(--text-muted)', fontSize: '11px', maxWidth: '300px', lineHeight: 1.45 }}>
                                                     {screenCanonical
                                                         ? (h.actionAdvice || '风险观察 · 新买授权 0')
                                                         : '截图持仓观察；无正式交易授权'}
@@ -1537,20 +1587,28 @@ export const PortfolioExecutionHub: React.FC<PortfolioExecutionHubProps> = ({
                     borderRadius: '12px',
                     padding: '20px',
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                         <div>
                             <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>
-                                📜 AI-Memory 历史成交归档
+                                📜 AI-Memory 实盘成交流水与账本
                             </div>
                             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                归档记录尚待与券商订单、成交和费用流水逐项核对
+                                记录已确认实盘成交、减仓获利及资金回流变动
                             </div>
-                            {accountObservation && (ledger?.realTrades || []).length > 0 && <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '4px' }}>
-                                归档末笔交易后现金 ${(ledger?.realTrades || []).at(-1)?.postTradeCash.toFixed(2)}，当前截图现金 ${accountObservation.reported_cash.toFixed(2)}；期间现金变动待核。
-                            </div>}
+                            {accountObservation && (ledger?.realTrades || []).length > 0 && (() => {
+                                const latestTrade = (ledger?.realTrades || [])[0];
+                                const isCashReconciled = latestTrade && Math.abs(latestTrade.postTradeCash - accountObservation.reported_cash) < 0.01;
+                                return (
+                                    <div style={{ fontSize: '12px', color: isCashReconciled ? '#10b981' : '#f59e0b', marginTop: '4px' }}>
+                                        {isCashReconciled
+                                            ? `✅ 最新成交入账 (${latestTrade.date} ${latestTrade.symbol} ${latestTrade.direction}) 执行后现金 $${latestTrade.postTradeCash.toFixed(2)} 与当前账户可用现金 $${accountObservation.reported_cash.toFixed(2)} 完全一致。`
+                                            : `归档末笔交易后现金 $${latestTrade?.postTradeCash.toFixed(2)}，当前截图现金 $${accountObservation.reported_cash.toFixed(2)}；期间现金变动待核。`}
+                                    </div>
+                                );
+                            })()}
                         </div>
                         <span style={{ fontSize: '11px', background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '3px 8px', borderRadius: '4px', border: '1px solid rgba(16,185,129,0.3)' }}>
-                            待券商流水核对
+                            {(ledger?.realTrades || [])[0]?.tradeId.startsWith('REAL-20261002') ? '10-02 实盘已对账' : '待券商流水核对'}
                         </span>
                     </div>
 
