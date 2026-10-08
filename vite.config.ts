@@ -192,6 +192,26 @@ function fundStoragePlugin(): Plugin {
   };
 }
 
+function resolveAiMemoryPythonPath(): string {
+  const candidates = process.platform === 'win32'
+    ? [
+        path.resolve(__dirname, '../AI-Memory/domains/quant-strategy/.venv/Scripts/python.exe'),
+        path.resolve(__dirname, '../AI-Memory/.venv/Scripts/python.exe'),
+        'python.exe',
+      ]
+    : [
+        path.resolve(__dirname, '../AI-Memory/domains/quant-strategy/.venv/bin/python'),
+        path.resolve(__dirname, '../AI-Memory/.venv/bin/python'),
+        'python3',
+      ];
+  for (const candidate of candidates) {
+    if (path.isAbsolute(candidate) && fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return candidates[0];
+}
+
 function aiMemoryStrategyPlugin(): Plugin {
   return {
     name: 'ai-memory-strategy-plugin',
@@ -199,7 +219,7 @@ function aiMemoryStrategyPlugin(): Plugin {
       server.middlewares.use('/api/ai-memory/radar-validation', async (req, res) => {
         const aiMemoryRoot = path.resolve(__dirname, '../AI-Memory/domains/quant-strategy/strategies/v9-execution');
         const ledgerPath = path.join(aiMemoryRoot, 'results/radar_live_validation_observations.jsonl');
-        const pythonPath = path.resolve(__dirname, '../AI-Memory/.venv/bin/python');
+        const pythonPath = resolveAiMemoryPythonPath();
         const exportScript = path.join(aiMemoryRoot, 'scripts/export_strategy_feed.py');
         const recordScript = path.join(aiMemoryRoot, 'scripts/record_radar_validation.py');
 
@@ -269,7 +289,7 @@ function aiMemoryStrategyPlugin(): Plugin {
         if (req.method === 'GET' || req.method === 'POST') {
           const feedPath = path.resolve(__dirname, 'public/data/strategy_analysis_feed.json');
           const aiMemoryFeedPath = path.resolve(__dirname, '../AI-Memory/domains/quant-strategy/strategies/v9-execution/results/strategy_analysis_feed.json');
-          const pythonPath = path.resolve(__dirname, '../AI-Memory/.venv/bin/python');
+          const pythonPath = resolveAiMemoryPythonPath();
           const scriptPath = path.resolve(__dirname, '../AI-Memory/domains/quant-strategy/strategies/v9-execution/scripts/export_strategy_feed.py');
 
           const url = new URL(req.url || '/', `http://${req.headers.host}`);

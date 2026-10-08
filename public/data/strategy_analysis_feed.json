@@ -4,13 +4,13 @@
   "is_live": false,
   "is_stale": true,
   "stale_reason": "本机缺失 v9-formal-20260914-r8 正式世代且无对账正式策略会话，依据 CURRENT_STRATEGY.md 执行 Fail-Closed，正式操作授权锁定为 0",
-  "generated_at_utc": "2026-10-04T02:39:24.393889+00:00",
-  "quotes_as_of_utc": "2026-10-04T02:39:37.044085+00:00",
+  "generated_at_utc": "2026-10-04T13:20:03.006664+00:00",
+  "quotes_as_of_utc": "2026-10-04T13:20:13.249776+00:00",
   "quotes_source": "TENCENT_HTTP_BATCH",
   "quotes_status": "AVAILABLE",
   "research_daily_bars": {
     "target_asof": "2026-10-02",
-    "updated_at_utc": "2026-10-04T02:39:37.037635+00:00",
+    "updated_at_utc": "2026-10-04T13:20:13.244852+00:00",
     "bars_dir": "domains/quant-strategy/strategies/v9-execution/data/research_daily_bars",
     "decision_grade": false,
     "refresh_skipped": false,
@@ -25,7 +25,7 @@
   "last_formal_completed_session": null,
   "nyse_session_status": "PAUSED_NO_LOCAL_FORMAL_GENERATION",
   "portfolio_as_of_date": "2026-10-02",
-  "portfolio_source": "current/STATE.json -> work/bottom-and-reentry-research-2026-09-25/forward/sessions/account_snapshot_2026-10-02.json",
+  "portfolio_source": "current/STATE.json -> work\\bottom-and-reentry-research-2026-09-25\\forward\\sessions\\account_snapshot_2026-10-02.json",
   "broker_reconciliation_status": "USER_ATTESTED_TRADE_EXECUTION",
   "account_reconciled": true,
   "portfolio_review": {
@@ -1149,7 +1149,7 @@
         "changeVal": -0.25,
         "changePct": -0.4,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "MU",
@@ -1163,7 +1163,7 @@
         "changeVal": -22.5,
         "changePct": -2.05,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "WDC",
@@ -1177,7 +1177,7 @@
         "changeVal": -47.27,
         "changePct": -10.22,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "STX",
@@ -1191,7 +1191,7 @@
         "changeVal": -96.58,
         "changePct": -10.21,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "SNDK",
@@ -1205,7 +1205,7 @@
         "changeVal": -67.7,
         "changePct": -3.79,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "SKHY",
@@ -1219,7 +1219,7 @@
         "changeVal": 1.63,
         "changePct": 0.84,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "MRVL",
@@ -1233,7 +1233,7 @@
         "changeVal": 4.21,
         "changePct": 1.57,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "AVGO",
@@ -1247,7 +1247,7 @@
         "changeVal": 11.5,
         "changePct": 3.35,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "ALAB",
@@ -1261,7 +1261,7 @@
         "changeVal": -6.09,
         "changePct": -1.71,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "COHR",
@@ -1275,7 +1275,7 @@
         "changeVal": 17.85,
         "changePct": 5.59,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "LITE",
@@ -1289,7 +1289,7 @@
         "changeVal": 39.64,
         "changePct": 3.79,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "AAOI",
@@ -1303,7 +1303,7 @@
         "changeVal": 8.27,
         "changePct": 7.71,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "MXL",
@@ -1317,7 +1317,7 @@
         "changeVal": 13.81,
         "changePct": 14.99,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "AXTI",
@@ -1331,7 +1331,7 @@
         "changeVal": 4.06,
         "changePct": 4.96,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "CRDO",
@@ -1345,7 +1345,7 @@
         "changeVal": 8.47,
         "changePct": 4.03,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "SMCI",
@@ -1359,7 +1359,7 @@
         "changeVal": 1.77,
         "changePct": 4.22,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "ORCL",
@@ -1373,7 +1373,7 @@
         "changeVal": 4.23,
         "changePct": 3.06,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "META",
@@ -1387,7 +1387,7 @@
         "changeVal": 2.15,
         "changePct": 0.3,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "TER",
@@ -1401,7 +1401,7 @@
         "changeVal": 33.25,
         "changePct": 8.0,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "ASML",
@@ -1415,7 +1415,7 @@
         "changeVal": 58.82,
         "changePct": 3.25,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "AMAT",
@@ -1429,7 +1429,7 @@
         "changeVal": 10.74,
         "changePct": 2.03,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "KLAC",
@@ -1443,7 +1443,7 @@
         "changeVal": 6.56,
         "changePct": 3.27,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "LRCX",
@@ -1457,7 +1457,7 @@
         "changeVal": 7.39,
         "changePct": 2.17,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "RKLB",
@@ -1471,7 +1471,7 @@
         "changeVal": 3.46,
         "changePct": 4.91,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "RDW",
@@ -1485,7 +1485,7 @@
         "changeVal": 0.31,
         "changePct": 2.93,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "TSLA",
@@ -1499,7 +1499,7 @@
         "changeVal": 16.48,
         "changePct": 4.65,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "QCOM",
@@ -1513,7 +1513,7 @@
         "changeVal": 2.78,
         "changePct": 1.53,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "NVDA",
@@ -1527,7 +1527,7 @@
         "changeVal": 3.09,
         "changePct": 1.34,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "AMD",
@@ -1541,7 +1541,7 @@
         "changeVal": 18.18,
         "changePct": 2.95,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "INTC",
@@ -1555,7 +1555,7 @@
         "changeVal": -0.67,
         "changePct": -0.56,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "GLW",
@@ -1569,7 +1569,7 @@
         "changeVal": 3.77,
         "changePct": 2.35,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "NOK",
@@ -1583,7 +1583,7 @@
         "changeVal": 0.23,
         "changePct": 2.22,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "TTMI",
@@ -1597,7 +1597,7 @@
         "changeVal": 5.37,
         "changePct": 4.25,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "CEG",
@@ -1611,7 +1611,7 @@
         "changeVal": -1.43,
         "changePct": -0.55,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "KO",
@@ -1625,7 +1625,7 @@
         "changeVal": -0.45,
         "changePct": -0.52,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       },
       {
         "symbol": "QQQM",
@@ -1639,14 +1639,14 @@
         "changeVal": 3.12,
         "changePct": 1.02,
         "quoteStatus": "LIVE",
-        "quotedAt": "2026-10-04T02:39:37.044085+00:00"
+        "quotedAt": "2026-10-04T13:20:13.249776+00:00"
       }
     ]
   },
   "portfolio_ledger": {
-    "sourceFile": "current/STATE.json -> work/bottom-and-reentry-research-2026-09-25/forward/sessions/account_snapshot_2026-10-02.json",
+    "sourceFile": "current/STATE.json -> work\\bottom-and-reentry-research-2026-09-25\\forward\\sessions\\account_snapshot_2026-10-02.json",
     "asOfDate": "2026-10-02 (RECONCILED · 盘中减仓已核算 · 独立行情实时联动)",
-    "auditTimestamp": "2026-10-04T02:39:24.393889+00:00",
+    "auditTimestamp": "2026-10-04T13:20:03.006664+00:00",
     "totalNav": 5357.24,
     "workingCash": 1415.22,
     "workingCashPct": 26.42,
